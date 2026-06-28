@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FilaDrive | Oficial</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root { --bg: #0f1117; --surface: #1a1d27; --accent: #f59e0b; --success: #22c55e; --danger: #ef4444; --text: #f1f5f9; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
+  .box { width: 100%; max-width: 400px; background: var(--surface); padding: 20px; border-radius: 16px; }
+  .motorista-card { border: 2px solid var(--accent); padding: 15px; border-radius: 12px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+  .foto { width: 60px; height: 60px; border-radius: 50%; background: #333; overflow: hidden; border: 2px solid var(--text); }
+  .fila-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #222; border-radius: 8px; margin-bottom: 5px; }
+  .fila-foto { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--accent); }
+  input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #333; background: #000; color: #fff; }
+  button { width: 100%; padding: 12px; border-radius: 8px; border: none; background: var(--accent); font-weight: bold; cursor: pointer; }
+  #map { height: 200px; width: 100%; border-radius: 8px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<div class="box" id="app">
+  <div id="loginSection">
+    <h3>FilaDrive</h3>
+    <input type="password" id="pass" placeholder="Senha">
+    <button onclick="login()">Entrar</button>
+  </div>
+
+  <div id="filaSection" style="display:none">
+    <div id="map"></div>
+    <div class="motorista-card">
+      <div class="foto"><img id="imgPerfil" src="" width="60" onerror="this.src='https://via.placeholder.com/60'"></div>
+      <div>
+        <h3 id="nomeDisplay">--</h3>
+        <p id="posDisplay">Posição: --</p>
+        <p id="timer" style="color:var(--accent); font-weight:bold;">30:00</p>
+      </div>
+    </div>
+    <button onclick="renovar()">Renovar Presença</button>
+    <div id="lista" style="margin-top:20px;"></div>
+  </div>
+</div>
+
+<script>
+const BIN_FILA = '6a415e47f5f4af5e293e01e9';
+const BIN_MOTO = '6a415dabf5f4af5e293e0023';
+const KEY = '$2a$10$D.geWs4ByRu4cBVFvaqRWem6yjFqIkiVEm2Tcd8M7szKRDNn39y32';
+const PONTO = { lat: -23.6705, lng: -46.6974 };
+const RAIO = 500;
+
+function login() {
+  const p = document.getElementById('pass').value;
+  if(p === '5521ADM') { alert("Modo Admin Ativado"); return; }
+  // Lógica de busca no JSON (simplificada para o exemplo)
+  localStorage.setItem('user', JSON.stringify({nome: 'Motorista Teste', id: 1}));
+  document.getElementById('loginSection').style.display = 'none';
+  document.getElementById('filaSection').style.display = 'block';
+  iniciarSistema();
+}
+
+function iniciarSistema() {
+  const map = L.map('map').setView([PONTO.lat, PONTO.lng], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  const circ = L.circle([PONTO.lat, PONTO.lng], {radius: RAIO}).addTo(map);
+
+  navigator.geolocation.watchPosition(pos => {
+    const {latitude, longitude} = pos.coords;
+    const dist = haversine(latitude, longitude, PONTO.lat, PONTO.lng);
+    circ.setStyle({color: dist <= RAIO ? 'green' : 'red'});
+    if(dist > RAIO) alert("Fora da área!");
+  }, null, {enableHighAccuracy: true});
+}
+
+function haversine(l1, n1, l2, n2) {
+  const R=6371000, dL=(l2-l1)*Math.PI/180, dN=(n2-n1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2 + Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dN/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function renovar() { alert("Presença renovada até +30min"); }
+
+// Verifica login salvo
+if(localStorage.getItem('user')) {
+  const u = JSON.parse(localStorage.getItem('user'));
+  document.getElementById('pass').value = '....';
+  login();
+}
+</script>
+</body>
+</html>
