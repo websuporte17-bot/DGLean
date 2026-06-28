@@ -34,11 +34,11 @@
       <div class="foto"><img id="imgPerfil" src="" width="60" onerror="this.src='https://via.placeholder.com/60'"></div>
       <div>
         <h3 id="nomeDisplay">--</h3>
-        <p id="posDisplay">Posição: --</p>
+        <p id="posDisplay">PosiÃ§Ã£o: --</p>
         <p id="timer" style="color:var(--accent); font-weight:bold;">30:00</p>
       </div>
     </div>
-    <button onclick="renovar()">Renovar Presença</button>
+    <button onclick="renovar()">Renovar PresenÃ§a</button>
     <div id="lista" style="margin-top:20px;"></div>
   </div>
 </div>
@@ -53,7 +53,7 @@ const RAIO = 500;
 function login() {
   const p = document.getElementById('pass').value;
   if(p === '5521ADM') { alert("Modo Admin Ativado"); return; }
-  // Lógica de busca no JSON (simplificada para o exemplo)
+  // LÃ³gica de busca no JSON (simplificada para o exemplo)
   localStorage.setItem('user', JSON.stringify({nome: 'Motorista Teste', id: 1}));
   document.getElementById('loginSection').style.display = 'none';
   document.getElementById('filaSection').style.display = 'block';
@@ -69,7 +69,7 @@ function iniciarSistema() {
     const {latitude, longitude} = pos.coords;
     const dist = haversine(latitude, longitude, PONTO.lat, PONTO.lng);
     circ.setStyle({color: dist <= RAIO ? 'green' : 'red'});
-    if(dist > RAIO) alert("Fora da área!");
+    if(dist > RAIO) alert("Fora da Ã¡rea!");
   }, null, {enableHighAccuracy: true});
 }
 
@@ -79,7 +79,7 @@ function haversine(l1, n1, l2, n2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function renovar() { alert("Presença renovada até +30min"); }
+function renovar() { alert("PresenÃ§a renovada atÃ© +30min"); }
 
 // Verifica login salvo
 if(localStorage.getItem('user')) {
