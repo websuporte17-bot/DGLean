@@ -8,33 +8,33 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root { --bg: #0f1117; --surface: #1a1d27; --accent: #f59e0b; --success: #22c55e; --danger: #ef4444; --text: #f1f5f9; }
-  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
+  body { background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; justify-content: center; padding: 20px; }
   .box { width: 100%; max-width: 400px; background: var(--surface); padding: 20px; border-radius: 16px; }
-  .motorista-card { border: 2px solid var(--accent); padding: 15px; border-radius: 12px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
-  .foto { width: 60px; height: 60px; border-radius: 50%; background: #333; overflow: hidden; border: 2px solid var(--text); }
-  .fila-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #222; border-radius: 8px; margin-bottom: 5px; }
-  .fila-foto { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--accent); }
+  .card { border: 2px solid var(--accent); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
+  .foto { width: 60px; height: 60px; border-radius: 50%; background: #333; overflow: hidden; border: 2px solid #fff; }
+  .fila-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #222; border-radius: 10px; margin-bottom: 8px; }
+  .fila-foto { width: 45px; height: 45px; border-radius: 50%; border: 1px solid var(--accent); }
   input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #333; background: #000; color: #fff; }
   button { width: 100%; padding: 12px; border-radius: 8px; border: none; background: var(--accent); font-weight: bold; cursor: pointer; }
-  #map { height: 200px; width: 100%; border-radius: 8px; margin-bottom: 10px; }
+  #map { height: 200px; width: 100%; border-radius: 8px; margin-bottom: 15px; }
 </style>
 </head>
 <body>
 
-<div class="box" id="app">
+<div class="box">
   <div id="loginSection">
-    <h3>FilaDrive</h3>
+    <h3>Entrada FilaDrive</h3>
     <input type="password" id="pass" placeholder="Senha">
-    <button onclick="login()">Entrar</button>
+    <button onclick="login()">Acessar</button>
   </div>
 
   <div id="filaSection" style="display:none">
     <div id="map"></div>
-    <div class="motorista-card">
+    <div class="card">
       <div class="foto"><img id="imgPerfil" src="" width="60" onerror="this.src='https://via.placeholder.com/60'"></div>
       <div>
-        <h3 id="nomeDisplay">--</h3>
-        <p id="posDisplay">Posição: --</p>
+        <h3 id="nomeDisplay">Motorista</h3>
+        <p id="posDisplay">Sua posição: --</p>
         <p id="timer" style="color:var(--accent); font-weight:bold;">30:00</p>
       </div>
     </div>
@@ -46,30 +46,40 @@
 <script>
 const BIN_FILA = '6a415e47f5f4af5e293e01e9';
 const BIN_MOTO = '6a415dabf5f4af5e293e0023';
-const KEY = '$2a$10$D.geWs4ByRu4cBVFvaqRWem6yjFqIkiVEm2Tcd8M7szKRDNn39y32';
-const PONTO = { lat: -23.6705, lng: -46.6974 };
-const RAIO = 500;
+const KEY      = '$2a$10$D.geWs4ByRu4cBVFvaqRWem6yjFqIkiVEm2Tcd8M7szKRDNn39y32';
+const PONTO    = { lat: -23.6705, lng: -46.6974 };
+const RAIO     = 500;
 
-function login() {
+async function login() {
   const p = document.getElementById('pass').value;
-  if(p === '5521ADM') { alert("Modo Admin Ativado"); return; }
-  // Lógica de busca no JSON (simplificada para o exemplo)
-  localStorage.setItem('user', JSON.stringify({nome: 'Motorista Teste', id: 1}));
-  document.getElementById('loginSection').style.display = 'none';
-  document.getElementById('filaSection').style.display = 'block';
-  iniciarSistema();
+  if(p === '5521ADM') { alert("Painel Administrativo liberado"); return; }
+  
+  const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_MOTO}/latest`, {headers:{'X-Master-Key':KEY}}).then(r=>r.json());
+  const user = res.record.find(m => m.senha === p);
+  
+  if(user) {
+    localStorage.setItem('user', JSON.stringify(user));
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('filaSection').style.display = 'block';
+    iniciar(user);
+  } else alert("Senha incorreta");
 }
 
-function iniciarSistema() {
+function iniciar(user) {
+  document.getElementById('nomeDisplay').innerText = user.nome;
+  document.getElementById('imgPerfil').src = user.foto;
+  
   const map = L.map('map').setView([PONTO.lat, PONTO.lng], 15);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
   const circ = L.circle([PONTO.lat, PONTO.lng], {radius: RAIO}).addTo(map);
+  const marker = L.marker([PONTO.lat, PONTO.lng]).addTo(map);
 
   navigator.geolocation.watchPosition(pos => {
     const {latitude, longitude} = pos.coords;
+    marker.setLatLng([latitude, longitude]);
     const dist = haversine(latitude, longitude, PONTO.lat, PONTO.lng);
     circ.setStyle({color: dist <= RAIO ? 'green' : 'red'});
-    if(dist > RAIO) alert("Fora da área!");
+    if(dist > RAIO) document.body.innerHTML = "<h1>FORA DA ÁREA PERMITIDA!</h1>";
   }, null, {enableHighAccuracy: true});
 }
 
@@ -79,14 +89,7 @@ function haversine(l1, n1, l2, n2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function renovar() { alert("Presença renovada até +30min"); }
-
-// Verifica login salvo
-if(localStorage.getItem('user')) {
-  const u = JSON.parse(localStorage.getItem('user'));
-  document.getElementById('pass').value = '....';
-  login();
-}
+function renovar() { alert("Presença renovada!"); }
 </script>
 </body>
 </html>
