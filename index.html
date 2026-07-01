@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F.R Transportes</title>
+    <title>F.R Transportes - FilaDrive</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -32,15 +32,19 @@
             100%     { border-color: #fbbf24; box-shadow: 0 0 14px #fbbf2455; background: #2a220f; }
         }
         .segundo-lugar { border-color: #cbd5e1; box-shadow: 0 0 8px #cbd5e133; }
+
+        /* efeito de toque nos botões: encolhe rapidinho ao tocar/clicar */
+        button { transition: transform .1s ease, opacity .1s ease; }
+        button:active { transform: scale(0.94); opacity: .85; }
     </style>
 </head>
 <body class="min-h-screen p-4">
 
 <div class="max-w-[420px] mx-auto bg-[#0c1220] border border-slate-700 rounded-3xl shadow-2xl overflow-hidden">
 
-    <div class="p-5 border-b border-slate-700 flex justify-between items-center bg-[#0a0f1c]">
-        <h1 class="text-2xl font-bold">F.R TRANSPORTES🚘</h1>
-        <button onclick="abrirAdmin()" class="p-3 hover:bg-slate-800 rounded-2xl">
+    <div class="relative border-b border-slate-700 bg-[#0a0f1c]">
+        <img src="https://i.imgur.com/ko1popU.png" alt="F.R Transportes" class="w-full h-auto block">
+        <button onclick="abrirAdmin()" class="absolute top-3 right-3 p-3 bg-[#0c1220]/70 backdrop-blur hover:bg-slate-800 rounded-2xl shadow-lg">
             <i data-lucide="settings" class="w-6 h-6"></i>
         </button>
     </div>
@@ -48,9 +52,20 @@
     <!-- LOGIN -->
     <div id="loginSection" class="p-6">
         <div class="space-y-6">
-            <select id="motoristaSelect" class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl px-5 py-4 text-lg">
-                <option value="">MOTORISTAS...</option>
-            </select>
+            <div id="motoristaDropdown" class="relative">
+                <button type="button" onclick="toggleMotoristaDropdown()"
+                        class="w-full flex items-center gap-4 p-3 rounded-2xl bg-[#1a2338] border border-slate-600 text-left">
+                    <img id="motoristaTriggerFoto" class="hidden w-12 h-12 rounded-2xl object-cover flex-shrink-0 border-2 border-slate-600">
+                    <span id="motoristaTriggerNome" class="flex-1 text-xl font-bold text-slate-300">Motorista</span>
+                    <i id="motoristaChevron" data-lucide="chevron-down" class="w-6 h-6 flex-shrink-0 transition-transform"></i>
+                </button>
+                <div id="motoristaListaWrap" class="hidden mt-2 space-y-2 max-h-[320px] overflow-y-auto">
+                    <div id="motoristaLista" class="space-y-2">
+                        <p class="text-center text-slate-400 py-4">Carregando motoristas...</p>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" id="motoristaSelecionado" value="">
 
             <input id="pass" type="password" placeholder="Senha"
                    class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl px-5 py-4">
@@ -77,13 +92,16 @@
 
         <div id="map" class="map-normal"></div>
         <div id="rotaInfo" class="mt-2 text-center text-xs text-slate-400"></div>
+        <div id="avisoPrecisaoGps" class="hidden mt-2 text-center text-xs bg-amber-900/40 text-amber-300 rounded-2xl px-3 py-2">
+            📍 GPS impreciso. Ative a localização precisa nas configurações do celular pra esse app.
+        </div>
         <button onclick="abrirTelaCheia()" class="w-full mt-2 bg-slate-700 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2">
             <i data-lucide="maximize" class="w-4 h-4"></i> Navegar em tela cheia
         </button>
         <button onclick="solicitarPermissaoBussola()" class="w-full mt-2 text-xs text-slate-400 underline">Bússola não ativou? Toque aqui (iPhone pede permissão à parte)</button>
         <div id="statusGps" class="mt-4 text-center py-3 rounded-2xl font-medium">Solicitando localização...</div>
 
-        <button onclick="renovar()" class="w-full mt-6 bg-emerald-500 py-5 rounded-2xl font-bold">ENTRAR NA FILA</button>
+        <button onclick="renovar()" class="w-full mt-6 bg-emerald-500 py-5 rounded-2xl font-bold">ENTRAR NA FILA / RENOVAR</button>
     </div>
 
     <!-- FILA ATUAL (sempre visível) -->
@@ -99,29 +117,58 @@
 <!-- UI FLUTUANTE DO MODO TELA CHEIA (o mapa em si vira fullscreen via CSS, isso aqui só sobrepõe os botões/textos) -->
 <div id="navOverlayUI" class="hidden fixed inset-0 z-[10000] pointer-events-none">
     <div class="pointer-events-auto absolute top-4 left-4 right-4 flex items-start justify-between gap-2">
-        <div id="rotaInfoFull" class="bg-[#0c1220]/95 backdrop-blur px-4 py-3 rounded-2xl text-sm font-medium max-w-[75%] shadow-xl">Calculando rota...</div>
-        <button onclick="sairTelaCheia()" class="bg-[#0c1220]/95 backdrop-blur p-3 rounded-2xl shadow-xl">
-            <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
+        <div id="rotaInfoFull" class="bg-[#0c1220]/95 backdrop-blur px-4 py-3 rounded-2xl text-sm font-medium max-w-[65%] shadow-xl">Calculando rota...</div>
+        <div class="flex gap-2 flex-shrink-0">
+            <button id="btnMudoGps" onclick="toggleMudoGps()" class="bg-[#0c1220]/95 backdrop-blur p-3 rounded-2xl shadow-xl">
+                <i data-lucide="volume-2" class="w-5 h-5"></i>
+            </button>
+            <button id="btnAlertaVisual" onclick="toggleAlertaVisual()" class="bg-[#0c1220]/95 backdrop-blur p-3 rounded-2xl shadow-xl">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+            </button>
+            <button onclick="sairTelaCheia()" class="bg-[#0c1220]/95 backdrop-blur p-3 rounded-2xl shadow-xl">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
     </div>
+    <button onclick="abrirMenuNavegacaoExterna()" class="pointer-events-auto absolute bottom-24 left-4 bg-sky-500 p-4 rounded-full shadow-xl">
+        <i data-lucide="navigation" class="w-6 h-6"></i>
+    </button>
     <button onclick="centralizarNoMotorista()" class="pointer-events-auto absolute bottom-24 right-4 bg-emerald-500 p-4 rounded-full shadow-xl">
         <i data-lucide="locate-fixed" class="w-6 h-6"></i>
     </button>
+    <div id="avisoPrecisaoGpsFull" class="hidden pointer-events-auto absolute bottom-[92px] left-4 right-4 bg-amber-900/90 backdrop-blur text-amber-200 px-4 py-2 rounded-2xl text-center text-xs font-medium shadow-xl">
+        📍 GPS impreciso — ative a localização precisa nas configurações do celular
+    </div>
     <div id="statusGpsFull" class="pointer-events-auto absolute bottom-6 left-4 right-4 bg-[#0c1220]/95 backdrop-blur px-4 py-3 rounded-2xl text-center text-sm font-medium shadow-xl">Verificando localização...</div>
 </div>
 
-<!-- AVISO DE VIRADA (aparece em cima de tudo, tela normal ou tela cheia) -->
-<div id="avisoViradaUI" class="hidden fixed top-0 left-0 right-0 z-[10001] p-4">
-    <div class="bg-amber-400 text-black rounded-2xl p-4 shadow-2xl flex items-center gap-4 max-w-[480px] mx-auto border-2 border-amber-200">
+<!-- MENU: escolher Waze ou Google Maps pra terminar a rota pelo GPS do celular -->
+<div id="menuNavExternaUI" class="hidden fixed inset-0 z-[10002] flex items-end justify-center p-4" style="background:rgba(0,0,0,.6)">
+    <div class="bg-[#0c1220] border border-slate-700 rounded-3xl w-full max-w-[420px] p-5 space-y-3">
+        <h3 class="text-lg font-bold text-center">Ir pela rota do celular</h3>
+        <p class="text-xs text-slate-400 text-center -mt-1">Abre o Waze ou o Google Maps navegando até o ponto de destino, assim o GPS do seu celular assume os alertas de voz.</p>
+        <button onclick="abrirNoWaze()" class="w-full bg-sky-500 py-4 rounded-2xl font-bold flex items-center justify-center gap-2">
+            <i data-lucide="navigation" class="w-5 h-5"></i> Abrir no Waze
+        </button>
+        <button onclick="abrirNoGoogleMaps()" class="w-full bg-emerald-500 py-4 rounded-2xl font-bold flex items-center justify-center gap-2">
+            <i data-lucide="map" class="w-5 h-5"></i> Abrir no Google Maps
+        </button>
+        <button onclick="fecharMenuNavegacaoExterna()" class="w-full bg-slate-700 py-3 rounded-2xl font-medium">Cancelar</button>
+    </div>
+</div>
+
+<!-- AVISO DE VIRADA: seta compacta encostada na lateral certa da tela (esquerda
+     ou direita), no centro vertical — em vez de faixa no topo. A posição
+     (esquerda/direita/centro) é definida via JS em mostrarAvisoVirada(). -->
+<div id="avisoViradaUI" class="hidden fixed z-[10001] transition-all duration-300">
+    <div class="bg-amber-400 text-black rounded-2xl p-3 shadow-2xl flex flex-col items-center gap-1 border-2 border-amber-200 w-24">
         <div id="setaVirada" style="transition: transform .3s;" class="flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="black">
+            <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="black">
                 <path d="M12 2 L19 21 L12 17 L5 21 Z"/>
             </svg>
         </div>
-        <div class="min-w-0">
-            <p id="textoVirada" class="font-bold text-lg leading-tight">Vire à direita</p>
-            <p id="ruaVirada" class="text-sm truncate">Rua Exemplo</p>
-        </div>
+        <p id="textoVirada" class="font-bold text-xs text-center leading-tight">Vire à direita</p>
+        <p id="ruaVirada" class="text-[10px] text-center leading-tight truncate w-full">Rua Exemplo</p>
     </div>
 </div>
 
@@ -215,6 +262,7 @@
 
     let user = null;
     let map, marker, destinoMarker, rotaLayer, estaNoRaio = false, avisouSaida = false;
+    let posicaoSuavizada = null; // posição já suavizada/encaixada na rota, usada pra desenhar o carro no mapa
     let motoristas = [];
     let entradasCache = [];
     let duracaoMinutos = DURACAO_PADRAO_MIN;
@@ -224,20 +272,106 @@
     let telaCheiaAtiva = false, pausarAutoCentralizar = 0;
     const ZOOM_NAVEGACAO = 19; // zoom usado em tela cheia — mais "perto" do caminho (antes era 18)
     let compassHeading = null, bussolaAtiva = false;
+    // controle de zoom manual: se o motorista der zoom com os dedos, esse zoom
+    // fica "travado" (o mapa continua seguindo a posição, mas sem forçar o
+    // zoom de volta pro padrão) até ele tocar no botão de centralizar de novo.
+    let zoomManual = null;
+    let zoomEmAndamentoViaCodigo = false, zoomControladoTimeout = null;
     let rotaSteps = [], avisoTimeoutId = null;
+
+    // ---------- filtro contra oscilação/imprecisão bruta do GPS ----------
+    // Cada leitura do GPS chega com um raio de precisão (pos.coords.accuracy,
+    // em metros) — grande parte da "tremedeira" do carrinho vem de leituras
+    // com precisão ruim (sinal fraco, prédio do lado, nuvem, GPS "perdendo"
+    // um instante). Em vez de aceitar toda leitura igual, aqui a gente:
+    //   1) descarta leituras com precisão pior que ACCURACY_MAX_ACEITAVEL_M;
+    //   2) descarta "saltos" que implicariam uma velocidade impossível pro
+    //      carro (sinal claro de erro/glitch do GPS, não de movimento real);
+    //   3) mas nunca trava de vez: se ficar tempo demais sem nenhuma leitura
+    //      "boa", aceita a próxima mesmo sendo ruim (senão, com sinal fraco
+    //      persistente, o carrinho ficaria congelado pra sempre no mapa).
+    const ACCURACY_MAX_ACEITAVEL_M = 80;             // acima disso, a leitura é descartada (se possível esperar uma melhor)
+    const VELOCIDADE_MAX_MS = 45;                    // ~162 km/h — acima disso entre 2 leituras é considerado salto impossível
+    const FORCAR_ACEITE_SEM_LEITURA_BOA_MS = 20000;  // 20s sem aceitar nada = aceita a próxima do jeito que estiver
+
+    let ultimaLeituraAceita = null; // { lat, lng, timestamp }
+    let ultimoAceiteEm = 0;
+
+    function leituraGpsValida(lat, lng, accuracy, timestampMs) {
+        const agora = timestampMs || Date.now();
+        const semLeituraBoaHaMuitoTempo = (agora - ultimoAceiteEm) > FORCAR_ACEITE_SEM_LEITURA_BOA_MS;
+        if (semLeituraBoaHaMuitoTempo) return true; // sinal ruim persistente — aceita pra não travar o app
+
+        if (typeof accuracy === 'number' && accuracy > ACCURACY_MAX_ACEITAVEL_M) return false;
+
+        if (ultimaLeituraAceita) {
+            const dt = (agora - ultimaLeituraAceita.timestamp) / 1000;
+            if (dt > 0) {
+                const distancia = distMetros(lat, lng, ultimaLeituraAceita.lat, ultimaLeituraAceita.lng);
+                if ((distancia / dt) > VELOCIDADE_MAX_MS) return false; // salto impossível
+            }
+        }
+        return true;
+    }
+
+    // ---------- aviso de baixa precisão (sugere ativar "localização precisa") ----------
+    // No iPhone, quando a "Localização Precisa" está desativada pro app/site,
+    // o iOS passa a mandar coordenadas propositalmente embaralhadas — o sinal
+    // mais claro disso é o campo accuracy vindo bem grande (centenas de
+    // metros) de forma repetida, mesmo em área aberta. Se isso persistir por
+    // algumas leituras seguidas, mostra um aviso sugerindo ativar nas configs.
+    const ACCURACY_SUSPEITA_IMPRECISA_M = 200;
+    const LEITURAS_RUINS_PRA_AVISAR = 5;
+    let leiturasImprecisasSeguidas = 0;
+
+    function atualizarAvisoPrecisao(accuracy) {
+        const ruimAgora = typeof accuracy === 'number' && accuracy > ACCURACY_SUSPEITA_IMPRECISA_M;
+        leiturasImprecisasSeguidas = ruimAgora ? (leiturasImprecisasSeguidas + 1) : 0;
+        const mostrar = leiturasImprecisasSeguidas >= LEITURAS_RUINS_PRA_AVISAR;
+        [document.getElementById('avisoPrecisaoGps'), document.getElementById('avisoPrecisaoGpsFull')].forEach(el => {
+            if (el) el.classList.toggle('hidden', !mostrar);
+        });
+    }
 
     // Filtro de "tremedeira" do GPS: só considera que a pessoa realmente andou
     // se a posição mudou pelo menos MOVIMENTO_MINIMO_M — evita que o app ache
     // que ela foi "pra frente e pra trás" por causa da imprecisão normal do GPS
     // parado no mesmo lugar. Usado só pra decisões de virada/rota; a posição
     // "crua" continua sendo usada pro marcador no mapa e status da área.
+    //
+    // Além disso, só CONFIRMA o novo ponto depois dele se manter consistente
+    // por ATRASO_CONFIRMACAO_CURTO_MS — igual um GPS profissional, que não
+    // recalcula rota/vira passo a cada leitura isolada ruim, e sim espera um
+    // pouquinho de confirmação antes de "acreditar" que o movimento é real.
     let posicaoFiltrada = null;
+    let movimentoPendente = null, movimentoPendenteTimer = null;
     const MOVIMENTO_MINIMO_M = 2;
     function filtrarPosicao(lat, lng) {
-        if (!posicaoFiltrada || distMetros(lat, lng, posicaoFiltrada.lat, posicaoFiltrada.lng) >= MOVIMENTO_MINIMO_M) {
+        if (!posicaoFiltrada) {
             posicaoFiltrada = { lat, lng };
+            return posicaoFiltrada;
         }
-        return posicaoFiltrada;
+        const moveuOSuficiente = distMetros(lat, lng, posicaoFiltrada.lat, posicaoFiltrada.lng) >= MOVIMENTO_MINIMO_M;
+        if (!moveuOSuficiente) {
+            // não andou nada de relevante — cancela qualquer confirmação pendente
+            if (movimentoPendenteTimer) { clearTimeout(movimentoPendenteTimer); movimentoPendenteTimer = null; }
+            movimentoPendente = null;
+            return posicaoFiltrada;
+        }
+        // andou o suficiente nessa leitura — só reinicia a contagem de
+        // confirmação se for uma leitura bem diferente da que já estava
+        // pendente (senão o GPS "tremendo" reseta o timer pra sempre)
+        if (!movimentoPendente || distMetros(lat, lng, movimentoPendente.lat, movimentoPendente.lng) > MOVIMENTO_MINIMO_M) {
+            movimentoPendente = { lat, lng };
+            if (movimentoPendenteTimer) clearTimeout(movimentoPendenteTimer);
+            movimentoPendenteTimer = setTimeout(() => {
+                posicaoFiltrada = movimentoPendente;
+                movimentoPendenteTimer = null;
+            }, ATRASO_CONFIRMACAO_CURTO_MS);
+        } else {
+            movimentoPendente = { lat, lng };
+        }
+        return posicaoFiltrada; // enquanto não confirma, continua devolvendo a posição antiga
     }
 
     // Controla os avisos de cada manobra por local (não por índice do passo)
@@ -300,18 +434,57 @@
     // ---------- login do motorista ----------
     async function carregarMotoristas() {
         motoristas = await getMotoristas();
-        const select = document.getElementById('motoristaSelect');
-        select.innerHTML = '<option value="">Selecione o motorista...</option>';
-        motoristas.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m.id;
-            opt.textContent = m.nome;
-            select.appendChild(opt);
+        renderMotoristaLista();
+    }
+
+    function toggleMotoristaDropdown(forcarFechado) {
+        const wrap = document.getElementById('motoristaListaWrap');
+        const chevron = document.getElementById('motoristaChevron');
+        const abrir = forcarFechado === true ? false : wrap.classList.contains('hidden');
+        wrap.classList.toggle('hidden', !abrir);
+        chevron.style.transform = abrir ? 'rotate(180deg)' : '';
+    }
+
+    function renderMotoristaLista() {
+        const lista = document.getElementById('motoristaLista');
+        const selecionadoAtual = document.getElementById('motoristaSelecionado').value;
+        if (!motoristas.length) {
+            lista.innerHTML = '<p class="text-center text-slate-400 py-4">Nenhum motorista cadastrado</p>';
+            return;
+        }
+        lista.innerHTML = motoristas.map(m => `
+            <button type="button" onclick="selecionarMotorista('${m.id}')"
+                    data-id="${m.id}"
+                    class="motorista-card w-full flex items-center gap-4 p-3 rounded-2xl border-2 transition-colors text-left ${selecionadoAtual === m.id ? 'border-emerald-500 bg-[#132018]' : 'border-transparent bg-[#1a2338]'}">
+                <img src="${m.foto || avatarPadrao(m.nome)}" class="w-16 h-16 rounded-2xl object-cover flex-shrink-0 border-2 border-slate-600">
+                <span class="text-2xl font-bold leading-tight">${m.nome}</span>
+            </button>
+        `).join('');
+    }
+
+    function selecionarMotorista(id) {
+        document.getElementById('motoristaSelecionado').value = id;
+        document.querySelectorAll('.motorista-card').forEach(card => {
+            const ativo = card.dataset.id === id;
+            card.classList.toggle('border-emerald-500', ativo);
+            card.classList.toggle('bg-[#132018]', ativo);
+            card.classList.toggle('border-transparent', !ativo);
+            card.classList.toggle('bg-[#1a2338]', !ativo);
         });
+
+        const m = motoristas.find(x => x.id === id);
+        if (m) {
+            const foto = document.getElementById('motoristaTriggerFoto');
+            foto.src = m.foto || avatarPadrao(m.nome);
+            foto.classList.remove('hidden');
+            document.getElementById('motoristaTriggerNome').textContent = m.nome;
+            document.getElementById('motoristaTriggerNome').classList.remove('text-slate-300');
+        }
+        toggleMotoristaDropdown(true); // fecha o dropdown depois de escolher
     }
 
     function login() {
-        const id = document.getElementById('motoristaSelect').value;
+        const id = document.getElementById('motoristaSelecionado').value;
         const senha = document.getElementById('pass').value.trim();
         if (!id) return alert("Selecione um motorista");
         if (!senha) return alert("Digite a senha");
@@ -349,6 +522,12 @@
         document.getElementById('filaSection').classList.add('hidden');
         document.getElementById('loginSection').classList.remove('hidden');
         document.getElementById('pass').value = '';
+        document.getElementById('motoristaSelecionado').value = '';
+        document.getElementById('motoristaTriggerFoto').classList.add('hidden');
+        document.getElementById('motoristaTriggerNome').textContent = 'Motorista';
+        document.getElementById('motoristaTriggerNome').classList.add('text-slate-300');
+        toggleMotoristaDropdown(true);
+        renderMotoristaLista();
     }
 
     function avatarPadrao(nome) {
@@ -375,11 +554,29 @@
             return;
         }
         gpsIniciado = true;
-        const opcoes = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
-        // dispara o pop-up de permissão e já pega uma primeira leitura
-        navigator.geolocation.getCurrentPosition(tratarPosicao, tratarErroGps, opcoes);
+        // enableHighAccuracy: true pede pro navegador usar o GPS de verdade do
+        // chip (satélite), em vez da localização "aproximada" por torre de
+        // celular/Wi-Fi — é o pedido de máxima precisão que dá pra fazer pela
+        // Web (não existe uma permissão "extra" separada disso na API do
+        // navegador). maximumAge:0 garante que nunca reusa uma leitura antiga
+        // em cache — sempre pede uma posição fresca.
+        const opcoesAltaPrecisao = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
+
+        // Além do GPS de satélite, dispara também uma leitura "de rede"
+        // (Wi-Fi/torre de celular) em paralelo: ela chega bem mais rápido
+        // (geralmente 1-3s, contra vários segundos do GPS "travar" o sinal),
+        // só que com precisão bem pior. As duas leituras alimentam o mesmo
+        // filtro de fusão (mais abaixo, no Kalman) — ele já pondera cada uma
+        // pela precisão dela, então a leitura de GPS "ganha" da rede assim
+        // que chega, mas enquanto isso o motorista já aparece no mapa em vez
+        // de ficar com "Solicitando localização..." parado por 10-15s.
+        const opcoesRede = { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 };
+        navigator.geolocation.getCurrentPosition(tratarPosicao, () => {}, opcoesRede);
+
+        // dispara o pop-up de permissão e já pega uma primeira leitura de alta precisão
+        navigator.geolocation.getCurrentPosition(tratarPosicao, tratarErroGps, opcoesAltaPrecisao);
         // continua monitorando o tempo todo, logado ou não
-        navigator.geolocation.watchPosition(tratarPosicao, tratarErroGps, opcoes);
+        navigator.geolocation.watchPosition(tratarPosicao, tratarErroGps, opcoesAltaPrecisao);
 
         // Watchdog: em alguns navegadores "in-app" (Instagram, WhatsApp, TikTok
         // etc.) o pedido de localização fica pendurado pra sempre — nem chama
@@ -400,20 +597,33 @@
     // Ícone de navegação: um carro visto de cima (estilo apps de carona), que
     // gira de acordo com a bússola/direção do GPS (verde = dentro da área,
     // vermelho = fora). Sendo achatado/2D dá pra ver a rota por baixo dele.
+    // Tamanho "padrão" do carrinho (30x46px) é o do zoom de navegação (19).
+    // Como o Leaflet não redimensiona ícones sozinho quando dá zoom, sem isso
+    // o carrinho fica do mesmo tamanho fixo mesmo quando o mapa é afastado —
+    // parecendo gigante em relação às ruas. Aqui ele encolhe/cresce junto do zoom.
+    const ZOOM_ICONE_BASE = ZOOM_NAVEGACAO;
+    function escalaIconePorZoom(zoom) {
+        if (typeof zoom !== 'number' || isNaN(zoom)) return 1;
+        const escala = Math.pow(1.25, zoom - ZOOM_ICONE_BASE);
+        return Math.min(1.15, Math.max(0.4, escala)); // trava entre bem pequeno e um pouco maior — nunca gigante
+    }
     function iconeCarro(dentro, angulo) {
         const cor = dentro ? '#22c55e' : '#ef4444';
         const rot = (typeof angulo === 'number' && !isNaN(angulo)) ? angulo : 0;
+        const zoomAtual = map ? map.getZoom() : ZOOM_ICONE_BASE;
+        const escala = escalaIconePorZoom(zoomAtual);
+        const w = Math.round(30 * escala), h = Math.round(46 * escala);
         return L.divIcon({
             className: '',
-            html: `<div style="width:30px;height:46px;transform:rotate(${rot}deg);transition:transform .5s ease-out;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="46" viewBox="0 0 30 46">
+            html: `<div style="width:${w}px;height:${h}px;transform:rotate(${rot}deg);transition:transform .5s ease-out, width .2s ease-out, height .2s ease-out;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 30 46">
                        <rect x="3" y="3" width="24" height="40" rx="10" fill="${cor}" stroke="#fff" stroke-width="2.5"/>
                        <rect x="7" y="8" width="16" height="11" rx="4" fill="rgba(255,255,255,.55)"/>
                        <rect x="8" y="29" width="14" height="8" rx="3" fill="rgba(255,255,255,.3)"/>
                      </svg>
                    </div>`,
-            iconSize: [30, 46],
-            iconAnchor: [15, 23]
+            iconSize: [w, h],
+            iconAnchor: [Math.round(w / 2), Math.round(h / 2)]
         });
     }
 
@@ -441,8 +651,10 @@
         return d > 180 ? 360 - d : d;
     }
     let headingPendente = null, headingPendenteTimer = null;
-    const ROTACAO_LIMIAR_GRAUS = 15;   // mudanças pequenas (curva normal) giram na hora
-    const ROTACAO_ESPERA_MS = 1500;    // mudanças bruscas (ex: sacudida) esperam confirmar antes de girar
+    const ROTACAO_LIMIAR_GRAUS = 15;        // acima disso já é considerado "guinada grande"
+    const RUIDO_IGNORAR_GRAUS = 4;          // tremedeira normal do sensor — nem entra na fila de confirmação
+    const ATRASO_CONFIRMACAO_CURTO_MS = 1500; // curvas normais: confirma rápido (parece profissional, não instantâneo/nervoso)
+    const ATRASO_CONFIRMACAO_LONGO_MS = 3500; // guinadas bruscas (celular balançando na mão etc.): espera mais pra ter certeza
 
     // Gira o mapa inteiro (não só o ícone) no sentido oposto ao rumo, pra que
     // "pra frente de quem dirige" sempre fique pra cima da tela, igual
@@ -458,7 +670,7 @@
         const h = window.innerHeight;
         const diagonal = Math.sqrt(w * w + h * h);
         const menorLado = Math.min(w, h);
-        return (diagonal / menorLado) * 1.08; // 1.08 = folga extra de segurança
+        return (diagonal / menorLado) * 1.02; // 1.02 = pequena folga de segurança (reduzida a pedido, tava zoom demais)
     }
     let escalaRotacaoMapa = calcularEscalaRotacao();
     window.addEventListener('resize', () => { escalaRotacaoMapa = calcularEscalaRotacao(); });
@@ -483,31 +695,43 @@
         }
         if (heading === null || isNaN(heading)) return;
 
-        // diferença pequena em relação ao rumo atual (virada normal do carro,
-        // ou pequeno ajuste) — aplica direto, sem atraso
-        if (compassHeading === null || diferencaAngular(heading, compassHeading) < ROTACAO_LIMIAR_GRAUS) {
-            headingPendente = null;
-            if (headingPendenteTimer) { clearTimeout(headingPendenteTimer); headingPendenteTimer = null; }
+        // primeira leitura da bússola: aplica na hora, senão a seta fica sem
+        // direção nenhuma esperando 1,5/3,5s pra aparecer pela primeira vez
+        if (compassHeading === null) {
             compassHeading = heading;
+            headingPendente = heading;
             if (marker) marker.setIcon(iconeCarro(estaNoRaio, compassHeading));
             atualizarRotacaoMapa(compassHeading);
             return;
         }
 
-        // diferença grande (ex: celular sendo girado/sacudido na mão) — só gira
-        // a seta se essa nova direção continuar "pedindo" a mesma virada por um
-        // tempinho, senão fica pulando de direção toda hora
-        headingPendente = heading;
-        if (headingPendenteTimer) clearTimeout(headingPendenteTimer);
-        headingPendenteTimer = setTimeout(() => {
-            if (headingPendente !== null) {
+        const diferencaDoAtual = diferencaAngular(heading, compassHeading);
+
+        // tremedeira normal do sensor (poucos graus) — ignora completamente,
+        // nem mexe na fila de confirmação, senão nunca estabiliza
+        if (diferencaDoAtual < RUIDO_IGNORAR_GRAUS) return;
+
+        // curva normal vs guinada brusca: cada uma espera um tempo diferente
+        // pra confirmar antes de realmente girar a seta/mapa — como um GPS
+        // profissional, que não fica "nervoso" reagindo a cada leiturinha
+        const atraso = diferencaDoAtual < ROTACAO_LIMIAR_GRAUS ? ATRASO_CONFIRMACAO_CURTO_MS : ATRASO_CONFIRMACAO_LONGO_MS;
+
+        // só reinicia a contagem quando a leitura muda de verdade em relação
+        // ao que já estava pendente — se ficasse reiniciando a cada evento
+        // (o sensor dispara várias vezes por segundo) o timer nunca chegaria
+        // a disparar enquanto a mão estivesse se mexendo
+        if (headingPendente === null || diferencaAngular(heading, headingPendente) >= RUIDO_IGNORAR_GRAUS) {
+            headingPendente = heading;
+            if (headingPendenteTimer) clearTimeout(headingPendenteTimer);
+            headingPendenteTimer = setTimeout(() => {
                 compassHeading = headingPendente;
-                headingPendente = null;
                 if (marker) marker.setIcon(iconeCarro(estaNoRaio, compassHeading));
                 atualizarRotacaoMapa(compassHeading);
-            }
-            headingPendenteTimer = null;
-        }, ROTACAO_ESPERA_MS);
+                headingPendenteTimer = null;
+            }, atraso);
+        } else {
+            headingPendente = heading; // guarda o valor mais recente, mas sem resetar o relógio
+        }
     }
     // Se não tiver bússola confiável, usa o rumo do próprio GPS (direção real
     // do deslocamento) como alternativa — só funciona com o carro em movimento
@@ -530,6 +754,21 @@
         // se o motorista arrastar o mapa manualmente em tela cheia, para de
         // recentralizar sozinho por 8s (senão fica impossível olhar a rua da frente)
         map.on('dragstart', () => { pausarAutoCentralizar = Date.now() + 8000; });
+
+        // se o motorista der zoom com os dedos (ou pelos botões +/-), esse
+        // zoom fica travado — o mapa continua seguindo a posição do carro,
+        // mas sem forçar o zoom de volta pro padrão de navegação. A bússola
+        // (rotação do mapa) continua funcionando normalmente, é independente
+        // do zoom. Só volta ao zoom padrão quando toca no botão de centralizar.
+        map.on('zoomend', () => {
+            if (!zoomEmAndamentoViaCodigo) {
+                zoomManual = map.getZoom();
+            }
+            zoomEmAndamentoViaCodigo = false;
+            if (zoomControladoTimeout) { clearTimeout(zoomControladoTimeout); zoomControladoTimeout = null; }
+            // o carrinho reajusta de tamanho pro novo zoom
+            if (marker) marker.setIcon(iconeCarro(estaNoRaio, compassHeading !== null ? compassHeading : 0));
+        });
 
         const pontosPoligono = AREA_POLIGONO.map(p => [p.lat, p.lng]);
 
@@ -577,6 +816,7 @@
         document.body.style.overflow = 'hidden';
         telaCheiaAtiva = true;
         pausarAutoCentralizar = 0;
+        zoomManual = null; // sempre começa a navegação no zoom padrão
         atualizarRotacaoMapa(compassHeading);
         lucide.createIcons();
         setTimeout(() => {
@@ -596,19 +836,86 @@
         setTimeout(() => map.invalidateSize(), 150);
     }
 
+    // Faz um setView marcando que foi o próprio código que pediu esse zoom
+    // (e não o dedo do motorista), pra não confundir com zoom manual no
+    // listener de 'zoomend' acima.
+    function setViewControlado(latlng, zoom, opts) {
+        if (!map) return;
+        zoomEmAndamentoViaCodigo = true;
+        map.setView(latlng, zoom, opts);
+        // segurança: se por algum motivo o 'zoomend' não disparar (ex: já
+        // estava exatamente nesse zoom), destrava depois de 1s de qualquer jeito
+        if (zoomControladoTimeout) clearTimeout(zoomControladoTimeout);
+        zoomControladoTimeout = setTimeout(() => { zoomEmAndamentoViaCodigo = false; }, 1000);
+    }
+
+    // Desliza o carrinho suavemente da posição atual até a nova, em vez de
+    // "teleportar" a cada leitura do GPS — é o que dá aquela sensação de app
+    // de navegação profissional (Waze/Uber) em vez de parecer picotado.
+    // Se o salto for grande demais (sinal que sumiu e voltou longe, GPS
+    // deu um "pulo" ruim etc.) não anima, vai direto — senão fica arrastando
+    // o carrinho num rabo de cometa cruzando o mapa inteiro.
+    const SALTO_GRANDE_M = 45;
+    let animMarcadorId = null;
+    function moverMarcadorSuave(latDestino, lngDestino) {
+        if (!marker) return;
+        const atual = marker.getLatLng();
+        const distanciaSalto = distMetros(atual.lat, atual.lng, latDestino, lngDestino);
+        if (animMarcadorId) { cancelAnimationFrame(animMarcadorId); animMarcadorId = null; }
+        if (distanciaSalto > SALTO_GRANDE_M || distanciaSalto < 0.3) {
+            marker.setLatLng([latDestino, lngDestino]);
+            return;
+        }
+        const origemLat = atual.lat, origemLng = atual.lng;
+        const duracaoMs = 900; // perto do intervalo médio entre leituras do GPS — fica fluido sem "atrasar" a exibição
+        const t0 = performance.now();
+        function passo(agora) {
+            const p = Math.min(1, (agora - t0) / duracaoMs);
+            const suave = 1 - Math.pow(1 - p, 3); // ease-out: começa rápido, desacelera suave no fim
+            marker.setLatLng([
+                origemLat + (latDestino - origemLat) * suave,
+                origemLng + (lngDestino - origemLng) * suave
+            ]);
+            if (p < 1) animMarcadorId = requestAnimationFrame(passo);
+            else animMarcadorId = null;
+        }
+        animMarcadorId = requestAnimationFrame(passo);
+    }
+
     function centralizarNoMotorista() {
         if (!map || !ultimaPosicao) return;
         pausarAutoCentralizar = 0;
+        zoomManual = null; // tocar em centralizar destrava o zoom e volta pro padrão de navegação
         const zoomAlvo = telaCheiaAtiva ? ZOOM_NAVEGACAO : Math.max(map.getZoom(), 18);
-        map.setView([ultimaPosicao.lat, ultimaPosicao.lng], zoomAlvo, { animate: true });
+        setViewControlado([ultimaPosicao.lat, ultimaPosicao.lng], zoomAlvo, { animate: true });
     }
 
     async function tratarPosicao(pos) {
         posicaoPronta = true;
-        const { latitude, longitude } = pos.coords;
-        ultimaPosicao = { lat: latitude, lng: longitude };
+        const { latitude, longitude, accuracy } = pos.coords;
+        const agoraGps = pos.timestamp || Date.now();
+
+        // sempre atualiza o aviso de precisão, mesmo se essa leitura específica
+        // acabar sendo descartada pelo filtro logo abaixo
+        atualizarAvisoPrecisao(accuracy);
+
+        if (!leituraGpsValida(latitude, longitude, accuracy, agoraGps)) {
+            // leitura ruim demais (impreciso ou salto impossível) — ignora essa
+            // atualização específica e mantém o carrinho onde estava, em vez
+            // de deixar ele "piscando"/oscilando com o lixo do GPS
+            return;
+        }
+        ultimaLeituraAceita = { lat: latitude, lng: longitude, timestamp: agoraGps };
+        ultimoAceiteEm = agoraGps;
+
+        // posição "de exibição": funde GPS+rede (Kalman) e encaixa na rua da
+        // rota, pra não mostrar o carro tremendo/pulando pra calçada ou dentro
+        // de casa — decisões de área/rota continuam usando a posição real do
+        // GPS abaixo.
+        const exibir = posicaoSuavizadaParaExibir(latitude, longitude, accuracy, agoraGps);
+        ultimaPosicao = exibir;
         if (marker) {
-            marker.setLatLng([latitude, longitude]);
+            moverMarcadorSuave(exibir.lat, exibir.lng);
         }
         estaNoRaio = pontoDentroDaArea(latitude, longitude);
         if (marker) marker.setIcon(iconeCarro(estaNoRaio, anguloAtual(pos)));
@@ -617,7 +924,10 @@
         // no modo tela cheia, o mapa "segue" o carro (a não ser que o motorista
         // tenha arrastado o mapa manualmente há pouco tempo)
         if (telaCheiaAtiva && map && Date.now() > pausarAutoCentralizar) {
-            map.setView([latitude, longitude], Math.max(map.getZoom(), ZOOM_NAVEGACAO), { animate: true });
+            // respeita o zoom manual do motorista, se ele tiver dado um; senão
+            // usa o zoom padrão de navegação
+            const zoomAlvo = zoomManual !== null ? zoomManual : ZOOM_NAVEGACAO;
+            setViewControlado([exibir.lat, exibir.lng], zoomAlvo, { animate: true });
         }
 
         atualizarStatusGpsTexto(estaNoRaio ? '✅ Dentro da área' : '❌ FORA DA ÁREA', estaNoRaio);
@@ -713,6 +1023,94 @@
         t = Math.max(0, Math.min(1, t));
         return Math.sqrt((px - dx * t) ** 2 + (py - dy * t) ** 2);
     }
+    // Igual à distanciaAteSegmento, mas devolve o ponto (lat,lng) mais perto em
+    // cima do segmento, em vez de só a distância — usado pra "encaixar" o carro
+    // em cima da rua certa (como o Waze/Google Maps fazem) em vez de mostrar a
+    // posição crua do GPS, que pode aparecer na calçada ou dentro de uma casa.
+    function pontoNoSegmento(lat, lng, lat1, lng1, lat2, lng2) {
+        const mLat = 111320;
+        const mLng = 111320 * Math.cos(lat * Math.PI / 180);
+        const px = (lng - lng1) * mLng, py = (lat - lat1) * mLat;
+        const dx = (lng2 - lng1) * mLng, dy = (lat2 - lat1) * mLat;
+        const compLenSq = dx * dx + dy * dy;
+        let t = compLenSq > 0 ? (px * dx + py * dy) / compLenSq : 0;
+        t = Math.max(0, Math.min(1, t));
+        const dist = Math.sqrt((px - dx * t) ** 2 + (py - dy * t) ** 2);
+        return { lat: lat1 + (lat2 - lat1) * t, lng: lng1 + (lng2 - lng1) * t, dist };
+    }
+    // Acha o ponto mais próximo em cima de toda a linha da rota traçada
+    const SNAP_ROTA_M = 22; // só encaixa se estiver a menos de 22m da rua da rota (senão é desvio de verdade)
+    function pontoMaisPertoDaRota(lat, lng) {
+        if (rotaPontosLatLng.length < 2) return null;
+        let melhor = null;
+        for (let i = 0; i < rotaPontosLatLng.length - 1; i++) {
+            const p = pontoNoSegmento(lat, lng, rotaPontosLatLng[i][0], rotaPontosLatLng[i][1], rotaPontosLatLng[i + 1][0], rotaPontosLatLng[i + 1][1]);
+            if (!melhor || p.dist < melhor.dist) melhor = p;
+            if (melhor.dist < 3) break; // já tá praticamente em cima, não precisa continuar
+        }
+        return melhor;
+    }
+    // ---------- fusão de posição: GPS + rede, ponderada pela precisão ----------
+    // O navegador já teve GPS de satélite, Wi-Fi e torres de celular por trás
+    // de cada leitura (é o que a Geolocation API faz sozinha) — o que dá pra
+    // melhorar da nossa parte é COMO usar essas leituras. Cada uma vem com um
+    // raio de precisão (accuracy, em metros): uma leitura de GPS "travado"
+    // com bom sinal costuma ter uns 5-15m; uma leitura vindo mais de rede
+    // (Wi-Fi/torre) pode vir com 50-1000m. Em vez de tratar todas igual (como
+    // era antes, com uma média de peso fixo), usamos um filtro de Kalman:
+    // ele pondera automaticamente cada leitura pela precisão dela — quanto
+    // melhor o sinal, mais peso ganha; quanto pior, menos — e a incerteza
+    // cresce sozinha com o tempo sem atualização (então depois de ficar
+    // parado sem sinal, a próxima leitura boa "pesa" mais de novo).
+    //
+    // O filtro roda em metros (projeção local simples a partir do centro da
+    // área) e não em graus direto, porque 1° de longitude vale menos metros
+    // que 1° de latitude — misturar os dois com o mesmo peso distorceria a
+    // posição principalmente longe da linha do Equador.
+    const KALMAN_RUIDO_PROCESSO_MS = 5; // "velocidade" de incerteza (m/s) — quanto a posição real pode mudar por segundo sem leitura nova
+    const KALMAN_ACCURACY_MINIMA_M = 3; // nunca confia demais nem numa leitura "perfeita" demais
+    let kalman = null; // { x, y (metros a partir do CENTRO_MAPA), variancia (m²), timestamp }
+
+    function fundirPosicaoKalman(lat, lng, accuracy, timestampMs) {
+        const mLat = 111320;
+        const mLng = 111320 * Math.cos(CENTRO_MAPA.lat * Math.PI / 180);
+        const x = (lng - CENTRO_MAPA.lng) * mLng;
+        const y = (lat - CENTRO_MAPA.lat) * mLat;
+        const precisao = Math.max(typeof accuracy === 'number' && accuracy > 0 ? accuracy : 30, KALMAN_ACCURACY_MINIMA_M);
+
+        if (!kalman) {
+            kalman = { x, y, variancia: precisao * precisao, timestamp: timestampMs };
+        } else {
+            const dtSeg = Math.max(0, (timestampMs - kalman.timestamp) / 1000);
+            kalman.timestamp = timestampMs;
+            if (dtSeg > 0) kalman.variancia += dtSeg * KALMAN_RUIDO_PROCESSO_MS * KALMAN_RUIDO_PROCESSO_MS;
+
+            const ganho = kalman.variancia / (kalman.variancia + precisao * precisao);
+            kalman.x += ganho * (x - kalman.x);
+            kalman.y += ganho * (y - kalman.y);
+            kalman.variancia = (1 - ganho) * kalman.variancia;
+        }
+
+        return {
+            lat: CENTRO_MAPA.lat + kalman.y / mLat,
+            lng: CENTRO_MAPA.lng + kalman.x / mLng
+        };
+    }
+
+    // Posição mostrada no mapa: primeiro funde GPS+rede pelo filtro de Kalman
+    // acima (a melhor estimativa estatística da posição real), depois encaixa
+    // na rua da rota se estiver perto o suficiente dela (evita aparecer na
+    // calçada/dentro de casa). O salto grande só acontece de verdade quando
+    // sai do controle do Kalman mesmo (ver SALTO_GRANDE_M, usado no glide do
+    // marcador em moverMarcadorSuave).
+    function posicaoSuavizadaParaExibir(lat, lng, accuracy, timestampMs) {
+        const fundida = fundirPosicaoKalman(lat, lng, accuracy, timestampMs);
+        let alvo = fundida;
+        const encaixe = pontoMaisPertoDaRota(fundida.lat, fundida.lng);
+        if (encaixe && encaixe.dist < SNAP_ROTA_M) alvo = { lat: encaixe.lat, lng: encaixe.lng };
+        posicaoSuavizada = alvo;
+        return posicaoSuavizada;
+    }
     // Menor distância até a linha inteira da rota traçada — usado pra saber se
     // o motorista saiu do caminho sugerido (virou em outra rua, por exemplo)
     function distanciaAteRota(lat, lng) {
@@ -731,6 +1129,16 @@
     // linha da rota atual (sinal de que virou em outra rua) — nesse último caso
     // recalcula rápido, sem esperar os 30s/60m normais, mas com um intervalo
     // mínimo pra não martelar o servidor de rotas.
+    //
+    // A bússola (compassHeading) JÁ passou pela confirmação de 1,5s/3,5s lá em
+    // tratarOrientacao() antes de ser atualizada — ou seja, quando ela muda
+    // aqui, a mudança de rumo já está confirmada como real. Por isso não se
+    // espera de novo aqui: isso só empilharia atraso em cima de atraso e
+    // deixaria o GPS "devendo" o aviso da rua, como se tivesse travado/oscilando.
+    function bussolaConfirmouNovaDirecao() {
+        return true; // o rumo que chega aqui já é confiável, sem espera extra
+    }
+
     function atualizarRotaSeNecessario(lat, lng) {
         if (!map || !user) return;
         const agora = Date.now();
@@ -738,7 +1146,8 @@
         const tempoPassou = (agora - ultimaRotaCalculadaEm) > 30000;
         const saiuDaRota = rotaPontosLatLng.length > 1
             && distanciaAteRota(lat, lng) > DESVIO_ROTA_M
-            && (agora - ultimaRotaCalculadaEm) > DESVIO_RECALC_MIN_MS;
+            && (agora - ultimaRotaCalculadaEm) > DESVIO_RECALC_MIN_MS
+            && bussolaConfirmouNovaDirecao();
         if (!moveuMuito && !tempoPassou && !saiuDaRota) return;
         ultimaRotaCalculadaEm = agora;
         ultimaRotaPos = { lat, lng };
@@ -790,7 +1199,7 @@
             if (distMetros(lat, lng, klat, klng) <= ALERTA_RAIO_MESMO_LOCAL) return key;
         }
         const novaChave = `${lat.toFixed(6)},${lng.toFixed(6)}`;
-        historicoAlertas[novaChave] = { avisouLonge: false, avisouPerto: false, ultimoEm: 0 };
+        historicoAlertas[novaChave] = { avisou: false, ultimoEm: 0 };
         return novaChave;
     }
     // Limpa do histórico os locais bem distantes de onde o motorista está agora
@@ -804,6 +1213,8 @@
     }
     // lat/lng aqui já vêm filtrados (posicaoFiltrada) — só decide sobre uma
     // virada depois que o motorista realmente andou uns metros de verdade.
+    // Só 1 aviso por manobra (não repete "de longe" + "de perto"): avisa
+    // uma vez quando chega perto o suficiente da virada, e pronto.
     function verificarProximaVirada(lat, lng) {
         if (!rotaSteps.length) return;
         limparAlertasDistantes(lat, lng);
@@ -818,22 +1229,81 @@
             const hist = historicoAlertas[chave];
             const agora = Date.now();
 
-            if (d <= ALERTA_DISTANCIA_PERTO) {
-                // 2º aviso: bem em cima da virada
-                if (!hist.avisouPerto && (agora - hist.ultimoEm) >= ALERTA_INTERVALO_MIN_MS) {
-                    hist.avisouPerto = true;
-                    hist.ultimoEm = agora;
-                    mostrarAvisoVirada(step, null);
-                    break;
-                }
-            } else if (!hist.avisouLonge) {
-                // 1º aviso: de longe, avisando quantos metros faltam
-                hist.avisouLonge = true;
+            if (d <= ALERTA_DISTANCIA_PERTO && !hist.avisou && (agora - hist.ultimoEm) >= ALERTA_INTERVALO_MIN_MS) {
+                hist.avisou = true;
                 hist.ultimoEm = agora;
-                mostrarAvisoVirada(step, Math.round(d));
+                mostrarAvisoVirada(step, null);
                 break;
             }
         }
+    }
+
+    // ---------- silenciar alertas de virada (vibração/som/notificação) ----------
+    // O aviso visual (banner amarelo) continua aparecendo mesmo mudo, só some
+    // o barulho/vibração/notificação — assim o motorista ainda vê a instrução.
+    let gpsSilenciado = true; // padrão: começa silenciado, o motorista liga o som se quiser
+    try {
+        const salvo = localStorage.getItem('gpsSilenciado');
+        if (salvo !== null) gpsSilenciado = salvo === '1';
+    } catch (e) { /* ignora */ }
+
+    function atualizarIconeMudo() {
+        const btn = document.getElementById('btnMudoGps');
+        if (!btn) return;
+        btn.innerHTML = gpsSilenciado
+            ? '<i data-lucide="volume-x" class="w-5 h-5"></i>'
+            : '<i data-lucide="volume-2" class="w-5 h-5"></i>';
+        lucide.createIcons();
+    }
+
+    function toggleMudoGps() {
+        gpsSilenciado = !gpsSilenciado;
+        try { localStorage.setItem('gpsSilenciado', gpsSilenciado ? '1' : '0'); } catch (e) { /* ignora */ }
+        atualizarIconeMudo();
+    }
+
+    // ---------- pausar o alerta visual (banner amarelo de virada) ----------
+    // Independente do som: dá pra deixar o som ligado e o banner pausado, ou
+    // vice-versa, ou os dois juntos.
+    let alertaVisualPausado = false;
+    try { alertaVisualPausado = localStorage.getItem('alertaVisualPausado') === '1'; } catch (e) { /* ignora */ }
+
+    function atualizarIconeAlertaVisual() {
+        const btn = document.getElementById('btnAlertaVisual');
+        if (!btn) return;
+        btn.innerHTML = alertaVisualPausado
+            ? '<i data-lucide="bell-off" class="w-5 h-5"></i>'
+            : '<i data-lucide="bell" class="w-5 h-5"></i>';
+        lucide.createIcons();
+        if (alertaVisualPausado) {
+            if (avisoTimeoutId) clearTimeout(avisoTimeoutId);
+            document.getElementById('avisoViradaUI').classList.add('hidden');
+        }
+    }
+
+    function toggleAlertaVisual() {
+        alertaVisualPausado = !alertaVisualPausado;
+        try { localStorage.setItem('alertaVisualPausado', alertaVisualPausado ? '1' : '0'); } catch (e) { /* ignora */ }
+        atualizarIconeAlertaVisual();
+    }
+
+    // ---------- abrir a rota no Waze/Google Maps do celular ----------
+    // Útil pra quando o motorista quer que o GPS nativo do celular assuma os
+    // alertas de voz turn-by-turn até o ponto de destino (DESTINO já existe
+    // mais acima no código, com as coordenadas do ponto de encontro).
+    function abrirMenuNavegacaoExterna() {
+        document.getElementById('menuNavExternaUI').classList.remove('hidden');
+    }
+    function fecharMenuNavegacaoExterna() {
+        document.getElementById('menuNavExternaUI').classList.add('hidden');
+    }
+    function abrirNoWaze() {
+        window.location.href = `https://waze.com/ul?ll=${DESTINO.lat},${DESTINO.lng}&navigate=yes`;
+        fecharMenuNavegacaoExterna();
+    }
+    function abrirNoGoogleMaps() {
+        window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${DESTINO.lat},${DESTINO.lng}&travelmode=driving`;
+        fecharMenuNavegacaoExterna();
     }
 
     function instrucaoDaVirada(step) {
@@ -851,31 +1321,59 @@
         return { texto: 'Continue no trajeto', angulo: 0 };
     }
 
+    // define de que lado da tela a seta de virada aparece: esquerda pra
+    // curvas à esquerda, direita pra curvas à direita, e centro (embaixo do
+    // topo) pra "siga em frente"/rotatória/chegada, onde não faz sentido
+    // grudar numa lateral específica.
+    const POSICOES_AVISO_VIRADA = {
+        esquerda: 'left-4 top-1/2 -translate-y-1/2',
+        direita: 'right-4 top-1/2 -translate-y-1/2',
+        centro: 'left-1/2 -translate-x-1/2 top-20'
+    };
+    function ladoDaVirada(angulo) {
+        if (angulo <= -15) return 'esquerda';
+        if (angulo >= 15) return 'direita';
+        return 'centro';
+    }
+
     function mostrarAvisoVirada(step, distanciaRestante) {
         const { texto, angulo } = instrucaoDaVirada(step);
-        document.getElementById('textoVirada').textContent = texto;
-        const rua = step.name ? `em ${step.name}` : '';
-        // aviso "de longe" mostra quantos metros faltam; aviso "de perto" (sem
-        // distância) mostra que é pra virar agora
-        document.getElementById('ruaVirada').textContent = (typeof distanciaRestante === 'number')
-            ? `em ${distanciaRestante} m${rua ? ' · ' + rua : ''}`
-            : (rua ? `${rua} — agora` : 'Agora');
-        document.getElementById('setaVirada').style.transform = `rotate(${angulo}deg)`;
-        document.getElementById('avisoViradaUI').classList.remove('hidden');
+
+        // som/vibração/notificação continuam funcionando mesmo com o banner
+        // pausado — só o quadrado amarelo que some da tela
+        if (!alertaVisualPausado) {
+            document.getElementById('textoVirada').textContent = texto;
+            const rua = step.name ? `em ${step.name}` : '';
+            // aviso "de longe" mostra quantos metros faltam; aviso "de perto" (sem
+            // distância) mostra que é pra virar agora
+            document.getElementById('ruaVirada').textContent = (typeof distanciaRestante === 'number')
+                ? `em ${distanciaRestante} m${rua ? ' · ' + rua : ''}`
+                : (rua ? `${rua} — agora` : 'Agora');
+            document.getElementById('setaVirada').style.transform = `rotate(${angulo}deg)`;
+
+            const avisoEl = document.getElementById('avisoViradaUI');
+            const lado = ladoDaVirada(angulo);
+            Object.values(POSICOES_AVISO_VIRADA).forEach(classes => avisoEl.classList.remove(...classes.split(' ')));
+            avisoEl.classList.add(...POSICOES_AVISO_VIRADA[lado].split(' '));
+            avisoEl.classList.remove('hidden');
+
+            if (avisoTimeoutId) clearTimeout(avisoTimeoutId);
+            avisoTimeoutId = setTimeout(() => {
+                document.getElementById('avisoViradaUI').classList.add('hidden');
+            }, 9000);
+        }
 
         // vibração + som + notificação — o mais perto que um site consegue chegar
         // de um alerta chamativo (navegador não deixa um site imitar a tela real
         // de alerta de emergência do sistema, isso é reservado pela operadora/SO)
-        if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
-        tocarAlertaVirada();
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('FilaDrive - Navegação', { body: `${texto}${step.name ? ' em ' + step.name : ''}` });
+        // — pulado quando o motorista silenciou o GPS pelo botão de mudo
+        if (!gpsSilenciado) {
+            if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
+            tocarAlertaVirada();
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('FilaDrive - Navegação', { body: `${texto}${step.name ? ' em ' + step.name : ''}` });
+            }
         }
-
-        if (avisoTimeoutId) clearTimeout(avisoTimeoutId);
-        avisoTimeoutId = setTimeout(() => {
-            document.getElementById('avisoViradaUI').classList.add('hidden');
-        }, 9000);
     }
 
     function tocarAlertaVirada() {
@@ -1187,9 +1685,38 @@
         carregarFila();
     }
 
+    // ---------- efeito sonoro de toque ("blop") ----------
+    // Gera o som na hora com Web Audio, sem precisar de nenhum arquivo de áudio.
+    let audioCtx = null;
+    function tocarSomToque() {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const t0 = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(520, t0);
+            osc.frequency.exponentialRampToValueAtTime(180, t0 + 0.09); // desce o tom = "blop"
+            gain.gain.setValueAtTime(0.18, t0);
+            gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.11);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(t0);
+            osc.stop(t0 + 0.12);
+        } catch (e) { /* navegador sem suporte a Web Audio, ignora */ }
+    }
+    // toca o som em qualquer clique de botão da página inteira
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('button')) tocarSomToque();
+        if (!e.target.closest('#motoristaDropdown')) toggleMotoristaDropdown(true);
+    });
+
     // ---------- inicialização ----------
     window.onload = async () => {
         lucide.createIcons();
+        atualizarIconeMudo();
+        atualizarIconeAlertaVisual();
         iniciarGpsGlobal(); // pede a permissão de localização já no carregamento, antes do login
         await carregarMotoristas();
         await carregarFila();
