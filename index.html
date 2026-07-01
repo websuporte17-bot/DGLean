@@ -1,95 +1,1201 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FilaDrive | Oficial</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>
-  :root { --bg: #0f1117; --surface: #1a1d27; --accent: #f59e0b; --success: #22c55e; --danger: #ef4444; --text: #f1f5f9; }
-  body { background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; justify-content: center; padding: 20px; }
-  .box { width: 100%; max-width: 400px; background: var(--surface); padding: 20px; border-radius: 16px; }
-  .card { border: 2px solid var(--accent); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
-  .foto { width: 60px; height: 60px; border-radius: 50%; background: #333; overflow: hidden; border: 2px solid #fff; }
-  .fila-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #222; border-radius: 10px; margin-bottom: 8px; }
-  .fila-foto { width: 45px; height: 45px; border-radius: 50%; border: 1px solid var(--accent); }
-  input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #333; background: #000; color: #fff; }
-  button { width: 100%; padding: 12px; border-radius: 8px; border: none; background: var(--accent); font-weight: bold; cursor: pointer; }
-  #map { height: 200px; width: 100%; border-radius: 8px; margin-bottom: 15px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F.R Transportes - FilaDrive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #060913; color: #fff; }
+        .map-normal { height: 220px; border-radius: 16px; }
+        .map-fullscreen {
+            position: fixed !important; inset: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            border-radius: 0 !important; z-index: 9999 !important;
+            transform-origin: center center;
+            transition: transform .6s ease-out;
+        }
+        .modal-overlay { background: rgba(0,0,0,.7); }
+        .tab-btn.active { background:#10b981; color:#03170f; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background:#334155; border-radius: 4px; }
+
+        .fila-item { border: 2px solid transparent; transition: border-color .3s; }
+        .primeiro-lugar { animation: piscaPrimeiro 10s infinite; }
+        @keyframes piscaPrimeiro {
+            0%, 45%  { border-color: #fbbf24; box-shadow: 0 0 14px #fbbf2455; background: #2a220f; }
+            50%, 95% { border-color: #ef4444; box-shadow: 0 0 14px #ef444455; background: #2a1414; }
+            100%     { border-color: #fbbf24; box-shadow: 0 0 14px #fbbf2455; background: #2a220f; }
+        }
+        .segundo-lugar { border-color: #cbd5e1; box-shadow: 0 0 8px #cbd5e133; }
+    </style>
 </head>
-<body>
+<body class="min-h-screen p-4">
 
-<div class="box">
-  <div id="loginSection">
-    <h3>Entrada FilaDrive</h3>
-    <input type="password" id="pass" placeholder="Senha">
-    <button onclick="login()">Acessar</button>
-  </div>
+<div class="max-w-[420px] mx-auto bg-[#0c1220] border border-slate-700 rounded-3xl shadow-2xl overflow-hidden">
 
-  <div id="filaSection" style="display:none">
-    <div id="map"></div>
-    <div class="card">
-      <div class="foto"><img id="imgPerfil" src="" width="60" onerror="this.src='https://via.placeholder.com/60'"></div>
-      <div>
-        <h3 id="nomeDisplay">Motorista</h3>
-        <p id="posDisplay">Sua posição: --</p>
-        <p id="timer" style="color:var(--accent); font-weight:bold;">30:00</p>
+    <div class="p-5 border-b border-slate-700 flex justify-between items-center bg-[#0a0f1c]">
+        <h1 class="text-2xl font-bold">FilaDrive</h1>
+        <button onclick="abrirAdmin()" class="p-3 hover:bg-slate-800 rounded-2xl">
+            <i data-lucide="settings" class="w-6 h-6"></i>
+        </button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginSection" class="p-6">
+        <div class="space-y-6">
+            <select id="motoristaSelect" class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl px-5 py-4 text-lg">
+                <option value="">Carregando motoristas...</option>
+            </select>
+
+            <input id="pass" type="password" placeholder="Senha"
+                   class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl px-5 py-4">
+
+            <button onclick="login()" class="w-full bg-emerald-500 py-5 rounded-2xl font-bold">ENTRAR</button>
+
+            <div id="statusGpsLogin" class="text-center py-3 rounded-2xl font-medium text-sm bg-[#1a2338]">Solicitando localização...</div>
+            <button onclick="iniciarGpsGlobal(true)" class="w-full text-xs text-slate-400 underline">Não pediu a permissão de localização? Toque aqui</button>
+        </div>
+    </div>
+
+    <!-- FILA DO MOTORISTA -->
+    <div id="filaSection" class="hidden p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-4">
+                <img id="fotoUser" class="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500" src="">
+                <div>
+                    <h3 id="nomeDisplay" class="text-xl font-bold"></h3>
+                    <p id="statusUser" class="text-sm text-slate-400"></p>
+                </div>
+            </div>
+            <button onclick="logout()" class="text-xs text-slate-400 hover:text-red-400 underline">Sair</button>
+        </div>
+
+        <div id="map" class="map-normal"></div>
+        <div id="rotaInfo" class="mt-2 text-center text-xs text-slate-400"></div>
+        <button onclick="abrirTelaCheia()" class="w-full mt-2 bg-slate-700 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2">
+            <i data-lucide="maximize" class="w-4 h-4"></i> Navegar em tela cheia
+        </button>
+        <button onclick="solicitarPermissaoBussola()" class="w-full mt-2 text-xs text-slate-400 underline">Bússola não ativou? Toque aqui (iPhone pede permissão à parte)</button>
+        <div id="statusGps" class="mt-4 text-center py-3 rounded-2xl font-medium">Solicitando localização...</div>
+
+        <button onclick="renovar()" class="w-full mt-6 bg-emerald-500 py-5 rounded-2xl font-bold">ENTRAR NA FILA / RENOVAR</button>
+    </div>
+
+    <!-- FILA ATUAL (sempre visível) -->
+    <div class="p-6 border-t border-slate-700">
+        <div class="flex justify-between items-center mb-3">
+            <h4 class="uppercase text-xs text-slate-400">Fila Atual</h4>
+            <span class="text-xs text-slate-500">Renovar a cada <span id="duracaoLabel">--</span> min</span>
+        </div>
+        <div id="listaFila" class="space-y-2"></div>
+    </div>
+</div>
+
+<!-- UI FLUTUANTE DO MODO TELA CHEIA (o mapa em si vira fullscreen via CSS, isso aqui só sobrepõe os botões/textos) -->
+<div id="navOverlayUI" class="hidden fixed inset-0 z-[10000] pointer-events-none">
+    <div class="pointer-events-auto absolute top-4 left-4 right-4 flex items-start justify-between gap-2">
+        <div id="rotaInfoFull" class="bg-[#0c1220]/95 backdrop-blur px-4 py-3 rounded-2xl text-sm font-medium max-w-[75%] shadow-xl">Calculando rota...</div>
+        <button onclick="sairTelaCheia()" class="bg-[#0c1220]/95 backdrop-blur p-3 rounded-2xl shadow-xl">
+            <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+    </div>
+    <button onclick="centralizarNoMotorista()" class="pointer-events-auto absolute bottom-24 right-4 bg-emerald-500 p-4 rounded-full shadow-xl">
+        <i data-lucide="locate-fixed" class="w-6 h-6"></i>
+    </button>
+    <div id="statusGpsFull" class="pointer-events-auto absolute bottom-6 left-4 right-4 bg-[#0c1220]/95 backdrop-blur px-4 py-3 rounded-2xl text-center text-sm font-medium shadow-xl">Verificando localização...</div>
+</div>
+
+<!-- AVISO DE VIRADA (aparece em cima de tudo, tela normal ou tela cheia) -->
+<div id="avisoViradaUI" class="hidden fixed top-0 left-0 right-0 z-[10001] p-4">
+    <div class="bg-amber-400 text-black rounded-2xl p-4 shadow-2xl flex items-center gap-4 max-w-[480px] mx-auto border-2 border-amber-200">
+        <div id="setaVirada" style="transition: transform .3s;" class="flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="black">
+                <path d="M12 2 L19 21 L12 17 L5 21 Z"/>
+            </svg>
+        </div>
+        <div class="min-w-0">
+            <p id="textoVirada" class="font-bold text-lg leading-tight">Vire à direita</p>
+            <p id="ruaVirada" class="text-sm truncate">Rua Exemplo</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ADMIN -->
+<div id="adminOverlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center p-4 z-50">
+  <div class="bg-[#0c1220] border border-slate-700 rounded-3xl w-full max-w-[420px] max-h-[85vh] overflow-hidden flex flex-col">
+
+    <!-- Etapa senha -->
+    <div id="adminLoginStep" class="p-6 space-y-4">
+      <h2 class="text-lg font-bold">Painel Admin</h2>
+      <input id="adminPass" type="password" placeholder="Senha de administrador"
+             class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl px-5 py-4">
+      <div class="flex gap-3">
+        <button onclick="fecharAdmin()" class="flex-1 bg-slate-700 py-3 rounded-2xl font-medium">Cancelar</button>
+        <button onclick="checarSenhaAdmin()" class="flex-1 bg-emerald-500 py-3 rounded-2xl font-bold">Entrar</button>
       </div>
     </div>
-    <button onclick="renovar()">Renovar Presença</button>
-    <div id="lista" style="margin-top:20px;"></div>
+
+    <!-- Painel -->
+    <div id="adminPanel" class="hidden flex flex-col overflow-hidden">
+      <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+        <h2 class="text-lg font-bold">Painel Admin</h2>
+        <button onclick="fecharAdmin()"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="flex px-4 pt-3 gap-2">
+        <button id="tabMotoristas" onclick="mostrarTab('motoristas')" class="tab-btn active flex-1 py-2 rounded-xl text-sm font-medium">Motoristas</button>
+        <button id="tabFila" onclick="mostrarTab('fila')" class="tab-btn flex-1 py-2 rounded-xl text-sm font-medium bg-[#1a2338]">Fila</button>
+      </div>
+
+      <!-- Tab motoristas -->
+      <div id="painelMotoristas" class="p-4 space-y-3 overflow-y-auto">
+        <div class="bg-[#1a2338] p-4 rounded-2xl space-y-2">
+          <p class="text-xs text-slate-400 uppercase font-semibold">Adicionar motorista</p>
+          <input id="novoNome" placeholder="Nome" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
+          <input id="novaSenha" placeholder="Senha" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
+          <input id="novaFoto" placeholder="Link da foto (opcional)" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
+          <button onclick="adicionarMotorista()" class="w-full bg-emerald-500 py-2 rounded-xl font-bold text-sm">Adicionar</button>
+        </div>
+        <div id="listaMotoristasAdmin" class="space-y-2"></div>
+      </div>
+
+      <!-- Tab fila -->
+      <div id="painelFila" class="hidden p-4 space-y-3 overflow-y-auto">
+        <div class="bg-[#1a2338] p-4 rounded-2xl space-y-2">
+          <p class="text-xs text-slate-400 uppercase font-semibold">Tempo para renovar</p>
+          <div class="flex gap-2">
+            <input id="duracaoInput" type="number" min="1" placeholder="Minutos"
+                   class="flex-1 bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
+            <button onclick="salvarDuracao()" class="bg-emerald-500 px-4 rounded-xl font-bold text-sm">Salvar</button>
+          </div>
+          <p class="text-xs text-slate-500">Atual: <span id="duracaoAtual">--</span> min</p>
+        </div>
+
+        <div class="bg-[#1a2338] p-4 rounded-2xl space-y-2">
+          <p class="text-xs text-slate-400 uppercase font-semibold">Colocar na fila</p>
+          <select id="selectAdicionarFila" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
+            <option value="">Selecione o motorista...</option>
+          </select>
+          <input id="posAdicionarFila" type="number" min="1" placeholder="Posição (vazio = último)"
+                 class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
+          <button onclick="adminAdicionarFila()" class="w-full bg-emerald-500 py-2 rounded-xl font-bold text-sm">Adicionar à fila</button>
+          <p class="text-[11px] text-slate-500">Obs: essa pessoa só sai automaticamente por localização quando abrir o app no celular dela e o GPS detectar que está fora da área.</p>
+        </div>
+        <div id="listaFilaAdmin" class="space-y-2"></div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-const BIN_FILA = '6a415e47f5f4af5e293e01e9';
-const BIN_MOTO = '6a415dabf5f4af5e293e0023';
-const KEY      = '$2a$10$D.geWs4ByRu4cBVFvaqRWem6yjFqIkiVEm2Tcd8M7szKRDNn39y32';
-const PONTO    = { lat: -23.6705, lng: -46.6974 };
-const RAIO     = 500;
+    const BIN_FILA = '6a415e47f5f4af5e293e01e9';
+    const BIN_MOTO = '6a415dabf5f4af5e293e0023';
+    const KEY = '$2a$10$D.geWs4ByRu4cBVFvaqRWem6yjFqIkiVEm2Tcd8M7szKRDNn39y32';
+    const ADMIN_PASS = '5521ADM';
 
-async function login() {
-  const p = document.getElementById('pass').value;
-  if(p === '5521ADM') { alert("Painel Administrativo liberado"); return; }
-  
-  const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_MOTO}/latest`, {headers:{'X-Master-Key':KEY}}).then(r=>r.json());
-  const user = res.record.find(m => m.senha === p);
-  
-  if(user) {
-    localStorage.setItem('user', JSON.stringify(user));
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('filaSection').style.display = 'block';
-    iniciar(user);
-  } else alert("Senha incorreta");
-}
+    // Área permitida = polígono (não é mais um círculo com raio, é o contorno
+    // do local marcado no Google Maps). Pra ajustar a área, é só editar/mover
+    // esses pontos (lat, lng) — a ordem deles é o contorno, ligando um no outro
+    // e fechando do último de volta pro primeiro.
+    const AREA_POLIGONO = [
+        { lat: -23.664058, lng: -46.680106 }, // oeste, na Rua Terezinha Zunta Forte
+        { lat: -23.664907, lng: -46.678542 }, // sudeste, perto da Av. Interlagos
+        { lat: -23.663955, lng: -46.678846 }, // leste, perto do estacionamento/Cobasi
+        { lat: -23.663263, lng: -46.679650 }, // norte, perto da R. Irmãs da Santa Cruz
+        { lat: -23.663673, lng: -46.679710 }, // sul-central, no Assaí Atacadista
+    ];
+    // Endereço de destino pra traçar a rota (ponto central da área, o Assaí Atacadista)
+    const DESTINO = { lat: -23.663673, lng: -46.679710, nome: 'Assaí Atacadista' };
+    const DURACAO_PADRAO_MIN = 30;
 
-function iniciar(user) {
-  document.getElementById('nomeDisplay').innerText = user.nome;
-  document.getElementById('imgPerfil').src = user.foto;
-  
-  const map = L.map('map').setView([PONTO.lat, PONTO.lng], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-  const circ = L.circle([PONTO.lat, PONTO.lng], {radius: RAIO}).addTo(map);
-  const marker = L.marker([PONTO.lat, PONTO.lng]).addTo(map);
+    let user = null;
+    let map, marker, destinoMarker, rotaLayer, estaNoRaio = false, avisouSaida = false;
+    let motoristas = [];
+    let entradasCache = [];
+    let duracaoMinutos = DURACAO_PADRAO_MIN;
+    let alertadosUltimoMin = {}; // { id: timestampJaAlertado }
+    let gpsIniciado = false, posicaoPronta = false, ultimaPosicao = null;
+    let ultimaRotaCalculadaEm = 0, ultimaRotaPos = null, rotaPontosLatLng = [];
+    let telaCheiaAtiva = false, pausarAutoCentralizar = 0;
+    const ZOOM_NAVEGACAO = 19; // zoom usado em tela cheia — mais "perto" do caminho (antes era 18)
+    let compassHeading = null, bussolaAtiva = false;
+    let rotaSteps = [], avisoTimeoutId = null;
 
-  navigator.geolocation.watchPosition(pos => {
-    const {latitude, longitude} = pos.coords;
-    marker.setLatLng([latitude, longitude]);
-    const dist = haversine(latitude, longitude, PONTO.lat, PONTO.lng);
-    circ.setStyle({color: dist <= RAIO ? 'green' : 'red'});
-    if(dist > RAIO) document.body.innerHTML = "<h1>FORA DA ÁREA PERMITIDA!</h1>";
-  }, null, {enableHighAccuracy: true});
-}
+    // Filtro de "tremedeira" do GPS: só considera que a pessoa realmente andou
+    // se a posição mudou pelo menos MOVIMENTO_MINIMO_M — evita que o app ache
+    // que ela foi "pra frente e pra trás" por causa da imprecisão normal do GPS
+    // parado no mesmo lugar. Usado só pra decisões de virada/rota; a posição
+    // "crua" continua sendo usada pro marcador no mapa e status da área.
+    let posicaoFiltrada = null;
+    const MOVIMENTO_MINIMO_M = 2;
+    function filtrarPosicao(lat, lng) {
+        if (!posicaoFiltrada || distMetros(lat, lng, posicaoFiltrada.lat, posicaoFiltrada.lng) >= MOVIMENTO_MINIMO_M) {
+            posicaoFiltrada = { lat, lng };
+        }
+        return posicaoFiltrada;
+    }
 
-function haversine(l1, n1, l2, n2) {
-  const R=6371000, dL=(l2-l1)*Math.PI/180, dN=(n2-n1)*Math.PI/180;
-  const a=Math.sin(dL/2)**2 + Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dN/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
+    // Controla os avisos de cada manobra por local (não por índice do passo)
+    // — assim, mesmo se a rota for recalculada, o app lembra que aquela
+    // virada específica já foi avisada e não repete o alerta à toa. Agora em
+    // 2 estágios: um aviso "de longe" (com a distância que falta) e um "de
+    // perto" (na hora de virar) — no máximo esses 2 avisos por manobra.
+    let historicoAlertas = {}; // { "lat,lng": { avisouLonge, avisouPerto, ultimoEm } }
+    const ALERTA_DISTANCIA_LONGE = 200;    // metros — primeiro aviso, avisando quanto falta
+    const ALERTA_DISTANCIA_PERTO = 40;     // metros — segundo aviso, virada bem próxima
+    const ALERTA_RAIO_MESMO_LOCAL = 15;    // metros — dentro disso é "o mesmo lugar/virada"
+    const ALERTA_RAIO_ESQUECER = 300;      // metros — bem longe daquele ponto, esquece o histórico (permite avisar de novo numa passada futura pela mesma rua)
+    const ALERTA_INTERVALO_MIN_MS = 15000; // não repete o aviso da mesma manobra em menos de 15s
 
-function renovar() { alert("Presença renovada!"); }
+    // Se a pessoa se afastar demais da linha da rota (ex: virou numa rua
+    // diferente da que o GPS mandou), recalcula a rota rapidamente em vez de
+    // esperar os 60m/30s normais — assim para de avisar a virada antiga
+    // (que não faz mais sentido) sem precisar de notificação extra.
+    const DESVIO_ROTA_M = 40;
+    const DESVIO_RECALC_MIN_MS = 5000;
+
+    const headersGet = { 'X-Master-Key': KEY };
+    const headersPut = { 'Content-Type': 'application/json', 'X-Master-Key': KEY };
+
+    // ---------- helpers de dados ----------
+    async function getMotoristas() {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_MOTO}/latest`, { headers: headersGet });
+        const data = await res.json();
+        return data.record || [];
+    }
+    async function putMotoristas(lista) {
+        await fetch(`https://api.jsonbin.io/v3/b/${BIN_MOTO}`, { method: 'PUT', headers: headersPut, body: JSON.stringify(lista) });
+    }
+
+    // O bin da fila agora guarda um OBJETO { config, entradas }.
+    // Isso resolve o problema de "não pode ficar vazio": mesmo com entradas: [],
+    // o registro em si nunca é um array vazio, então o JSONbin nunca fica "vazio" de verdade.
+    async function getFilaData() {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_FILA}/latest`, { headers: headersGet });
+        const data = await res.json();
+        const rec = data.record;
+        if (Array.isArray(rec)) {
+            // migração de um formato antigo (array puro / fantasma manual)
+            return { config: { duracaoMinutos: DURACAO_PADRAO_MIN }, entradas: rec.filter(m => m.id !== 'fantasma') };
+        }
+        return {
+            config: { duracaoMinutos: (rec && rec.config && rec.config.duracaoMinutos) || DURACAO_PADRAO_MIN },
+            entradas: (rec && rec.entradas) || []
+        };
+    }
+    async function salvarFilaData(entradas, config) {
+        const body = { config: config || { duracaoMinutos }, entradas };
+        await fetch(`https://api.jsonbin.io/v3/b/${BIN_FILA}`, { method: 'PUT', headers: headersPut, body: JSON.stringify(body) });
+    }
+    function reindexar(lista) {
+        lista.forEach((m, i) => { m.pos = i + 1; });
+        return lista;
+    }
+
+    // ---------- login do motorista ----------
+    async function carregarMotoristas() {
+        motoristas = await getMotoristas();
+        const select = document.getElementById('motoristaSelect');
+        select.innerHTML = '<option value="">Selecione o motorista...</option>';
+        motoristas.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.nome;
+            select.appendChild(opt);
+        });
+    }
+
+    function login() {
+        const id = document.getElementById('motoristaSelect').value;
+        const senha = document.getElementById('pass').value.trim();
+        if (!id) return alert("Selecione um motorista");
+        if (!senha) return alert("Digite a senha");
+
+        const encontrado = motoristas.find(m => m.id === id && m.senha === senha);
+        if (!encontrado) return alert("Senha incorreta");
+
+        user = encontrado;
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('filaSection').classList.remove('hidden');
+        document.getElementById('nomeDisplay').textContent = user.nome;
+        document.getElementById('fotoUser').src = user.foto || avatarPadrao(user.nome);
+        avisouSaida = false;
+
+        pedirPermissaoNotificacao();
+        montarMapaSeNecessario();
+
+        if (posicaoPronta) {
+            // já temos uma leitura de GPS de antes do login: reflete o status real na hora
+            document.getElementById('statusUser').textContent = estaNoRaio ? 'Na área ✅' : 'Fora da área ❌';
+            atualizarStatusGpsTexto(estaNoRaio ? '✅ Dentro da área' : '❌ FORA DA ÁREA', estaNoRaio);
+        } else {
+            document.getElementById('statusUser').textContent = 'Verificando localização...';
+            iniciarGpsGlobal(); // garantia extra caso ainda não tenha iniciado
+        }
+    }
+
+    function logout() {
+        if (telaCheiaAtiva) sairTelaCheia();
+        document.getElementById('avisoViradaUI').classList.add('hidden');
+        rotaSteps = [];
+        historicoAlertas = {};
+        rotaPontosLatLng = [];
+        user = null;
+        document.getElementById('filaSection').classList.add('hidden');
+        document.getElementById('loginSection').classList.remove('hidden');
+        document.getElementById('pass').value = '';
+    }
+
+    function avatarPadrao(nome) {
+        return 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(nome || '?');
+    }
+
+    // ---------- GPS ----------
+    // Roda desde o carregamento da página (antes do login), pra já ter uma
+    // leitura real assim que a pessoa entrar — evita marcar "fora da área" à toa.
+    function iniciarGpsGlobal(forcarNovaTentativa) {
+        if (gpsIniciado && !forcarNovaTentativa) return;
+
+        // Geolocalização só funciona em contexto seguro (https:// ou localhost).
+        // Se o arquivo for aberto direto (file://) ou em http:// sem certificado,
+        // o navegador NEM MOSTRA o pop-up de permissão — é a causa mais comum
+        // de "não tá pedindo o GPS". Precisa hospedar em https (GitHub Pages,
+        // Netlify, Vercel etc.) pra funcionar no celular.
+        if (!window.isSecureContext) {
+            atualizarStatusGpsTexto('⚠️ Este site precisa estar em HTTPS pra pedir o GPS. Abra a versão publicada (https://...), não o arquivo local.', null);
+            return;
+        }
+        if (!navigator.geolocation) {
+            atualizarStatusGpsTexto('❌ Seu navegador não suporta GPS', null);
+            return;
+        }
+        gpsIniciado = true;
+        const opcoes = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
+        // dispara o pop-up de permissão e já pega uma primeira leitura
+        navigator.geolocation.getCurrentPosition(tratarPosicao, tratarErroGps, opcoes);
+        // continua monitorando o tempo todo, logado ou não
+        navigator.geolocation.watchPosition(tratarPosicao, tratarErroGps, opcoes);
+
+        // Watchdog: em alguns navegadores "in-app" (Instagram, WhatsApp, TikTok
+        // etc.) o pedido de localização fica pendurado pra sempre — nem chama
+        // sucesso, nem erro, nem o timeout da própria API. Se isso acontecer,
+        // avisa a pessoa depois de 20s em vez de deixar "Solicitando
+        // localização..." parado na tela sem explicação.
+        setTimeout(() => {
+            if (!posicaoPronta) {
+                atualizarStatusGpsTexto('⚠️ O navegador não respondeu ao pedido de GPS. Se você abriu esse link de dentro do Instagram/WhatsApp/TikTok, toque nos "•••" e escolha "Abrir no navegador" (Chrome/Safari), depois toque em "Toque aqui" de novo.', null);
+            }
+        }, 20000);
+    }
+    // Pede a permissão assim que o script roda (a página já está com o HTML
+    // pronto nesse ponto, já que o <script> fica no fim do <body>) — não espera
+    // o window.onload, que só dispara depois de carregar tiles do mapa, fontes etc.
+    iniciarGpsGlobal();
+
+    // Ícone de navegação: um carro visto de cima (estilo apps de carona), que
+    // gira de acordo com a bússola/direção do GPS (verde = dentro da área,
+    // vermelho = fora). Sendo achatado/2D dá pra ver a rota por baixo dele.
+    function iconeCarro(dentro, angulo) {
+        const cor = dentro ? '#22c55e' : '#ef4444';
+        const rot = (typeof angulo === 'number' && !isNaN(angulo)) ? angulo : 0;
+        return L.divIcon({
+            className: '',
+            html: `<div style="width:30px;height:46px;transform:rotate(${rot}deg);transition:transform .5s ease-out;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="46" viewBox="0 0 30 46">
+                       <rect x="3" y="3" width="24" height="40" rx="10" fill="${cor}" stroke="#fff" stroke-width="2.5"/>
+                       <rect x="7" y="8" width="16" height="11" rx="4" fill="rgba(255,255,255,.55)"/>
+                       <rect x="8" y="29" width="14" height="8" rx="3" fill="rgba(255,255,255,.3)"/>
+                     </svg>
+                   </div>`,
+            iconSize: [30, 46],
+            iconAnchor: [15, 23]
+        });
+    }
+
+    // ---------- bússola (orienta a seta do motorista pro rumo real) ----------
+    function solicitarPermissaoBussola() {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            // iPhone (iOS 13+) exige que isso seja chamado direto dentro de um clique
+            DeviceOrientationEvent.requestPermission().then(resp => {
+                if (resp === 'granted') ativarBussola();
+                else alert('Sem a permissão da bússola, a seta não gira sozinha — mas a navegação continua funcionando normalmente.');
+            }).catch(() => {});
+        } else {
+            ativarBussola(); // Android e a maioria dos navegadores não pedem permissão explícita
+        }
+    }
+    function ativarBussola() {
+        if (bussolaAtiva) return;
+        bussolaAtiva = true;
+        window.addEventListener('deviceorientationabsolute', tratarOrientacao, true);
+        window.addEventListener('deviceorientation', tratarOrientacao, true);
+    }
+    // Ângulo de diferença entre dois rumos (0-360°), sempre pelo caminho mais curto
+    function diferencaAngular(a, b) {
+        const d = Math.abs(a - b) % 360;
+        return d > 180 ? 360 - d : d;
+    }
+    let headingPendente = null, headingPendenteTimer = null;
+    const ROTACAO_LIMIAR_GRAUS = 15;   // mudanças pequenas (curva normal) giram na hora
+    const ROTACAO_ESPERA_MS = 1500;    // mudanças bruscas (ex: sacudida) esperam confirmar antes de girar
+
+    // Gira o mapa inteiro (não só o ícone) no sentido oposto ao rumo, pra que
+    // "pra frente de quem dirige" sempre fique pra cima da tela, igual
+    // Waze/Google Maps no modo navegação — só faz isso em tela cheia; no mapa
+    // normal (pequeno) o norte continua sempre pra cima.
+    //
+    // A escala precisa cobrir a DIAGONAL da tela, não só 1.42 (raiz de 2), porque
+    // o celular é retangular (bem mais alto que largo) e não quadrado. Com 1.42
+    // sobravam cantos pretos aparecendo durante a rotação. A fórmula certa é
+    // diagonal da tela / menor lado da tela, com uma folga extra de segurança.
+    function calcularEscalaRotacao() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const diagonal = Math.sqrt(w * w + h * h);
+        const menorLado = Math.min(w, h);
+        return (diagonal / menorLado) * 1.08; // 1.08 = folga extra de segurança
+    }
+    let escalaRotacaoMapa = calcularEscalaRotacao();
+    window.addEventListener('resize', () => { escalaRotacaoMapa = calcularEscalaRotacao(); });
+    window.addEventListener('orientationchange', () => { escalaRotacaoMapa = calcularEscalaRotacao(); });
+
+    function atualizarRotacaoMapa(heading) {
+        const mapEl = document.getElementById('map');
+        if (!mapEl) return;
+        if (telaCheiaAtiva && typeof heading === 'number' && !isNaN(heading)) {
+            mapEl.style.transform = `rotate(${-heading}deg) scale(${escalaRotacaoMapa})`;
+        } else {
+            mapEl.style.transform = '';
+        }
+    }
+
+    function tratarOrientacao(e) {
+        let heading = null;
+        if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
+            heading = e.webkitCompassHeading; // iOS Safari: já vem como rumo magnético
+        } else if (e.absolute && e.alpha !== null) {
+            heading = 360 - e.alpha; // Android: alpha cresce anti-horário, converte pra rumo
+        }
+        if (heading === null || isNaN(heading)) return;
+
+        // diferença pequena em relação ao rumo atual (virada normal do carro,
+        // ou pequeno ajuste) — aplica direto, sem atraso
+        if (compassHeading === null || diferencaAngular(heading, compassHeading) < ROTACAO_LIMIAR_GRAUS) {
+            headingPendente = null;
+            if (headingPendenteTimer) { clearTimeout(headingPendenteTimer); headingPendenteTimer = null; }
+            compassHeading = heading;
+            if (marker) marker.setIcon(iconeCarro(estaNoRaio, compassHeading));
+            atualizarRotacaoMapa(compassHeading);
+            return;
+        }
+
+        // diferença grande (ex: celular sendo girado/sacudido na mão) — só gira
+        // a seta se essa nova direção continuar "pedindo" a mesma virada por um
+        // tempinho, senão fica pulando de direção toda hora
+        headingPendente = heading;
+        if (headingPendenteTimer) clearTimeout(headingPendenteTimer);
+        headingPendenteTimer = setTimeout(() => {
+            if (headingPendente !== null) {
+                compassHeading = headingPendente;
+                headingPendente = null;
+                if (marker) marker.setIcon(iconeCarro(estaNoRaio, compassHeading));
+                atualizarRotacaoMapa(compassHeading);
+            }
+            headingPendenteTimer = null;
+        }, ROTACAO_ESPERA_MS);
+    }
+    // Se não tiver bússola confiável, usa o rumo do próprio GPS (direção real
+    // do deslocamento) como alternativa — só funciona com o carro em movimento
+    function anguloAtual(pos) {
+        if (compassHeading !== null) return compassHeading;
+        if (pos && typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)) return pos.coords.heading;
+        return 0;
+    }
+
+    function montarMapaSeNecessario() {
+        if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
+        const centro = ultimaPosicao ? [ultimaPosicao.lat, ultimaPosicao.lng] : [CENTRO_MAPA.lat, CENTRO_MAPA.lng];
+        map = L.map('map').setView(centro, 17);
+        // tiles com ruas/nomes mais legíveis pra navegação (padrão OSM fica poluído em zoom alto)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            keepBuffer: 8 // carrega mais tiles ao redor — evita cantos em branco quando o mapa gira em tela cheia
+        }).addTo(map);
+        // se o motorista arrastar o mapa manualmente em tela cheia, para de
+        // recentralizar sozinho por 8s (senão fica impossível olhar a rua da frente)
+        map.on('dragstart', () => { pausarAutoCentralizar = Date.now() + 8000; });
+
+        const pontosPoligono = AREA_POLIGONO.map(p => [p.lat, p.lng]);
+
+        // Cobre o mapa inteiro de vermelho, com um "buraco" no formato da área
+        // permitida (fica vermelho fora, e o buraco deixa o verde de baixo aparecer)
+        const mundo = [[85, -180], [85, 180], [-85, 180], [-85, -180]];
+        L.polygon([mundo, pontosPoligono], {
+            stroke: false, fillColor: '#ef4444', fillOpacity: 0.28
+        }).addTo(map);
+
+        // área permitida em verde, por cima, seguindo o contorno real do local
+        L.polygon(pontosPoligono, { color: '#22c55e', weight: 3, fillColor: '#22c55e', fillOpacity: 0.35 }).addTo(map);
+
+        // marcador do destino/endereço (bandeira fixa)
+        destinoMarker = L.marker([DESTINO.lat, DESTINO.lng], {
+            icon: L.divIcon({
+                className: '',
+                html: `<div style="font-size:22px;line-height:1;">📍</div>`,
+                iconSize: [22, 22], iconAnchor: [11, 22]
+            })
+        }).addTo(map).bindTooltip(DESTINO.nome, { permanent: false });
+
+        // marcador do motorista com seta de navegação, cor conforme dentro/fora
+        marker = L.marker(centro, { icon: iconeCarro(estaNoRaio, compassHeading || 0) }).addTo(map);
+
+        setTimeout(() => map.invalidateSize(), 100); // corrige o mapa que estava escondido
+    }
+
+    function atualizarStatusGpsTexto(texto, ok) {
+        [document.getElementById('statusGpsLogin'), document.getElementById('statusGps'), document.getElementById('statusGpsFull')].forEach(el => {
+            if (!el) return;
+            el.textContent = texto;
+            el.style.background = ok === true ? '#166534' : ok === false ? '#991b1b' : '#7c2d12';
+        });
+    }
+
+    // ---------- modo navegação em tela cheia ----------
+    function abrirTelaCheia() {
+        if (!map) return;
+        solicitarPermissaoBussola(); // precisa disparar aqui dentro do clique (exigência do iPhone)
+        const mapEl = document.getElementById('map');
+        mapEl.classList.remove('map-normal');
+        mapEl.classList.add('map-fullscreen');
+        document.getElementById('navOverlayUI').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        telaCheiaAtiva = true;
+        pausarAutoCentralizar = 0;
+        atualizarRotacaoMapa(compassHeading);
+        lucide.createIcons();
+        setTimeout(() => {
+            map.invalidateSize();
+            centralizarNoMotorista();
+        }, 150);
+    }
+
+    function sairTelaCheia() {
+        const mapEl = document.getElementById('map');
+        mapEl.classList.remove('map-fullscreen');
+        mapEl.classList.add('map-normal');
+        mapEl.style.transform = ''; // volta pro mapa normal norte-pra-cima
+        document.getElementById('navOverlayUI').classList.add('hidden');
+        document.body.style.overflow = '';
+        telaCheiaAtiva = false;
+        setTimeout(() => map.invalidateSize(), 150);
+    }
+
+    function centralizarNoMotorista() {
+        if (!map || !ultimaPosicao) return;
+        pausarAutoCentralizar = 0;
+        const zoomAlvo = telaCheiaAtiva ? ZOOM_NAVEGACAO : Math.max(map.getZoom(), 18);
+        map.setView([ultimaPosicao.lat, ultimaPosicao.lng], zoomAlvo, { animate: true });
+    }
+
+    async function tratarPosicao(pos) {
+        posicaoPronta = true;
+        const { latitude, longitude } = pos.coords;
+        ultimaPosicao = { lat: latitude, lng: longitude };
+        if (marker) {
+            marker.setLatLng([latitude, longitude]);
+        }
+        estaNoRaio = pontoDentroDaArea(latitude, longitude);
+        if (marker) marker.setIcon(iconeCarro(estaNoRaio, anguloAtual(pos)));
+        atualizarRotacaoMapa(anguloAtual(pos));
+
+        // no modo tela cheia, o mapa "segue" o carro (a não ser que o motorista
+        // tenha arrastado o mapa manualmente há pouco tempo)
+        if (telaCheiaAtiva && map && Date.now() > pausarAutoCentralizar) {
+            map.setView([latitude, longitude], Math.max(map.getZoom(), ZOOM_NAVEGACAO), { animate: true });
+        }
+
+        atualizarStatusGpsTexto(estaNoRaio ? '✅ Dentro da área' : '❌ FORA DA ÁREA', estaNoRaio);
+        if (user) document.getElementById('statusUser').textContent = estaNoRaio ? 'Na área ✅' : 'Fora da área ❌';
+
+        // decisões de rota/virada usam a posição filtrada (só "anda" de
+        // verdade depois de uns metros), pra não reagir à tremedeira do GPS
+        const posF = filtrarPosicao(latitude, longitude);
+        atualizarRotaSeNecessario(posF.lat, posF.lng);
+        if (user) verificarProximaVirada(posF.lat, posF.lng);
+
+        if (!estaNoRaio && user && !avisouSaida) {
+            avisouSaida = true;
+            // remove independente de quem colocou ele na fila (ele mesmo ou o ADM)
+            await removerDaFila(user.id);
+            document.getElementById('statusUser').textContent = 'Removido da fila (fora da área)';
+            alert("Você saiu da área (ou seu GPS mostra local errado) e foi removido da fila.");
+        }
+
+        if (estaNoRaio) {
+            avisouSaida = false;
+            if (user) await entrarNaFilaAuto();
+        }
+    }
+
+    // Entra na fila sozinho assim que o GPS confirma que está dentro da área
+    // (se já estiver na fila, não faz nada — a renovação continua manual, pelo botão).
+    async function entrarNaFilaAuto() {
+        if (!user) return;
+        if (entradasCache.some(m => m.id === user.id)) return;
+
+        const dados = await getFilaData();
+        if (dados.entradas.some(m => m.id === user.id)) { carregarFila(); return; }
+
+        const outros = dados.entradas.filter(m => m.id !== user.id);
+        outros.push({ id: user.id, nome: user.nome, foto: user.foto || '', timestamp: Date.now() });
+        reindexar(outros);
+        await salvarFilaData(outros, dados.config);
+
+        delete alertadosUltimoMin[user.id];
+        document.getElementById('statusUser').textContent = 'Na fila ✅ (entrada automática)';
+        carregarFila();
+    }
+
+    function tratarErroGps(err) {
+        let texto;
+        if (err.code === 1) texto = '⚠️ Permissão de localização negada. Ative a localização do navegador.';
+        else if (err.code === 2) texto = '⚠️ Não foi possível obter sua localização. Verifique se o GPS está ligado.';
+        else texto = '⚠️ Tempo esgotado buscando localização. Tentando novamente...';
+        atualizarStatusGpsTexto(texto, null);
+    }
+
+    // Centro do polígono, só pra centralizar o mapa antes do GPS responder
+    function centroidePoligono(poligono) {
+        let lat = 0, lng = 0;
+        poligono.forEach(p => { lat += p.lat; lng += p.lng; });
+        return { lat: lat / poligono.length, lng: lng / poligono.length };
+    }
+    const CENTRO_MAPA = centroidePoligono(AREA_POLIGONO);
+
+    // Ray casting: verifica se o ponto (lat, lng) está dentro do polígono da área permitida
+    function pontoDentroDaArea(lat, lng) {
+        const pol = AREA_POLIGONO;
+        let dentro = false;
+        for (let i = 0, j = pol.length - 1; i < pol.length; j = i++) {
+            const xi = pol[i].lng, yi = pol[i].lat;
+            const xj = pol[j].lng, yj = pol[j].lat;
+            const intersecta = ((yi > lat) !== (yj > lat)) &&
+                (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+            if (intersecta) dentro = !dentro;
+        }
+        return dentro;
+    }
+
+    // ---------- rota até o destino (traçada nas ruas de verdade) ----------
+    function distMetros(lat1, lng1, lat2, lng2) {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // Distância (em metros) de um ponto até um segmento de reta lat/lng — usa uma
+    // projeção local simples (precisão de sobra pra essa escala de dezenas de metros)
+    function distanciaAteSegmento(lat, lng, lat1, lng1, lat2, lng2) {
+        const mLat = 111320;
+        const mLng = 111320 * Math.cos(lat * Math.PI / 180);
+        const px = (lng - lng1) * mLng, py = (lat - lat1) * mLat;
+        const dx = (lng2 - lng1) * mLng, dy = (lat2 - lat1) * mLat;
+        const compLenSq = dx * dx + dy * dy;
+        let t = compLenSq > 0 ? (px * dx + py * dy) / compLenSq : 0;
+        t = Math.max(0, Math.min(1, t));
+        return Math.sqrt((px - dx * t) ** 2 + (py - dy * t) ** 2);
+    }
+    // Menor distância até a linha inteira da rota traçada — usado pra saber se
+    // o motorista saiu do caminho sugerido (virou em outra rua, por exemplo)
+    function distanciaAteRota(lat, lng) {
+        if (rotaPontosLatLng.length < 2) return 0;
+        let menor = Infinity;
+        for (let i = 0; i < rotaPontosLatLng.length - 1; i++) {
+            const d = distanciaAteSegmento(lat, lng, rotaPontosLatLng[i][0], rotaPontosLatLng[i][1], rotaPontosLatLng[i + 1][0], rotaPontosLatLng[i + 1][1]);
+            if (d < menor) menor = d;
+            if (menor < 5) break; // já tá praticamente em cima da rota, não precisa continuar
+        }
+        return menor;
+    }
+
+    // Só recalcula a rota se: ainda não tem rota, se passou tempo (30s), se
+    // o motorista andou uma distância razoável, OU se ele se afastou demais da
+    // linha da rota atual (sinal de que virou em outra rua) — nesse último caso
+    // recalcula rápido, sem esperar os 30s/60m normais, mas com um intervalo
+    // mínimo pra não martelar o servidor de rotas.
+    function atualizarRotaSeNecessario(lat, lng) {
+        if (!map || !user) return;
+        const agora = Date.now();
+        const moveuMuito = !ultimaRotaPos || distMetros(lat, lng, ultimaRotaPos.lat, ultimaRotaPos.lng) > 60;
+        const tempoPassou = (agora - ultimaRotaCalculadaEm) > 30000;
+        const saiuDaRota = rotaPontosLatLng.length > 1
+            && distanciaAteRota(lat, lng) > DESVIO_ROTA_M
+            && (agora - ultimaRotaCalculadaEm) > DESVIO_RECALC_MIN_MS;
+        if (!moveuMuito && !tempoPassou && !saiuDaRota) return;
+        ultimaRotaCalculadaEm = agora;
+        ultimaRotaPos = { lat, lng };
+        calcularRota(lat, lng);
+    }
+
+    async function calcularRota(lat, lng) {
+        const rotaInfoEl = document.getElementById('rotaInfo');
+        const rotaInfoFullEl = document.getElementById('rotaInfoFull');
+        try {
+            const url = `https://router.project-osrm.org/route/v1/driving/${lng},${lat};${DESTINO.lng},${DESTINO.lat}?overview=full&geometries=geojson&steps=true`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (!data.routes || !data.routes.length) throw new Error('sem rota');
+
+            const rota = data.routes[0];
+            const pontos = rota.geometry.coordinates.map(c => [c[1], c[0]]); // [lng,lat] -> [lat,lng]
+            rotaPontosLatLng = pontos;
+
+            if (rotaLayer) map.removeLayer(rotaLayer);
+            rotaLayer = L.polyline(pontos, {
+                color: '#3b82f6', weight: 5, opacity: 0.9, dashArray: '1, 10', lineCap: 'round'
+            }).addTo(map);
+
+            // guarda os passos/manobras da rota nova pra poder avisar antes de cada virada
+            // (não reseta o histórico de alertas aqui — ele é por local, não por
+            // rota, então uma manobra já avisada continua "lembrada" mesmo que a
+            // rota seja recalculada)
+            rotaSteps = (rota.legs && rota.legs[0] && rota.legs[0].steps) || [];
+
+            const km = (rota.distance / 1000).toFixed(1);
+            const min = Math.round(rota.duration / 60);
+            const texto = `🚗 Rota até ${DESTINO.nome}: ${km} km · ~${min} min (sem dados de trânsito em tempo real)`;
+            if (rotaInfoEl) rotaInfoEl.textContent = texto;
+            if (rotaInfoFullEl) rotaInfoFullEl.textContent = texto;
+        } catch (e) {
+            if (rotaInfoEl) rotaInfoEl.textContent = '⚠️ Não foi possível calcular a rota agora.';
+            if (rotaInfoFullEl) rotaInfoFullEl.textContent = '⚠️ Não foi possível calcular a rota agora.';
+        }
+    }
+
+    // ---------- aviso de virada (seta + nome da rua antes de cada manobra) ----------
+    // Acha (ou cria) a chave do histórico pra um local — procura por um ponto já
+    // conhecido dentro do raio de "mesmo lugar", em vez de simplesmente arredondar
+    // lat/lng (o que poderia separar o mesmo ponto em duas chaves diferentes).
+    function chaveAlertaLocal(lat, lng) {
+        for (const key in historicoAlertas) {
+            const [klat, klng] = key.split(',').map(Number);
+            if (distMetros(lat, lng, klat, klng) <= ALERTA_RAIO_MESMO_LOCAL) return key;
+        }
+        const novaChave = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+        historicoAlertas[novaChave] = { avisouLonge: false, avisouPerto: false, ultimoEm: 0 };
+        return novaChave;
+    }
+    // Limpa do histórico os locais bem distantes de onde o motorista está agora
+    // — assim, numa passagem futura pela mesma rua, o alerta volta a funcionar
+    // normalmente (o "esquecimento" só vale enquanto ele estiver longe daquele ponto).
+    function limparAlertasDistantes(lat, lng) {
+        for (const key in historicoAlertas) {
+            const [klat, klng] = key.split(',').map(Number);
+            if (distMetros(lat, lng, klat, klng) > ALERTA_RAIO_ESQUECER) delete historicoAlertas[key];
+        }
+    }
+    // lat/lng aqui já vêm filtrados (posicaoFiltrada) — só decide sobre uma
+    // virada depois que o motorista realmente andou uns metros de verdade.
+    function verificarProximaVirada(lat, lng) {
+        if (!rotaSteps.length) return;
+        limparAlertasDistantes(lat, lng);
+        // pula o índice 0 ("depart", início da rota, não é uma virada de verdade)
+        for (let i = 1; i < rotaSteps.length; i++) {
+            const step = rotaSteps[i];
+            const loc = step.maneuver.location; // [lng, lat]
+            const d = distMetros(lat, lng, loc[1], loc[0]);
+            if (d > ALERTA_DISTANCIA_LONGE) continue;
+
+            const chave = chaveAlertaLocal(loc[1], loc[0]);
+            const hist = historicoAlertas[chave];
+            const agora = Date.now();
+
+            if (d <= ALERTA_DISTANCIA_PERTO) {
+                // 2º aviso: bem em cima da virada
+                if (!hist.avisouPerto && (agora - hist.ultimoEm) >= ALERTA_INTERVALO_MIN_MS) {
+                    hist.avisouPerto = true;
+                    hist.ultimoEm = agora;
+                    mostrarAvisoVirada(step, null);
+                    break;
+                }
+            } else if (!hist.avisouLonge) {
+                // 1º aviso: de longe, avisando quantos metros faltam
+                hist.avisouLonge = true;
+                hist.ultimoEm = agora;
+                mostrarAvisoVirada(step, Math.round(d));
+                break;
+            }
+        }
+    }
+
+    function instrucaoDaVirada(step) {
+        const tipo = step.maneuver.type;
+        const mod = step.maneuver.modifier;
+        const angulos = { straight: 0, 'slight right': 35, right: 90, 'sharp right': 130,
+                           'slight left': -35, left: -90, 'sharp left': -130, uturn: 180 };
+        const textos = { straight: 'Siga em frente', 'slight right': 'Mantenha-se à direita',
+                          right: 'Vire à direita', 'sharp right': 'Vire fortemente à direita',
+                          'slight left': 'Mantenha-se à esquerda', left: 'Vire à esquerda',
+                          'sharp left': 'Vire fortemente à esquerda', uturn: 'Faça o retorno' };
+        if (tipo === 'roundabout' || tipo === 'rotary') return { texto: 'Entre na rotatória', angulo: 0 };
+        if (tipo === 'arrive') return { texto: 'Você está chegando ao destino', angulo: 0 };
+        if (mod && angulos.hasOwnProperty(mod)) return { texto: textos[mod], angulo: angulos[mod] };
+        return { texto: 'Continue no trajeto', angulo: 0 };
+    }
+
+    function mostrarAvisoVirada(step, distanciaRestante) {
+        const { texto, angulo } = instrucaoDaVirada(step);
+        document.getElementById('textoVirada').textContent = texto;
+        const rua = step.name ? `em ${step.name}` : '';
+        // aviso "de longe" mostra quantos metros faltam; aviso "de perto" (sem
+        // distância) mostra que é pra virar agora
+        document.getElementById('ruaVirada').textContent = (typeof distanciaRestante === 'number')
+            ? `em ${distanciaRestante} m${rua ? ' · ' + rua : ''}`
+            : (rua ? `${rua} — agora` : 'Agora');
+        document.getElementById('setaVirada').style.transform = `rotate(${angulo}deg)`;
+        document.getElementById('avisoViradaUI').classList.remove('hidden');
+
+        // vibração + som + notificação — o mais perto que um site consegue chegar
+        // de um alerta chamativo (navegador não deixa um site imitar a tela real
+        // de alerta de emergência do sistema, isso é reservado pela operadora/SO)
+        if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
+        tocarAlertaVirada();
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('FilaDrive - Navegação', { body: `${texto}${step.name ? ' em ' + step.name : ''}` });
+        }
+
+        if (avisoTimeoutId) clearTimeout(avisoTimeoutId);
+        avisoTimeoutId = setTimeout(() => {
+            document.getElementById('avisoViradaUI').classList.add('hidden');
+        }, 9000);
+    }
+
+    function tocarAlertaVirada() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            [0, 0.25, 0.5].forEach(delay => {
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                o.connect(g); g.connect(ctx.destination);
+                o.type = 'square';
+                o.frequency.value = 1046;
+                g.gain.setValueAtTime(0.2, ctx.currentTime + delay);
+                g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
+                o.start(ctx.currentTime + delay);
+                o.stop(ctx.currentTime + delay + 0.2);
+            });
+        } catch (e) { /* navegador pode bloquear áudio sem interação prévia */ }
+    }
+
+
+
+    async function renovar() {
+        if (!user) return;
+        if (!estaNoRaio) return alert("Você não está na área permitida! O GPS precisa te mostrar dentro da área verde pra renovar.");
+
+        const dados = await getFilaData();
+        const outros = dados.entradas.filter(m => m.id !== user.id);
+        const existente = dados.entradas.find(m => m.id === user.id);
+
+        if (existente) {
+            outros.splice(existente.pos ? Math.min(existente.pos - 1, outros.length) : outros.length, 0,
+                { ...existente, timestamp: Date.now() });
+        } else {
+            outros.push({ id: user.id, nome: user.nome, foto: user.foto || '', timestamp: Date.now() });
+        }
+        reindexar(outros);
+        await salvarFilaData(outros, dados.config);
+
+        delete alertadosUltimoMin[user.id];
+        document.getElementById('statusUser').textContent = 'Na fila ✅';
+        alert("Presença renovada!");
+        carregarFila();
+    }
+
+    async function removerDaFila(id) {
+        const dados = await getFilaData();
+        const restante = dados.entradas.filter(m => m.id !== id);
+        reindexar(restante);
+        await salvarFilaData(restante, dados.config);
+        delete alertadosUltimoMin[id];
+        carregarFila();
+    }
+
+    // ---------- fila pública ----------
+    async function carregarFila() {
+        const [dados, motos] = await Promise.all([getFilaData(), motoristas.length ? Promise.resolve(motoristas) : getMotoristas()]);
+        motoristas = motos;
+        duracaoMinutos = dados.config.duracaoMinutos;
+        document.getElementById('duracaoLabel').textContent = duracaoMinutos;
+
+        const idsValidos = new Set(motos.map(m => m.id));
+        let validas = dados.entradas.filter(m => idsValidos.has(m.id));
+        if (validas.length !== dados.entradas.length) {
+            reindexar(validas);
+            salvarFilaData(validas, dados.config);
+        }
+        validas.sort((a, b) => (a.pos ?? 999999) - (b.pos ?? 999999));
+        entradasCache = validas;
+
+        renderFilaPublica();
+    }
+
+    function renderFilaPublica() {
+        const lista = document.getElementById('listaFila');
+        if (!entradasCache.length) {
+            lista.innerHTML = '<p class="text-slate-500 text-sm text-center py-4">Fila vazia</p>';
+            return;
+        }
+        lista.innerHTML = entradasCache.map((m, i) => {
+            const posClass = i === 0 ? 'primeiro-lugar' : (i === 1 ? 'segundo-lugar' : '');
+            return `
+                <div class="fila-item ${posClass} bg-[#1a2338] p-3 rounded-2xl flex items-center gap-3">
+                    <span class="font-bold text-sm w-5 text-center">${i + 1}</span>
+                    <img src="${m.foto || avatarPadrao(m.nome)}" class="w-9 h-9 rounded-full object-cover border border-slate-600 flex-shrink-0">
+                    <span class="flex-1 truncate">${m.nome}</span>
+                    <span class="text-xs font-mono text-slate-400" id="cd-${m.id}">--:--</span>
+                </div>`;
+        }).join('');
+        atualizarContadores();
+    }
+
+    // roda a cada 1s: atualiza os cronômetros na tela sem precisar buscar no servidor toda hora
+    async function atualizarContadores() {
+        const agora = Date.now();
+        const expirados = [];
+
+        entradasCache.forEach(m => {
+            const restanteMs = duracaoMinutos * 60000 - (agora - m.timestamp);
+            const el = document.getElementById('cd-' + m.id);
+            if (el) {
+                if (restanteMs <= 0) {
+                    el.textContent = 'Expirado';
+                    el.classList.add('text-red-400');
+                } else {
+                    const s = Math.floor(restanteMs / 1000);
+                    el.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+                }
+            }
+            if (restanteMs <= 0) expirados.push(m.id);
+
+            // alerta sonoro/notificação só no aparelho do próprio motorista, faltando 1 minuto
+            if (user && m.id === user.id && restanteMs > 0 && restanteMs <= 60000 && alertadosUltimoMin[m.id] !== m.timestamp) {
+                alertadosUltimoMin[m.id] = m.timestamp;
+                avisarUltimoMinuto();
+            }
+        });
+
+        if (expirados.length) {
+            for (const id of expirados) await removerDaFila(id);
+        }
+    }
+
+    function pedirPermissaoNotificacao() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }
+
+    function avisarUltimoMinuto() {
+        tocarBeep();
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('FilaDrive', { body: 'Falta 1 minuto para renovar sua presença!' });
+        } else {
+            alert('⏰ Falta 1 minuto para renovar sua presença!');
+        }
+    }
+
+    function tocarBeep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            [0, 0.3].forEach(delay => {
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                o.connect(g); g.connect(ctx.destination);
+                o.type = 'sine';
+                o.frequency.value = 880;
+                g.gain.setValueAtTime(0.25, ctx.currentTime + delay);
+                g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+                o.start(ctx.currentTime + delay);
+                o.stop(ctx.currentTime + delay + 0.25);
+            });
+        } catch (e) { /* navegador pode bloquear áudio sem interação prévia */ }
+    }
+
+    // ---------- admin ----------
+    function abrirAdmin() {
+        document.getElementById('adminOverlay').classList.remove('hidden');
+        document.getElementById('adminLoginStep').classList.remove('hidden');
+        document.getElementById('adminPanel').classList.add('hidden');
+        document.getElementById('adminPass').value = '';
+        lucide.createIcons();
+    }
+    function fecharAdmin() {
+        document.getElementById('adminOverlay').classList.add('hidden');
+    }
+    function checarSenhaAdmin() {
+        const senha = document.getElementById('adminPass').value;
+        if (senha !== ADMIN_PASS) return alert("Senha incorreta!");
+        document.getElementById('adminLoginStep').classList.add('hidden');
+        document.getElementById('adminPanel').classList.remove('hidden');
+        mostrarTab('motoristas');
+        renderMotoristasAdmin();
+        renderFilaAdmin();
+        lucide.createIcons();
+    }
+    function mostrarTab(tab) {
+        document.getElementById('tabMotoristas').classList.toggle('active', tab === 'motoristas');
+        document.getElementById('tabFila').classList.toggle('active', tab === 'fila');
+        document.getElementById('painelMotoristas').classList.toggle('hidden', tab !== 'motoristas');
+        document.getElementById('painelFila').classList.toggle('hidden', tab !== 'fila');
+        if (tab === 'motoristas') renderMotoristasAdmin();
+        if (tab === 'fila') renderFilaAdmin();
+    }
+
+    async function renderMotoristasAdmin() {
+        const motos = await getMotoristas();
+        motoristas = motos;
+        const el = document.getElementById('listaMotoristasAdmin');
+        el.innerHTML = motos.length ? motos.map(m => `
+            <div class="bg-[#1a2338] p-3 rounded-2xl flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <img src="${m.foto || avatarPadrao(m.nome)}" class="w-7 h-7 rounded-full object-cover">
+                    <span>${m.nome}</span>
+                </div>
+                <button onclick="removerMotorista('${m.id}')" class="text-red-400 text-xs underline">Remover</button>
+            </div>
+        `).join('') : '<p class="text-slate-500 text-sm text-center py-4">Nenhum motorista cadastrado</p>';
+    }
+
+    async function adicionarMotorista() {
+        const nome = document.getElementById('novoNome').value.trim();
+        const senha = document.getElementById('novaSenha').value.trim();
+        const foto = document.getElementById('novaFoto').value.trim();
+        if (!nome || !senha) return alert("Preencha nome e senha");
+
+        const motos = await getMotoristas();
+        const id = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36);
+        motos.push({ id, nome, senha, foto });
+        await putMotoristas(motos);
+
+        document.getElementById('novoNome').value = '';
+        document.getElementById('novaSenha').value = '';
+        document.getElementById('novaFoto').value = '';
+        renderMotoristasAdmin();
+        carregarMotoristas();
+    }
+
+    async function removerMotorista(id) {
+        if (!confirm("Remover este motorista? Ele também sairá da fila.")) return;
+        const motos = (await getMotoristas()).filter(m => m.id !== id);
+        await putMotoristas(motos);
+        await removerDaFila(id);
+        renderMotoristasAdmin();
+        carregarMotoristas();
+    }
+
+    async function renderFilaAdmin() {
+        const motos = motoristas.length ? motoristas : (motoristas = await getMotoristas());
+        const dados = await getFilaData();
+        const real = dados.entradas.sort((a, b) => (a.pos ?? 999999) - (b.pos ?? 999999));
+        reindexar(real);
+
+        document.getElementById('duracaoAtual').textContent = dados.config.duracaoMinutos;
+        document.getElementById('duracaoInput').value = dados.config.duracaoMinutos;
+        duracaoMinutos = dados.config.duracaoMinutos;
+
+        const idsNaFila = new Set(real.map(m => m.id));
+        const select = document.getElementById('selectAdicionarFila');
+        select.innerHTML = '<option value="">Selecione o motorista...</option>' +
+            motos.filter(m => !idsNaFila.has(m.id)).map(m => `<option value="${m.id}">${m.nome}</option>`).join('');
+
+        const el = document.getElementById('listaFilaAdmin');
+        el.innerHTML = real.length
+            ? real.map((m, i) => `
+                <div class="bg-[#1a2338] p-3 rounded-2xl flex items-center justify-between gap-2">
+                    <img src="${m.foto || avatarPadrao(m.nome)}" class="w-8 h-8 rounded-full object-cover flex-shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <p class="truncate">${m.nome || m.id}</p>
+                        <p class="text-xs text-slate-400">${new Date(m.timestamp).toLocaleTimeString()}</p>
+                    </div>
+                    <input type="number" min="1" value="${i + 1}" data-id="${m.id}"
+                           class="pos-input w-14 bg-[#0c1220] border border-slate-600 rounded-lg px-2 py-1 text-sm text-center">
+                    <button onclick="removerDaFilaAdmin('${m.id}')" class="text-red-400 text-xs underline whitespace-nowrap">Tirar</button>
+                </div>
+            `).join('') + '<button onclick="salvarOrdemFila()" class="w-full bg-emerald-500 py-2 rounded-xl font-bold text-sm mt-1">Salvar ordem</button>'
+            : '<p class="text-slate-500 text-sm text-center py-4">Fila vazia</p>';
+    }
+
+    async function removerDaFilaAdmin(id) {
+        await removerDaFila(id);
+        renderFilaAdmin();
+    }
+
+    async function adminAdicionarFila() {
+        const id = document.getElementById('selectAdicionarFila').value;
+        if (!id) return alert("Selecione um motorista");
+        const motorista = motoristas.find(m => m.id === id);
+        if (!motorista) return alert("Motorista não encontrado");
+
+        const dados = await getFilaData();
+        const real = dados.entradas.filter(m => m.id !== id);
+        const posInput = document.getElementById('posAdicionarFila').value;
+        const posDesejada = posInput ? parseInt(posInput) : real.length + 1;
+        const idx = Math.max(0, Math.min(real.length, posDesejada - 1));
+
+        real.splice(idx, 0, { id, nome: motorista.nome, foto: motorista.foto || '', timestamp: Date.now() });
+        reindexar(real);
+        await salvarFilaData(real, dados.config);
+
+        document.getElementById('posAdicionarFila').value = '';
+        renderFilaAdmin();
+        carregarFila();
+    }
+
+    async function salvarOrdemFila() {
+        const dados = await getFilaData();
+        const posMap = {};
+        document.querySelectorAll('.pos-input').forEach(inp => {
+            posMap[inp.dataset.id] = parseFloat(inp.value) || 999999;
+        });
+        dados.entradas.sort((a, b) => (posMap[a.id] ?? 999999) - (posMap[b.id] ?? 999999));
+        reindexar(dados.entradas);
+        await salvarFilaData(dados.entradas, dados.config);
+
+        renderFilaAdmin();
+        carregarFila();
+    }
+
+    async function salvarDuracao() {
+        const val = parseInt(document.getElementById('duracaoInput').value);
+        if (!val || val < 1) return alert('Informe um número de minutos válido');
+        const dados = await getFilaData();
+        dados.config.duracaoMinutos = val;
+        await salvarFilaData(dados.entradas, dados.config);
+        duracaoMinutos = val;
+        document.getElementById('duracaoAtual').textContent = val;
+        document.getElementById('duracaoLabel').textContent = val;
+        alert('Tempo de renovação atualizado para todos!');
+        carregarFila();
+    }
+
+    // ---------- inicialização ----------
+    window.onload = async () => {
+        lucide.createIcons();
+        iniciarGpsGlobal(); // pede a permissão de localização já no carregamento, antes do login
+        await carregarMotoristas();
+        await carregarFila();
+        setInterval(carregarFila, 10000);   // sincroniza com o servidor
+        setInterval(atualizarContadores, 1000); // atualiza cronômetro na tela a cada segundo
+    };
 </script>
 </body>
 </html>
