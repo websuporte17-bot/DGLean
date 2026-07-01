@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #060913; color: #fff; }
@@ -24,14 +25,54 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background:#334155; border-radius: 4px; }
 
-        .fila-item { border: 2px solid transparent; transition: border-color .3s; }
-        .primeiro-lugar { animation: piscaPrimeiro 10s infinite; }
-        @keyframes piscaPrimeiro {
-            0%, 45%  { border-color: #fbbf24; box-shadow: 0 0 14px #fbbf2455; background: #2a220f; }
-            50%, 95% { border-color: #ef4444; box-shadow: 0 0 14px #ef444455; background: #2a1414; }
-            100%     { border-color: #fbbf24; box-shadow: 0 0 14px #fbbf2455; background: #2a220f; }
+        .fila-item { border: 2px solid transparent; transition: border-color .3s; position: relative; }
+
+        /* ---------- 1º lugar: gradiente "diamante" piscando (estilo ícone de abate) ---------- */
+        .primeiro-lugar {
+            border-color: transparent;
+            background: linear-gradient(#0f1830, #0f1830) padding-box,
+                        var(--grad-1, linear-gradient(120deg, #7dd3fc, #ffffff, #38bdf8, #ffffff, #7dd3fc)) border-box;
+            background-size: 100% 100%, 250% 250%;
+            animation: diamantePulso 2.2s ease-in-out infinite;
         }
-        .segundo-lugar { border-color: #cbd5e1; box-shadow: 0 0 8px #cbd5e133; }
+        @keyframes diamantePulso {
+            0%, 100% { box-shadow: 0 0 8px 1px #7dd3fc55;  filter: brightness(1);   background-position: 0% 0%, 0% 50%; }
+            50%      { box-shadow: 0 0 20px 4px #bae6fdcc; filter: brightness(1.35); background-position: 0% 0%, 100% 50%; }
+        }
+        .primeiro-lugar .avatar-wrap { box-shadow: 0 0 10px 2px #7dd3fcaa; }
+
+        /* ---------- 2º lugar: gradiente "lendário" ouro & fogo piscando ---------- */
+        .segundo-lugar {
+            border-color: transparent;
+            background: linear-gradient(#0f1830, #0f1830) padding-box,
+                        var(--grad-2, linear-gradient(120deg, #fde68a, #f97316, #fbbf24, #ef4444, #fde68a)) border-box;
+            background-size: 100% 100%, 250% 250%;
+            animation: legendarioPulso 2.6s ease-in-out infinite;
+        }
+        @keyframes legendarioPulso {
+            0%, 100% { box-shadow: 0 0 8px 1px #f9731655;  filter: brightness(1);   background-position: 0% 0%, 0% 50%; }
+            50%      { box-shadow: 0 0 20px 4px #fbbf24cc; filter: brightness(1.3); background-position: 0% 0%, 100% 50%; }
+        }
+        .segundo-lugar .avatar-wrap { box-shadow: 0 0 10px 2px #f9731699; }
+
+        /* avatar maior + clicável na fila */
+        .avatar-wrap { border-radius: 9999px; flex-shrink: 0; transition: transform .15s; cursor: pointer; }
+        .avatar-wrap:active { transform: scale(0.92); }
+        .avatar-fila { width: 3.1rem; height: 3.1rem; object-fit: cover; border-radius: 9999px; border: 2px solid #334155; display:block; }
+
+        /* opções de estilo de gradiente (swatches) no perfil */
+        .swatch-grad { width: 100%; height: 2.4rem; border-radius: 12px; border: 2px solid transparent; cursor: pointer; }
+        .swatch-grad.ativo { border-color: #fff; }
+
+        /* modal de perfil */
+        #perfilOverlay { background: rgba(0,0,0,.75); }
+        .perfil-card { animation: perfilEntra .25s ease-out; }
+        @keyframes perfilEntra { from { opacity: 0; transform: translateY(16px) scale(.97);} to { opacity: 1; transform: translateY(0) scale(1);} }
+
+        /* alça de arrastar no admin */
+        .drag-handle { cursor: grab; touch-action: none; }
+        .sortable-ghost { opacity: .35; }
+        .sortable-drag { box-shadow: 0 8px 24px rgba(0,0,0,.5); }
 
         /* efeito de toque nos botões: encolhe rapidinho ao tocar/clicar */
         button { transition: transform .1s ease, opacity .1s ease; }
@@ -67,10 +108,19 @@
             </div>
             <input type="hidden" id="motoristaSelecionado" value="">
 
-            <input id="pass" type="password" placeholder="Senha"
-                   class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl px-5 py-4">
+            <div id="loginSenhaPin" class="space-y-6">
+                <input id="pass" type="password" placeholder="Senha"
+                       class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl px-5 py-4">
 
-            <button onclick="login()" class="w-full bg-emerald-500 py-5 rounded-2xl font-bold">ENTRAR</button>
+                <button onclick="login()" class="w-full bg-emerald-500 py-5 rounded-2xl font-bold">ENTRAR</button>
+            </div>
+
+            <div id="loginSenhaAssinatura" class="hidden space-y-2">
+                <p class="text-center text-sm text-slate-400">Faça sua assinatura pra entrar</p>
+                <canvas id="loginAssinaturaCanvas" width="340" height="170"
+                        class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl" style="touch-action:none;"></canvas>
+                <p id="loginAssinaturaStatus" class="text-center text-xs font-medium h-4">&nbsp;</p>
+            </div>
 
             <div id="statusGpsLogin" class="text-center py-3 rounded-2xl font-medium text-sm bg-[#1a2338]">Solicitando localização...</div>
             <button onclick="iniciarGpsGlobal(true)" class="w-full text-xs text-slate-400 underline">Não pediu a permissão de localização? Toque aqui</button>
@@ -204,7 +254,28 @@
         <div class="bg-[#1a2338] p-4 rounded-2xl space-y-2">
           <p class="text-xs text-slate-400 uppercase font-semibold">Adicionar motorista</p>
           <input id="novoNome" placeholder="Nome" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
+
+          <input type="hidden" id="novoTipoSenha" value="pin">
+          <p class="text-xs text-slate-400 pt-1">Tipo de senha</p>
+          <div class="flex gap-2">
+            <button type="button" id="btnTipoPin" onclick="escolherTipoSenha('pin')"
+                    class="flex-1 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-[#03170f]">PIN (números/letras)</button>
+            <button type="button" id="btnTipoAssinatura" onclick="escolherTipoSenha('assinatura')"
+                    class="flex-1 py-2 rounded-xl text-xs font-bold bg-[#0c1220] border border-slate-600">Assinatura</button>
+          </div>
+
           <input id="novaSenha" placeholder="Senha" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
+
+          <div id="novaAssinaturaWrap" class="hidden space-y-2">
+            <p class="text-xs text-slate-500">Peça pro motorista assinar abaixo, num traço só (sem soltar o dedo no meio)</p>
+            <canvas id="novaAssinaturaCanvas" width="300" height="150"
+                    class="w-full bg-[#0c1220] border border-slate-600 rounded-xl" style="touch-action:none;"></canvas>
+            <div class="flex justify-between items-center">
+              <span id="novaAssinaturaStatus" class="text-xs text-slate-500">Nenhuma assinatura capturada</span>
+              <button type="button" onclick="if(padAdminAssinatura){padAdminAssinatura.limpar();} novaAssinaturaCapturada=null; document.getElementById('novaAssinaturaStatus').textContent='Nenhuma assinatura capturada'; document.getElementById('novaAssinaturaStatus').style.color='';" class="text-xs text-red-400 underline">Limpar</button>
+            </div>
+          </div>
+
           <input id="novaFoto" placeholder="Link da foto (opcional)" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
           <button onclick="adicionarMotorista()" class="w-full bg-emerald-500 py-2 rounded-xl font-bold text-sm">Adicionar</button>
         </div>
@@ -239,6 +310,77 @@
   </div>
 </div>
 
+<!-- MODAL DE PERFIL (abre ao tocar na foto de alguém na fila) -->
+<div id="perfilOverlay" class="hidden fixed inset-0 flex items-center justify-center p-4 z-[10010]">
+  <div class="perfil-card bg-[#0c1220] border border-slate-700 rounded-3xl w-full max-w-[380px] max-h-[88vh] overflow-y-auto">
+    <div class="p-5 space-y-4">
+      <div class="flex justify-between items-start">
+        <div class="flex items-center gap-3">
+          <img id="perfilFoto" class="w-16 h-16 rounded-2xl object-cover border-2 border-slate-600">
+          <div>
+            <p id="perfilPosicaoTag" class="text-xs font-bold uppercase text-slate-400"></p>
+            <h3 id="perfilNomeView" class="text-lg font-bold leading-tight"></h3>
+          </div>
+        </div>
+        <button onclick="fecharPerfil()" class="p-2 bg-slate-800 rounded-xl flex-shrink-0"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <!-- frase/status -->
+      <div>
+        <p id="perfilFraseView" class="text-sm text-slate-300 italic">&nbsp;</p>
+      </div>
+
+      <!-- edição (só aparece se for o próprio motorista logado) -->
+      <div id="perfilEdicao" class="hidden space-y-3 border-t border-slate-700 pt-4">
+        <p class="text-xs uppercase text-slate-400 font-semibold">Editar meu perfil</p>
+
+        <div>
+          <label class="text-xs text-slate-500">Nome</label>
+          <input id="perfilNomeInput" class="w-full bg-[#1a2338] border border-slate-600 rounded-xl px-3 py-2 text-sm mt-1">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-500">Frase / status</label>
+          <input id="perfilFraseInput" maxlength="80" placeholder="Ex: Disponível pra corridas longas 🚗"
+                 class="w-full bg-[#1a2338] border border-slate-600 rounded-xl px-3 py-2 text-sm mt-1">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-500">Link da foto</label>
+          <input id="perfilFotoInput" class="w-full bg-[#1a2338] border border-slate-600 rounded-xl px-3 py-2 text-sm mt-1">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-500">Número de contato</label>
+          <input id="perfilContatoInput" placeholder="Ex: 11999999999" class="w-full bg-[#1a2338] border border-slate-600 rounded-xl px-3 py-2 text-sm mt-1">
+          <label class="flex items-center gap-2 mt-2 text-xs text-slate-400">
+            <input type="checkbox" id="perfilEhWhatsapp" class="w-4 h-4">
+            Esse número é WhatsApp
+          </label>
+        </div>
+
+        <div>
+          <p class="text-xs text-slate-500 mb-2">Estilo quando eu estiver em <b>1º lugar</b></p>
+          <div id="swatchesPrimeiro" class="grid grid-cols-4 gap-2"></div>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 mb-2">Estilo quando eu estiver em <b>2º lugar</b></p>
+          <div id="swatchesSegundo" class="grid grid-cols-4 gap-2"></div>
+        </div>
+
+        <button onclick="salvarPerfil()" class="w-full bg-emerald-500 py-3 rounded-2xl font-bold text-sm">Salvar perfil</button>
+      </div>
+
+      <!-- contato (visível pra quem está vendo o perfil de outro) -->
+      <div id="perfilContatoView" class="hidden border-t border-slate-700 pt-4">
+        <button id="perfilBtnContato" onclick="abrirContatoPerfil()" class="w-full bg-emerald-500 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2">
+          <i data-lucide="phone" class="w-4 h-4"></i> <span id="perfilBtnContatoTexto">Ligar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
     const BIN_FILA = '6a415e47f5f4af5e293e01e9';
     const BIN_MOTO = '6a415dabf5f4af5e293e0023';
@@ -249,13 +391,86 @@
     // do local marcado no Google Maps). Pra ajustar a área, é só editar/mover
     // esses pontos (lat, lng) — a ordem deles é o contorno, ligando um no outro
     // e fechando do último de volta pro primeiro.
-    const AREA_POLIGONO = [
+    // Esse é o contorno "real" do local — a tolerância de GPS é aplicada
+    // depois, por cima dele (ver AREA_POLIGONO logo abaixo).
+    const AREA_POLIGONO_BASE = [
         { lat: -23.664058, lng: -46.680106 }, // oeste, na Rua Terezinha Zunta Forte
         { lat: -23.664907, lng: -46.678542 }, // sudeste, perto da Av. Interlagos
         { lat: -23.663955, lng: -46.678846 }, // leste, perto do estacionamento/Cobasi
         { lat: -23.663263, lng: -46.679650 }, // norte, perto da R. Irmãs da Santa Cruz
         { lat: -23.663673, lng: -46.679710 }, // sul-central, no Assaí Atacadista
     ];
+
+    // ---------- tolerância de borda (buffer) ----------
+    // Empurra cada aresta do polígono acima pra fora, em linha reta, por
+    // TOLERANCIA_BORDA_M metros — usando vetor direção da aresta + normal
+    // perpendicular apontando pra fora — e depois recalcula cada "canto" como
+    // o cruzamento das duas arestas vizinhas já deslocadas. Isso dá uma folga
+    // real e uniforme em toda a borda (não só espalha os cantos originais),
+    // então o motorista pode oscilar um pouco o GPS perto da borda sem ser
+    // tirado da fila à toa. A lógica de expulsar da fila quando sai da área
+    // continua exatamente igual — só a área ficou um pouco maior.
+    function bufferPoligono(poligono, metros) {
+        if (!metros) return poligono.map(p => ({ ...p }));
+
+        let latRef = 0, lngRef = 0;
+        poligono.forEach(p => { latRef += p.lat; lngRef += p.lng; });
+        latRef /= poligono.length; lngRef /= poligono.length;
+
+        // projeta lat/lng pra metros num plano local (aproximação ótima pra
+        // distâncias pequenas, tipo a área de um mercado)
+        const mLat = 111320;
+        const mLng = 111320 * Math.cos(latRef * Math.PI / 180);
+        const pts = poligono.map(p => ({ x: (p.lng - lngRef) * mLng, y: (p.lat - latRef) * mLat }));
+        const n = pts.length;
+
+        // sinal da área (shoelace) diz o sentido do polígono, pra saber pra
+        // que lado de cada aresta é "fora"
+        let area2 = 0;
+        for (let i = 0; i < n; i++) {
+            const a = pts[i], b = pts[(i + 1) % n];
+            area2 += a.x * b.y - b.x * a.y;
+        }
+        const antiHorario = area2 > 0;
+
+        // desloca cada aresta pra fora por 'metros'
+        const arestas = [];
+        for (let i = 0; i < n; i++) {
+            const a = pts[i], b = pts[(i + 1) % n];
+            let dx = b.x - a.x, dy = b.y - a.y;
+            const comprimento = Math.hypot(dx, dy) || 1;
+            dx /= comprimento; dy /= comprimento;
+            const nx = antiHorario ? dy : -dy;
+            const ny = antiHorario ? -dx : dx;
+            arestas.push({
+                a: { x: a.x + nx * metros, y: a.y + ny * metros },
+                b: { x: b.x + nx * metros, y: b.y + ny * metros }
+            });
+        }
+
+        // interseção de retas: acha o novo canto onde duas arestas vizinhas
+        // (já deslocadas) se cruzam
+        function intersecao(p1, p2, p3, p4) {
+            const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
+            const d2x = p4.x - p3.x, d2y = p4.y - p3.y;
+            const denom = d1x * d2y - d1y * d2x;
+            if (Math.abs(denom) < 1e-9) return p2; // arestas paralelas: usa o ponto deslocado direto
+            const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denom;
+            return { x: p1.x + d1x * t, y: p1.y + d1y * t };
+        }
+
+        const novos = [];
+        for (let i = 0; i < n; i++) {
+            const anterior = arestas[(i - 1 + n) % n];
+            const atual = arestas[i];
+            novos.push(intersecao(anterior.a, anterior.b, atual.a, atual.b));
+        }
+
+        return novos.map(p => ({ lat: latRef + p.y / mLat, lng: lngRef + p.x / mLng }));
+    }
+
+    const TOLERANCIA_BORDA_M = 20; // folga extra em toda a borda da área verde, pra absorver a oscilação normal do GPS dentro do mercado
+    const AREA_POLIGONO = bufferPoligono(AREA_POLIGONO_BASE, TOLERANCIA_BORDA_M);
     // Endereço de destino pra traçar a rota (ponto central da área, o Assaí Atacadista)
     const DESTINO = { lat: -23.663673, lng: -46.679710, nome: 'Assaí Atacadista' };
     const DURACAO_PADRAO_MIN = 30;
@@ -267,6 +482,31 @@
     let entradasCache = [];
     let duracaoMinutos = DURACAO_PADRAO_MIN;
     let alertadosUltimoMin = {}; // { id: timestampJaAlertado }
+
+    // ---------- perfil (modal clicável na foto da fila) ----------
+    let perfilAbertoId = null; // id do motorista cujo perfil está aberto no momento
+    const GRADIENTES = [
+        { id: 'padrao',    nome: 'Padrão',    cores: null }, // usa o gradiente padrão (diamante/lendário) do CSS
+        { id: 'diamante',  nome: 'Diamante',  cores: ['#7dd3fc', '#ffffff', '#38bdf8'] },
+        { id: 'ouro',      nome: 'Ouro & Fogo', cores: ['#fde68a', '#f97316', '#ef4444'] },
+        { id: 'esmeralda', nome: 'Esmeralda', cores: ['#6ee7b7', '#059669', '#a7f3d0'] },
+        { id: 'rubi',      nome: 'Rubi',      cores: ['#fca5a5', '#dc2626', '#7f1d1d'] },
+        { id: 'artico',    nome: 'Ártico',    cores: ['#e0f2fe', '#38bdf8', '#0369a1'] },
+        { id: 'roxo',      nome: 'Ametista',  cores: ['#e9d5ff', '#a855f7', '#581c87'] },
+        { id: 'grafite',   nome: 'Grafite',   cores: ['#e5e7eb', '#6b7280', '#111827'] },
+    ];
+    function gradienteCss(id) {
+        const g = GRADIENTES.find(x => x.id === id);
+        if (!g || !g.cores) return null;
+        const c = g.cores;
+        return `linear-gradient(120deg, ${c[0]}, ${c[1]}, ${c[2]}, ${c[1]}, ${c[0]})`;
+    }
+
+    // ---------- alarme de fim de tempo na fila (só no aparelho do próprio motorista) ----------
+    let alarmeEmergenciaAtivo = false, alarmeEmergenciaTimeoutId = null;
+    let beepLembreteIntervalId = null;
+    const INTERVALO_LEMBRETE_MS = 5 * 60 * 1000;      // 3 bips a cada 5 minutos, enquanto dentro da área
+    const JANELA_ALARME_EMERGENCIA_MS = 5 * 60 * 1000; // liga o alarme de emergência faltando 5 min pra expirar
     let gpsIniciado = false, posicaoPronta = false, ultimaPosicao = null;
     let ultimaRotaCalculadaEm = 0, ultimaRotaPos = null, rotaPontosLatLng = [];
     let telaCheiaAtiva = false, pausarAutoCentralizar = 0;
@@ -431,6 +671,251 @@
         return lista;
     }
 
+    // ---------- assinatura (senha por gesto) ----------
+    // Cada "senha do tipo assinatura" é guardada como uma sequência de pontos
+    // (um traço reamostrado e normalizado), não como texto. Pra comparar duas
+    // assinaturas sem se importar em que ponto exato da tela a pessoa começou
+    // ou terminou o gesto, nem o tamanho do traço: sempre reamostramos pro
+    // mesmo número de pontos, centralizamos no zero (centróide) e reescalamos
+    // pela diagonal do traço — só a FORMA importa na comparação.
+    const ASSINATURA_N_PONTOS = 64;           // pontos reamostrados pra comparação
+    const ASSINATURA_LIMIAR_DIFERENCA = 25;   // % máximo de diferença aceitável (pedido do cliente)
+    const ASSINATURA_ESCALA_REF = 0.42;       // calibração: distância média (já normalizada) equivalente a "100% diferente" — ajustar aqui se ficar rígido/frouxo demais depois de testar com assinaturas reais
+    const ASSINATURA_MIN_PONTOS_BRUTOS = 6;   // traço mínimo pra não aceitar um simples toque/risco muito curto
+
+    function distanciaPt(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+    function comprimentoTraco(pontos) {
+        let total = 0;
+        for (let i = 1; i < pontos.length; i++) total += distanciaPt(pontos[i - 1], pontos[i]);
+        return total;
+    }
+
+    // reamostra o traço em N pontos igualmente espaçados ao longo do
+    // comprimento — independe de quantos pontos brutos o dedo gerou ou da
+    // velocidade do gesto
+    function reamostrarTraco(pontos, n) {
+        const comprimento = comprimentoTraco(pontos);
+        if (comprimento === 0) return new Array(n).fill(null).map(() => ({ x: pontos[0].x, y: pontos[0].y }));
+        const intervalo = comprimento / (n - 1);
+        const novos = [{ x: pontos[0].x, y: pontos[0].y }];
+        let distAcumulada = 0;
+        let anterior = pontos[0];
+        let i = 1;
+        while (novos.length < n && i < pontos.length) {
+            const atual = pontos[i];
+            const d = distanciaPt(anterior, atual);
+            if (d > 0 && distAcumulada + d >= intervalo) {
+                const t = (intervalo - distAcumulada) / d;
+                const novoPonto = {
+                    x: anterior.x + t * (atual.x - anterior.x),
+                    y: anterior.y + t * (atual.y - anterior.y)
+                };
+                novos.push(novoPonto);
+                anterior = novoPonto;
+                distAcumulada = 0;
+            } else {
+                distAcumulada += d;
+                anterior = atual;
+                i++;
+            }
+        }
+        while (novos.length < n) novos.push({ x: pontos[pontos.length - 1].x, y: pontos[pontos.length - 1].y });
+        return novos;
+    }
+
+    // centraliza no centróide e reescala pela diagonal do retângulo que
+    // envolve o traço — assim não importa onde na tela a pessoa desenhou nem
+    // o tamanho do gesto, só a forma dele (arredondada, suave, sem quinas)
+    function normalizarTraco(pontos) {
+        let cx = 0, cy = 0;
+        pontos.forEach(p => { cx += p.x; cy += p.y; });
+        cx /= pontos.length; cy /= pontos.length;
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        pontos.forEach(p => {
+            minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+            minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+        });
+        const diagonal = Math.hypot(maxX - minX, maxY - minY) || 1;
+
+        return pontos.map(p => ({ x: (p.x - cx) / diagonal, y: (p.y - cy) / diagonal }));
+    }
+
+    // gera o "template" pronto pra guardar (no cadastro) ou comparar (no login)
+    function processarTraco(pontosBrutos) {
+        return normalizarTraco(reamostrarTraco(pontosBrutos, ASSINATURA_N_PONTOS));
+    }
+
+    // diferença percentual entre duas assinaturas já processadas (0% = idêntica)
+    function diferencaAssinaturas(a, b) {
+        if (!a || !b || !a.length || !b.length || a.length !== b.length) return 100;
+        let somaDist = 0;
+        for (let i = 0; i < a.length; i++) somaDist += distanciaPt(a[i], b[i]);
+        const distMedia = somaDist / a.length;
+        return Math.min(100, (distMedia / ASSINATURA_ESCALA_REF) * 100);
+    }
+
+    // ---------- pad de assinatura (canvas) ----------
+    // Captura o traço em um único movimento (aperta, arrasta, solta — nunca
+    // mais de um traço), desenha suavizado com curvas por vetores entre os
+    // pontos (nunca linha reta ponto-a-ponto, que fica torta/serrilhada) e
+    // devolve o traço já processado assim que o dedo/mouse solta.
+    function criarSignaturePad(canvas, aoTerminar) {
+        const ctx = canvas.getContext('2d');
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.lineWidth = 3.2;
+        ctx.strokeStyle = '#22c55e';
+
+        let pontos = [];       // pontos brutos (usados pra comparar a assinatura, não mudou)
+        let desenhando = false;
+
+        // distância mínima entre um ponto e o próximo pra ser aceito no
+        // desenho — descarta a "tremedeira" miúda do dedo/mouse que deixaria
+        // o traço com micro-quinas em vez de uma curva lisa tipo pincel
+        const DIST_MINIMA_PONTO = 1.5;
+
+        function limpar() {
+            pontos = [];
+            desenhando = false;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function posRelativa(evt) {
+            const rect = canvas.getBoundingClientRect();
+            const p = evt.touches && evt.touches.length ? evt.touches[0] : (evt.changedTouches && evt.changedTouches.length ? evt.changedTouches[0] : evt);
+            return {
+                x: (p.clientX - rect.left) * (canvas.width / rect.width),
+                y: (p.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        // redesenha o traço inteiro suavizado com spline Catmull-Rom (convertida
+        // em curvas bezier) — passa exatamente pelos pontos captados mas com
+        // curvatura contínua nas viradas, sem nunca desenhar segmento reto/quina
+        // "de régua" como um traço cru ponto-a-ponto faria. Resultado fica com
+        // cara de traço de pincel/caneta, arredondado nas mudanças de direção.
+        function redesenhar() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (pontos.length === 1) {
+                ctx.beginPath();
+                ctx.arc(pontos[0].x, pontos[0].y, ctx.lineWidth / 2, 0, Math.PI * 2);
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.fill();
+                return;
+            }
+            if (pontos.length === 2) {
+                ctx.beginPath();
+                ctx.moveTo(pontos[0].x, pontos[0].y);
+                ctx.lineTo(pontos[1].x, pontos[1].y);
+                ctx.stroke();
+                return;
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(pontos[0].x, pontos[0].y);
+            for (let i = 0; i < pontos.length - 1; i++) {
+                const p0 = pontos[i - 1] || pontos[i];
+                const p1 = pontos[i];
+                const p2 = pontos[i + 1];
+                const p3 = pontos[i + 2] || p2;
+                // pontos de controle da bezier cúbica equivalente ao trecho
+                // Catmull-Rom entre p1 e p2 — curva suave que respeita a
+                // tangente natural do gesto em cada ponto
+                const cp1x = p1.x + (p2.x - p0.x) / 6;
+                const cp1y = p1.y + (p2.y - p0.y) / 6;
+                const cp2x = p2.x - (p3.x - p1.x) / 6;
+                const cp2y = p2.y - (p3.y - p1.y) / 6;
+                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+            }
+            ctx.stroke();
+        }
+
+        function iniciar(evt) {
+            evt.preventDefault();
+            limpar();
+            desenhando = true;
+            pontos.push(posRelativa(evt));
+            redesenhar();
+        }
+        function mover(evt) {
+            if (!desenhando) return;
+            evt.preventDefault();
+            const novo = posRelativa(evt);
+            const ultimo = pontos[pontos.length - 1];
+            if (ultimo && distanciaPt(ultimo, novo) < DIST_MINIMA_PONTO) return; // ignora tremedeira miúda
+            pontos.push(novo);
+            redesenhar();
+        }
+        function soltar(evt) {
+            if (!desenhando) return;
+            desenhando = false;
+            if (pontos.length < ASSINATURA_MIN_PONTOS_BRUTOS) { limpar(); return; }
+            const processado = processarTraco(pontos);
+            aoTerminar(processado, limpar);
+        }
+
+        canvas.addEventListener('mousedown', iniciar);
+        canvas.addEventListener('mousemove', mover);
+        window.addEventListener('mouseup', soltar);
+        canvas.addEventListener('touchstart', iniciar, { passive: false });
+        canvas.addEventListener('touchmove', mover, { passive: false });
+        canvas.addEventListener('touchend', soltar);
+        canvas.addEventListener('touchcancel', limpar);
+
+        return { limpar };
+    }
+
+    let padLoginAssinatura = null, padAdminAssinatura = null, novaAssinaturaCapturada = null;
+
+    function initSignaturePads() {
+        const canvasLogin = document.getElementById('loginAssinaturaCanvas');
+        if (canvasLogin) {
+            padLoginAssinatura = criarSignaturePad(canvasLogin, (processado, limparFn) => {
+                const id = document.getElementById('motoristaSelecionado').value;
+                const m = motoristas.find(x => x.id === id);
+                if (!m) { limparFn(); return; }
+                const diferenca = diferencaAssinaturas(processado, m.assinatura);
+                if (diferenca <= ASSINATURA_LIMIAR_DIFERENCA) {
+                    document.getElementById('loginAssinaturaStatus').textContent = '';
+                    efetuarLogin(m);
+                } else {
+                    const status = document.getElementById('loginAssinaturaStatus');
+                    status.textContent = '❌ Assinatura não reconhecida. Assine de novo.';
+                    status.style.color = '#f87171';
+                    setTimeout(limparFn, 500);
+                }
+            });
+        }
+        const canvasAdmin = document.getElementById('novaAssinaturaCanvas');
+        if (canvasAdmin) {
+            padAdminAssinatura = criarSignaturePad(canvasAdmin, (processado) => {
+                novaAssinaturaCapturada = processado;
+                const status = document.getElementById('novaAssinaturaStatus');
+                status.textContent = '✅ Assinatura capturada';
+                status.style.color = '#4ade80';
+            });
+        }
+    }
+
+    // alterna entre PIN e Assinatura no formulário de cadastro do admin
+    function escolherTipoSenha(tipo) {
+        document.getElementById('novaSenha').classList.toggle('hidden', tipo !== 'pin');
+        document.getElementById('novaAssinaturaWrap').classList.toggle('hidden', tipo !== 'assinatura');
+        document.getElementById('btnTipoPin').classList.toggle('bg-emerald-500', tipo === 'pin');
+        document.getElementById('btnTipoPin').classList.toggle('text-[#03170f]', tipo === 'pin');
+        document.getElementById('btnTipoPin').classList.toggle('bg-[#0c1220]', tipo !== 'pin');
+        document.getElementById('btnTipoAssinatura').classList.toggle('bg-emerald-500', tipo === 'assinatura');
+        document.getElementById('btnTipoAssinatura').classList.toggle('text-[#03170f]', tipo === 'assinatura');
+        document.getElementById('btnTipoAssinatura').classList.toggle('bg-[#0c1220]', tipo !== 'assinatura');
+        document.getElementById('novoTipoSenha').value = tipo;
+        if (padAdminAssinatura) padAdminAssinatura.limpar();
+        novaAssinaturaCapturada = null;
+        document.getElementById('novaAssinaturaStatus').textContent = 'Nenhuma assinatura capturada';
+        document.getElementById('novaAssinaturaStatus').style.color = '';
+    }
+
     // ---------- login do motorista ----------
     async function carregarMotoristas() {
         motoristas = await getMotoristas();
@@ -481,18 +966,23 @@
             document.getElementById('motoristaTriggerNome').classList.remove('text-slate-300');
         }
         toggleMotoristaDropdown(true); // fecha o dropdown depois de escolher
+
+        // troca a caixa de senha conforme o tipo cadastrado pra esse motorista:
+        // PIN mostra o campo de texto de sempre; assinatura já pede o gesto
+        // direto, sem precisar clicar em ENTRAR
+        const tipo = (m && m.tipoSenha) || 'pin';
+        document.getElementById('loginSenhaPin').classList.toggle('hidden', tipo !== 'pin');
+        document.getElementById('loginSenhaAssinatura').classList.toggle('hidden', tipo !== 'assinatura');
+        document.getElementById('pass').value = '';
+        if (tipo === 'assinatura' && padLoginAssinatura) padLoginAssinatura.limpar();
+        const status = document.getElementById('loginAssinaturaStatus');
+        if (status) { status.textContent = ''; }
     }
 
-    function login() {
-        const id = document.getElementById('motoristaSelecionado').value;
-        const senha = document.getElementById('pass').value.trim();
-        if (!id) return alert("Selecione um motorista");
-        if (!senha) return alert("Digite a senha");
-
-        const encontrado = motoristas.find(m => m.id === id && m.senha === senha);
-        if (!encontrado) return alert("Senha incorreta");
-
-        user = encontrado;
+    // ponto único de "entrada confirmada", chamado tanto pelo PIN quanto pela
+    // assinatura depois de validados
+    function efetuarLogin(motorista) {
+        user = motorista;
         document.getElementById('loginSection').classList.add('hidden');
         document.getElementById('filaSection').classList.remove('hidden');
         document.getElementById('nomeDisplay').textContent = user.nome;
@@ -512,8 +1002,23 @@
         }
     }
 
+    // login por PIN (botão ENTRAR) — a assinatura loga sozinha, veja initSignaturePads()
+    function login() {
+        const id = document.getElementById('motoristaSelecionado').value;
+        const senha = document.getElementById('pass').value.trim();
+        if (!id) return alert("Selecione um motorista");
+        if (!senha) return alert("Digite a senha");
+
+        const encontrado = motoristas.find(m => m.id === id && (m.tipoSenha || 'pin') === 'pin' && m.senha === senha);
+        if (!encontrado) return alert("Senha incorreta");
+
+        efetuarLogin(encontrado);
+    }
+
     function logout() {
         if (telaCheiaAtiva) sairTelaCheia();
+        pararAlarmeEmergencia();
+        pararLembreteBeeps();
         document.getElementById('avisoViradaUI').classList.add('hidden');
         rotaSteps = [];
         historicoAlertas = {};
@@ -526,12 +1031,138 @@
         document.getElementById('motoristaTriggerFoto').classList.add('hidden');
         document.getElementById('motoristaTriggerNome').textContent = 'Motorista';
         document.getElementById('motoristaTriggerNome').classList.add('text-slate-300');
+        document.getElementById('loginSenhaPin').classList.remove('hidden');
+        document.getElementById('loginSenhaAssinatura').classList.add('hidden');
+        if (padLoginAssinatura) padLoginAssinatura.limpar();
         toggleMotoristaDropdown(true);
         renderMotoristaLista();
     }
 
     function avatarPadrao(nome) {
         return 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(nome || '?');
+    }
+
+    // ---------- perfil (modal ao clicar na foto da fila) ----------
+    function renderSwatches(containerId, estiloAtual, campo) {
+        const el = document.getElementById(containerId);
+        el.innerHTML = GRADIENTES.map(g => {
+            const css = g.cores ? `linear-gradient(120deg, ${g.cores[0]}, ${g.cores[1]}, ${g.cores[2]})` : 'linear-gradient(120deg,#475569,#94a3b8)';
+            const ativo = (estiloAtual || 'padrao') === g.id ? 'ativo' : '';
+            return `<button type="button" title="${g.nome}" onclick="escolherEstilo('${campo}','${g.id}')"
+                        class="swatch-grad ${ativo}" data-campo="${campo}" data-id="${g.id}"
+                        style="background:${css}"></button>`;
+        }).join('');
+    }
+
+    function escolherEstilo(campo, id) {
+        // guarda a escolha temporariamente nos data-attributes do form (só salva de fato em salvarPerfil)
+        const containerId = campo === 'estiloPrimeiro' ? 'swatchesPrimeiro' : 'swatchesSegundo';
+        document.getElementById(containerId).dataset.escolhido = id;
+        document.querySelectorAll(`#${containerId} .swatch-grad`).forEach(b => b.classList.toggle('ativo', b.dataset.id === id));
+    }
+
+    function linkTelefone(numero, ehWhatsapp) {
+        const limpo = (numero || '').replace(/\D/g, '');
+        if (!limpo) return null;
+        if (ehWhatsapp) return `https://wa.me/${limpo}`;
+        return `tel:${limpo}`;
+    }
+
+    function abrirPerfil(id) {
+        const m = motoristas.find(x => x.id === id);
+        if (!m) return;
+        perfilAbertoId = id;
+
+        const posIdx = entradasCache.findIndex(e => e.id === id);
+        document.getElementById('perfilPosicaoTag').textContent = posIdx === 0 ? '🥇 1º na fila' : posIdx === 1 ? '🥈 2º na fila' : (posIdx > -1 ? `${posIdx + 1}º na fila` : 'Fora da fila');
+        document.getElementById('perfilFoto').src = m.foto || avatarPadrao(m.nome);
+        document.getElementById('perfilNomeView').textContent = m.nome;
+        document.getElementById('perfilFraseView').textContent = m.frase ? `"${m.frase}"` : 'Sem frase no perfil.';
+
+        const souEu = user && user.id === id;
+        document.getElementById('perfilEdicao').classList.toggle('hidden', !souEu);
+        document.getElementById('perfilContatoView').classList.toggle('hidden', souEu);
+
+        if (souEu) {
+            document.getElementById('perfilNomeInput').value = m.nome || '';
+            document.getElementById('perfilFraseInput').value = m.frase || '';
+            document.getElementById('perfilFotoInput').value = m.foto || '';
+            document.getElementById('perfilContatoInput').value = m.contato || '';
+            document.getElementById('perfilEhWhatsapp').checked = !!m.contatoWhatsapp;
+            renderSwatches('swatchesPrimeiro', m.estiloPrimeiro, 'estiloPrimeiro');
+            renderSwatches('swatchesSegundo', m.estiloSegundo, 'estiloSegundo');
+            document.getElementById('swatchesPrimeiro').dataset.escolhido = m.estiloPrimeiro || 'padrao';
+            document.getElementById('swatchesSegundo').dataset.escolhido = m.estiloSegundo || 'padrao';
+        } else {
+            const link = linkTelefone(m.contato, m.contatoWhatsapp);
+            const btn = document.getElementById('perfilBtnContato');
+            const txt = document.getElementById('perfilBtnContatoTexto');
+            if (link) {
+                btn.classList.remove('hidden');
+                txt.textContent = m.contatoWhatsapp ? 'Chamar no WhatsApp' : 'Ligar';
+                btn.dataset.link = link;
+            } else {
+                btn.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('perfilOverlay').classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function fecharPerfil() {
+        document.getElementById('perfilOverlay').classList.add('hidden');
+        perfilAbertoId = null;
+    }
+
+    function abrirContatoPerfil() {
+        const btn = document.getElementById('perfilBtnContato');
+        if (btn.dataset.link) window.location.href = btn.dataset.link;
+    }
+
+    // Salva o perfil do próprio motorista logado. Atualiza o cadastro de
+    // motoristas e, se ele já estiver na fila, atualiza nome/foto/frase
+    // diretamente na entrada da fila SEM mexer em timestamp/pos — assim a
+    // vez dele (e a de ninguém) não é afetada.
+    async function salvarPerfil() {
+        if (!user) return;
+        const novoNome = document.getElementById('perfilNomeInput').value.trim();
+        const novaFrase = document.getElementById('perfilFraseInput').value.trim();
+        const novaFoto = document.getElementById('perfilFotoInput').value.trim();
+        const novoContato = document.getElementById('perfilContatoInput').value.trim();
+        const ehWhatsapp = document.getElementById('perfilEhWhatsapp').checked;
+        const estiloPrimeiro = document.getElementById('swatchesPrimeiro').dataset.escolhido || 'padrao';
+        const estiloSegundo = document.getElementById('swatchesSegundo').dataset.escolhido || 'padrao';
+        if (!novoNome) return alert('Informe um nome');
+
+        // 1) atualiza a fila primeiro (se ele estiver nela) — mantém pos/timestamp intactos
+        const jaEstaNaFila = entradasCache.some(e => e.id === user.id);
+        if (jaEstaNaFila) {
+            const dados = await getFilaData();
+            const idx = dados.entradas.findIndex(e => e.id === user.id);
+            if (idx > -1) {
+                dados.entradas[idx] = { ...dados.entradas[idx], nome: novoNome, foto: novaFoto };
+                await salvarFilaData(dados.entradas, dados.config);
+            }
+        }
+
+        // 2) atualiza o cadastro de motoristas
+        const motos = await getMotoristas();
+        const idx = motos.findIndex(m => m.id === user.id);
+        if (idx > -1) {
+            motos[idx] = { ...motos[idx], nome: novoNome, frase: novaFrase, foto: novaFoto,
+                            contato: novoContato, contatoWhatsapp: ehWhatsapp,
+                            estiloPrimeiro, estiloSegundo };
+            await putMotoristas(motos);
+            motoristas = motos;
+            user = motos[idx];
+            document.getElementById('nomeDisplay').textContent = user.nome;
+            document.getElementById('fotoUser').src = user.foto || avatarPadrao(user.nome);
+        }
+
+        fecharPerfil();
+        await carregarFila();
+        alert('Perfil atualizado!');
     }
 
     // ---------- GPS ----------
@@ -950,6 +1581,17 @@
         if (estaNoRaio) {
             avisouSaida = false;
             if (user) await entrarNaFilaAuto();
+        }
+
+        // Depois que entra na área: desliga o alerta sonoro de navegação do GPS
+        // (não faz mais sentido, já chegou) e passa a usar só os 3 bips de
+        // lembrete a cada 5 min + o alarme de emergência perto de expirar.
+        if (user && estaNoRaio) {
+            if (!gpsSilenciado) { gpsSilenciado = true; try { localStorage.setItem('gpsSilenciado', '1'); } catch (e) {} atualizarIconeMudo(); }
+            iniciarLembreteBeeps();
+        } else {
+            pararLembreteBeeps();
+            pararAlarmeEmergencia();
         }
     }
 
@@ -1454,10 +2096,21 @@
         }
         lista.innerHTML = entradasCache.map((m, i) => {
             const posClass = i === 0 ? 'primeiro-lugar' : (i === 1 ? 'segundo-lugar' : '');
+            const moto = motoristas.find(x => x.id === m.id);
+            let estiloVars = '';
+            if (i === 0 && moto && moto.estiloPrimeiro) {
+                const css = gradienteCss(moto.estiloPrimeiro);
+                if (css) estiloVars = ` style="--grad-1:${css}"`;
+            } else if (i === 1 && moto && moto.estiloSegundo) {
+                const css = gradienteCss(moto.estiloSegundo);
+                if (css) estiloVars = ` style="--grad-2:${css}"`;
+            }
             return `
-                <div class="fila-item ${posClass} bg-[#1a2338] p-3 rounded-2xl flex items-center gap-3">
+                <div class="fila-item ${posClass} bg-[#1a2338] p-3 rounded-2xl flex items-center gap-3"${estiloVars}>
                     <span class="font-bold text-sm w-5 text-center">${i + 1}</span>
-                    <img src="${m.foto || avatarPadrao(m.nome)}" class="w-9 h-9 rounded-full object-cover border border-slate-600 flex-shrink-0">
+                    <div class="avatar-wrap" onclick="abrirPerfil('${m.id}')">
+                        <img src="${m.foto || avatarPadrao(m.nome)}" class="avatar-fila">
+                    </div>
                     <span class="flex-1 truncate">${m.nome}</span>
                     <span class="text-xs font-mono text-slate-400" id="cd-${m.id}">--:--</span>
                 </div>`;
@@ -1469,6 +2122,7 @@
     async function atualizarContadores() {
         const agora = Date.now();
         const expirados = [];
+        let dentroJanelaEmergencia = false;
 
         entradasCache.forEach(m => {
             const restanteMs = duracaoMinutos * 60000 - (agora - m.timestamp);
@@ -1489,7 +2143,20 @@
                 alertadosUltimoMin[m.id] = m.timestamp;
                 avisarUltimoMinuto();
             }
+
+            // alarme de emergência (sirene) faltando até 5 min pra expirar, só pro próprio motorista
+            if (user && m.id === user.id && restanteMs > 0 && restanteMs <= JANELA_ALARME_EMERGENCIA_MS) {
+                dentroJanelaEmergencia = true;
+            }
         });
+
+        // liga/desliga o alarme conforme a janela — para automaticamente quando
+        // a pessoa renova (o tempo volta pra cima de 5min), sai da fila, ou expira
+        if (dentroJanelaEmergencia) {
+            iniciarAlarmeEmergencia();
+        } else {
+            pararAlarmeEmergencia();
+        }
 
         if (expirados.length) {
             for (const id of expirados) await removerDaFila(id);
@@ -1526,6 +2193,88 @@
                 o.stop(ctx.currentTime + delay + 0.25);
             });
         } catch (e) { /* navegador pode bloquear áudio sem interação prévia */ }
+    }
+
+    // ---------- 3 bips de lembrete (a cada 5 min, enquanto dentro da área e na fila) ----------
+    function tocarTresBeeps() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            [0, 0.35, 0.7].forEach(delay => {
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                o.connect(g); g.connect(ctx.destination);
+                o.type = 'sine';
+                o.frequency.value = 740;
+                g.gain.setValueAtTime(0.22, ctx.currentTime + delay);
+                g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
+                o.start(ctx.currentTime + delay);
+                o.stop(ctx.currentTime + delay + 0.2);
+            });
+            if (navigator.vibrate) navigator.vibrate([120, 80, 120, 80, 120]);
+        } catch (e) { /* ignora */ }
+    }
+
+    function iniciarLembreteBeeps() {
+        if (beepLembreteIntervalId) return; // já rodando
+        beepLembreteIntervalId = setInterval(() => {
+            if (user && estaNoRaio) tocarTresBeeps();
+        }, INTERVALO_LEMBRETE_MS);
+    }
+    function pararLembreteBeeps() {
+        if (beepLembreteIntervalId) { clearInterval(beepLembreteIntervalId); beepLembreteIntervalId = null; }
+    }
+
+    // ---------- alarme de emergência (sirene tipo alarme de despertar às 3h) ----------
+    // Toca no volume máximo por 30s, para 30s, repete — igual um alarme real —
+    // até a presença ser renovada (o timestamp mudar), o motorista sair da
+    // fila, ou o tempo voltar a ficar acima da janela de emergência.
+    function tocarSireneUmCiclo(duracaoMs) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const master = ctx.createGain();
+            master.gain.value = 1; // volume máximo
+            master.connect(ctx.destination);
+
+            const o = ctx.createOscillator();
+            o.type = 'sawtooth';
+            o.connect(master);
+            const inicio = ctx.currentTime;
+            const fim = inicio + duracaoMs / 1000;
+
+            // varredura de frequência tipo sirene: sobe e desce repetidamente
+            let t = inicio;
+            o.frequency.setValueAtTime(500, t);
+            while (t < fim) {
+                o.frequency.linearRampToValueAtTime(1100, t + 0.5);
+                o.frequency.linearRampToValueAtTime(500, t + 1.0);
+                t += 1.0;
+            }
+            master.gain.setValueAtTime(0.9, inicio);
+            o.start(inicio);
+            o.stop(fim);
+            o.onended = () => { try { ctx.close(); } catch (e) {} };
+        } catch (e) { /* ignora */ }
+    }
+
+    function cicloAlarmeEmergencia() {
+        if (!alarmeEmergenciaAtivo) return;
+        tocarSireneUmCiclo(30000); // toca 30s
+        if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500, 200, 500]);
+        alarmeEmergenciaTimeoutId = setTimeout(() => {
+            if (!alarmeEmergenciaAtivo) return;
+            // fica 30s em silêncio (completando 1 minuto) e toca de novo
+            alarmeEmergenciaTimeoutId = setTimeout(cicloAlarmeEmergencia, 30000);
+        }, 30000);
+    }
+
+    function iniciarAlarmeEmergencia() {
+        if (alarmeEmergenciaAtivo) return;
+        alarmeEmergenciaAtivo = true;
+        cicloAlarmeEmergencia();
+    }
+    function pararAlarmeEmergencia() {
+        alarmeEmergenciaAtivo = false;
+        if (alarmeEmergenciaTimeoutId) { clearTimeout(alarmeEmergenciaTimeoutId); alarmeEmergenciaTimeoutId = null; }
     }
 
     // ---------- admin ----------
@@ -1567,6 +2316,7 @@
                 <div class="flex items-center gap-2">
                     <img src="${m.foto || avatarPadrao(m.nome)}" class="w-7 h-7 rounded-full object-cover">
                     <span>${m.nome}</span>
+                    <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${(m.tipoSenha || 'pin') === 'assinatura' ? 'bg-sky-900 text-sky-300' : 'bg-slate-700 text-slate-300'}">${(m.tipoSenha || 'pin') === 'assinatura' ? 'Assinatura' : 'PIN'}</span>
                 </div>
                 <button onclick="removerMotorista('${m.id}')" class="text-red-400 text-xs underline">Remover</button>
             </div>
@@ -1575,18 +2325,30 @@
 
     async function adicionarMotorista() {
         const nome = document.getElementById('novoNome').value.trim();
-        const senha = document.getElementById('novaSenha').value.trim();
+        const tipoSenha = document.getElementById('novoTipoSenha').value || 'pin';
         const foto = document.getElementById('novaFoto').value.trim();
-        if (!nome || !senha) return alert("Preencha nome e senha");
+        if (!nome) return alert("Preencha o nome");
+
+        const novoMotorista = { nome, foto, tipoSenha };
+        if (tipoSenha === 'assinatura') {
+            if (!novaAssinaturaCapturada) return alert("Peça pro motorista assinar no quadro antes de adicionar");
+            novoMotorista.assinatura = novaAssinaturaCapturada;
+            novoMotorista.senha = ''; // não usa senha de texto nesse modo
+        } else {
+            const senha = document.getElementById('novaSenha').value.trim();
+            if (!senha) return alert("Preencha a senha (PIN)");
+            novoMotorista.senha = senha;
+        }
 
         const motos = await getMotoristas();
-        const id = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36);
-        motos.push({ id, nome, senha, foto });
+        novoMotorista.id = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36);
+        motos.push(novoMotorista);
         await putMotoristas(motos);
 
         document.getElementById('novoNome').value = '';
         document.getElementById('novaSenha').value = '';
         document.getElementById('novaFoto').value = '';
+        escolherTipoSenha('pin'); // reseta o formulário de volta pro padrão PIN
         renderMotoristasAdmin();
         carregarMotoristas();
     }
@@ -1617,20 +2379,34 @@
 
         const el = document.getElementById('listaFilaAdmin');
         el.innerHTML = real.length
-            ? real.map((m, i) => `
-                <div class="bg-[#1a2338] p-3 rounded-2xl flex items-center justify-between gap-2">
+            ? '<p class="text-[11px] text-slate-500">Arraste pela alça ⠿ pra reordenar e depois toque em "Confirmar ordem".</p>'
+              + '<div id="sortableFila" class="space-y-2">' + real.map((m) => `
+                <div class="bg-[#1a2338] p-3 rounded-2xl flex items-center gap-2" data-id="${m.id}">
+                    <span class="drag-handle text-slate-500 text-lg px-1">⠿</span>
                     <img src="${m.foto || avatarPadrao(m.nome)}" class="w-8 h-8 rounded-full object-cover flex-shrink-0">
                     <div class="flex-1 min-w-0">
                         <p class="truncate">${m.nome || m.id}</p>
                         <p class="text-xs text-slate-400">${new Date(m.timestamp).toLocaleTimeString()}</p>
                     </div>
-                    <input type="number" min="1" value="${i + 1}" data-id="${m.id}"
-                           class="pos-input w-14 bg-[#0c1220] border border-slate-600 rounded-lg px-2 py-1 text-sm text-center">
                     <button onclick="removerDaFilaAdmin('${m.id}')" class="text-red-400 text-xs underline whitespace-nowrap">Tirar</button>
                 </div>
-            `).join('') + '<button onclick="salvarOrdemFila()" class="w-full bg-emerald-500 py-2 rounded-xl font-bold text-sm mt-1">Salvar ordem</button>'
+            `).join('') + '</div>'
+              + '<button onclick="salvarOrdemFila()" class="w-full bg-emerald-500 py-2 rounded-xl font-bold text-sm mt-2">Confirmar ordem</button>'
             : '<p class="text-slate-500 text-sm text-center py-4">Fila vazia</p>';
+
+        // liga o arrastar-e-soltar (SortableJS) na lista, se ela existir
+        const sortableEl = document.getElementById('sortableFila');
+        if (sortableEl) {
+            if (sortableFilaInstance) sortableFilaInstance.destroy();
+            sortableFilaInstance = new Sortable(sortableEl, {
+                handle: '.drag-handle',
+                animation: 180,
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag'
+            });
+        }
     }
+    let sortableFilaInstance = null;
 
     async function removerDaFilaAdmin(id) {
         await removerDaFila(id);
@@ -1659,11 +2435,14 @@
     }
 
     async function salvarOrdemFila() {
+        const sortableEl = document.getElementById('sortableFila');
+        const ordemIds = sortableEl
+            ? Array.from(sortableEl.children).map(div => div.dataset.id)
+            : [];
+
         const dados = await getFilaData();
         const posMap = {};
-        document.querySelectorAll('.pos-input').forEach(inp => {
-            posMap[inp.dataset.id] = parseFloat(inp.value) || 999999;
-        });
+        ordemIds.forEach((id, i) => { posMap[id] = i; });
         dados.entradas.sort((a, b) => (posMap[a.id] ?? 999999) - (posMap[b.id] ?? 999999));
         reindexar(dados.entradas);
         await salvarFilaData(dados.entradas, dados.config);
@@ -1717,6 +2496,7 @@
         lucide.createIcons();
         atualizarIconeMudo();
         atualizarIconeAlertaVisual();
+        initSignaturePads(); // liga os pads de assinatura (login e cadastro admin)
         iniciarGpsGlobal(); // pede a permissão de localização já no carregamento, antes do login
         await carregarMotoristas();
         await carregarFila();
