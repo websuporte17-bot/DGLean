@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F.R Transportes - FilaDrive</title>
+    <title>F.R Transportes</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -39,7 +39,7 @@
 <div class="max-w-[420px] mx-auto bg-[#0c1220] border border-slate-700 rounded-3xl shadow-2xl overflow-hidden">
 
     <div class="p-5 border-b border-slate-700 flex justify-between items-center bg-[#0a0f1c]">
-        <h1 class="text-2xl font-bold">FilaDrive</h1>
+        <h1 class="text-2xl font-bold">F.R TRANSPORTES🚘</h1>
         <button onclick="abrirAdmin()" class="p-3 hover:bg-slate-800 rounded-2xl">
             <i data-lucide="settings" class="w-6 h-6"></i>
         </button>
@@ -49,7 +49,7 @@
     <div id="loginSection" class="p-6">
         <div class="space-y-6">
             <select id="motoristaSelect" class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl px-5 py-4 text-lg">
-                <option value="">Carregando motoristas...</option>
+                <option value="">MOTORISTAS...</option>
             </select>
 
             <input id="pass" type="password" placeholder="Senha"
@@ -83,7 +83,7 @@
         <button onclick="solicitarPermissaoBussola()" class="w-full mt-2 text-xs text-slate-400 underline">Bússola não ativou? Toque aqui (iPhone pede permissão à parte)</button>
         <div id="statusGps" class="mt-4 text-center py-3 rounded-2xl font-medium">Solicitando localização...</div>
 
-        <button onclick="renovar()" class="w-full mt-6 bg-emerald-500 py-5 rounded-2xl font-bold">ENTRAR NA FILA / RENOVAR</button>
+        <button onclick="renovar()" class="w-full mt-6 bg-emerald-500 py-5 rounded-2xl font-bold">ENTRAR NA FILA</button>
     </div>
 
     <!-- FILA ATUAL (sempre visível) -->
