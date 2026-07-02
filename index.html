@@ -312,9 +312,10 @@
       </div>
 
       <div class="flex px-4 pt-3 gap-2">
-        <button id="tabMotoristas" onclick="mostrarTab('motoristas')" class="tab-btn active flex-1 py-2 rounded-xl text-sm font-medium">Motoristas</button>
-        <button id="tabFila" onclick="mostrarTab('fila')" class="tab-btn flex-1 py-2 rounded-xl text-sm font-medium bg-[#1a2338]">Fila</button>
-        <button id="tabAvisos" onclick="mostrarTab('avisos')" class="tab-btn flex-1 py-2 rounded-xl text-sm font-medium bg-[#1a2338]">Avisos</button>
+        <button id="tabMotoristas" onclick="mostrarTab('motoristas')" class="tab-btn active flex-1 py-2 rounded-xl text-xs font-medium">Motoristas</button>
+        <button id="tabFila" onclick="mostrarTab('fila')" class="tab-btn flex-1 py-2 rounded-xl text-xs font-medium bg-[#1a2338]">Fila</button>
+        <button id="tabAvisos" onclick="mostrarTab('avisos')" class="tab-btn flex-1 py-2 rounded-xl text-xs font-medium bg-[#1a2338]">Avisos</button>
+        <button id="tabArea" onclick="mostrarTab('area')" class="tab-btn flex-1 py-2 rounded-xl text-xs font-medium bg-[#1a2338]">Área</button>
       </div>
 
       <!-- Tab motoristas -->
@@ -389,7 +390,63 @@
         </div>
         <div id="listaAvisosAdmin" class="space-y-2"></div>
       </div>
+
+      <!-- Tab área permitida -->
+      <div id="painelArea" class="hidden p-4 space-y-3 overflow-y-auto">
+        <div class="bg-[#1a2338] p-4 rounded-2xl space-y-3">
+          <p class="text-xs text-slate-400 uppercase font-semibold">Área permitida (GPS)</p>
+          <p class="text-sm text-slate-300">Pontos do contorno: <span id="areaInfoPontos" class="font-bold">--</span></p>
+          <p class="text-sm text-slate-300">Área aproximada: <span id="areaInfoMetros" class="font-bold">--</span></p>
+          <p class="text-[11px] text-slate-500">É a área onde o motorista precisa estar (bolinha verde no mapa) pra entrar e continuar na fila. Toque no mapa pra marcar cada ponto do contorno do local; toque de novo no primeiro ponto (amarelo) pra fechar a área.</p>
+          <button onclick="abrirAreaMapModal()" class="w-full bg-emerald-500 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2">
+            <i data-lucide="map" class="w-4 h-4"></i> Trocar coordenadas da área
+          </button>
+        </div>
+      </div>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: editar área permitida no mapa (toque nos pontos, feche no 1º pin) -->
+<div id="areaMapOverlay" class="hidden fixed inset-0 bg-black z-[10025] flex flex-col">
+  <div class="p-4 bg-[#0c1220] border-b border-slate-700 flex items-start justify-between gap-3">
+    <div>
+      <h3 class="font-bold text-sm">Definir área permitida</h3>
+      <p class="text-[11px] text-slate-400 mt-1">Toque no mapa pra marcar cada ponto do contorno. Toque no 1º ponto (amarelo) pra fechar a área.</p>
+    </div>
+    <button onclick="fecharAreaMapModal()" class="p-2 bg-slate-800 rounded-xl flex-shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+  </div>
+  <div id="mapAreaEdit" class="flex-1"></div>
+  <div class="p-4 bg-[#0c1220] border-t border-slate-700 space-y-3">
+    <div class="flex justify-between text-xs text-slate-400">
+      <span>Pontos: <span id="areaEditContadorPontos" class="text-white font-bold">0</span></span>
+      <span id="areaEditStatus">Toque no mapa pra começar</span>
+      <span>Área: <span id="areaEditMetros" class="text-white font-bold">--</span></span>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="desfazerUltimoPontoArea()" class="flex-1 bg-slate-700 py-3 rounded-2xl text-sm font-medium">Desfazer ponto</button>
+      <button onclick="reiniciarAreaEdicao()" class="flex-1 bg-slate-700 py-3 rounded-2xl text-sm font-medium">Recomeçar</button>
+    </div>
+    <button id="btnAtualizarArea" onclick="salvarAreaPermitida()" disabled class="w-full bg-emerald-500 disabled:opacity-40 py-4 rounded-2xl font-bold">Atualizar área</button>
+  </div>
+</div>
+
+<!-- MODAL: hora e posição exata em que alguém entrou na fila -->
+<div id="entradaInfoOverlay" class="hidden fixed inset-0 flex items-center justify-center p-4 z-[10015]">
+  <div class="bg-[#0c1220] border border-slate-700 rounded-3xl w-full max-w-[380px] max-h-[88vh] overflow-hidden flex flex-col">
+    <div class="p-5 pb-3 flex items-start justify-between gap-3">
+      <div>
+        <p class="text-xs font-bold uppercase text-slate-400">Entrada na fila</p>
+        <h3 id="entradaInfoNome" class="text-lg font-bold leading-tight"></h3>
+        <p id="entradaInfoHora" class="text-sm text-emerald-400 mt-1"></p>
+        <p id="entradaInfoPrecisao" class="hidden text-xs text-slate-500 mt-0.5"></p>
+      </div>
+      <button onclick="fecharInfoEntrada()" class="p-2 bg-slate-800 rounded-xl flex-shrink-0"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div id="entradaInfoMapaWrap" class="hidden px-5 pb-5">
+      <div id="mapEntradaInfo" style="height: 220px; border-radius: 16px;"></div>
+    </div>
+    <p id="entradaInfoSemPosicao" class="hidden px-5 pb-5 text-sm text-slate-400">Essa entrada não tem uma posição de GPS registrada (foi adicionada manualmente pelo admin).</p>
   </div>
 </div>
 
@@ -476,7 +533,11 @@
     // e fechando do último de volta pro primeiro.
     // Esse é o contorno "real" do local — a tolerância de GPS é aplicada
     // depois, por cima dele (ver AREA_POLIGONO logo abaixo).
-    const AREA_POLIGONO_BASE = [
+    // Esse array agora é só o valor de FÁBRICA (usado se ainda não existir
+    // nenhuma área salva no servidor). Assim que o app carrega, ele busca a
+    // área de verdade guardada de forma invisível no bin de motoristas (ver
+    // AREA_CONFIG_ID mais abaixo) e substitui esse valor via aplicarAreaPoligono().
+    let AREA_POLIGONO_BASE = [
         { lat: -23.664058, lng: -46.680106 }, // oeste, na Rua Terezinha Zunta Forte
         { lat: -23.664907, lng: -46.678542 }, // sudeste, perto da Av. Interlagos
         { lat: -23.663955, lng: -46.678846 }, // leste, perto do estacionamento/Cobasi
@@ -553,10 +614,61 @@
     }
 
     const TOLERANCIA_BORDA_M = 20; // folga extra em toda a borda da área verde, pra absorver a oscilação normal do GPS dentro do mercado
-    const AREA_POLIGONO = bufferPoligono(AREA_POLIGONO_BASE, TOLERANCIA_BORDA_M);
+    let AREA_POLIGONO = bufferPoligono(AREA_POLIGONO_BASE, TOLERANCIA_BORDA_M);
     // Endereço de destino pra traçar a rota (ponto central da área, o Assaí Atacadista)
     const DESTINO = { lat: -23.663673, lng: -46.679710, nome: 'Assaí Atacadista' };
     const DURACAO_PADRAO_MIN = 30;
+
+    // ---------- área permitida configurável pelo Admin ----------
+    // A área de verdade não fica mais só fixa no código: ela é guardada de
+    // forma invisível dentro do bin de motoristas (BIN_MOTO), como um
+    // registro especial com esse id — que é filtrado de toda lista/tela de
+    // motorista (login, admin, seleção pra fila etc.), servindo só pra
+    // guardar as coordenadas do contorno da área permitida.
+    const AREA_CONFIG_ID = '__area_config__';
+
+    // tira o registro invisível de área de qualquer lista de motoristas que
+    // vá aparecer na tela (dropdown de login, lista do admin, seleção pra
+    // colocar na fila...)
+    function motoristasVisiveis(lista) {
+        return (lista || []).filter(m => m.id !== AREA_CONFIG_ID);
+    }
+
+    // procura o registro invisível de área dentro da lista de motoristas
+    function extrairAreaConfig(lista) {
+        const cfg = (lista || []).find(m => m.id === AREA_CONFIG_ID);
+        return (cfg && Array.isArray(cfg.coordenadas) && cfg.coordenadas.length >= 3) ? cfg.coordenadas : null;
+    }
+
+    // troca a área permitida em uso (recalcula o polígono com a tolerância de
+    // borda e o centro do mapa) — chamada tanto ao carregar o app quanto
+    // logo depois do admin salvar uma área nova
+    function aplicarAreaPoligono(base) {
+        AREA_POLIGONO_BASE = base;
+        AREA_POLIGONO = bufferPoligono(AREA_POLIGONO_BASE, TOLERANCIA_BORDA_M);
+        CENTRO_MAPA = centroidePoligono(AREA_POLIGONO);
+    }
+
+    // calcula a área (m²) de um polígono lat/lng, projetando pra um plano
+    // local em metros (mesma aproximação usada em bufferPoligono)
+    function areaPoligonoM2(poligono) {
+        if (!poligono || poligono.length < 3) return 0;
+        let latRef = 0, lngRef = 0;
+        poligono.forEach(p => { latRef += p.lat; lngRef += p.lng; });
+        latRef /= poligono.length; lngRef /= poligono.length;
+        const mLat = 111320, mLng = 111320 * Math.cos(latRef * Math.PI / 180);
+        const pts = poligono.map(p => ({ x: (p.lng - lngRef) * mLng, y: (p.lat - latRef) * mLat }));
+        let area2 = 0;
+        for (let i = 0; i < pts.length; i++) {
+            const a = pts[i], b = pts[(i + 1) % pts.length];
+            area2 += a.x * b.y - b.x * a.y;
+        }
+        return Math.abs(area2) / 2;
+    }
+    function formatarAreaM2(m2) {
+        if (m2 >= 10000) return (m2 / 10000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' ha';
+        return Math.round(m2).toLocaleString('pt-BR') + ' m²';
+    }
 
     let user = null;
     let map, marker, destinoMarker, rotaLayer, estaNoRaio = false, avisouSaida = false;
@@ -595,7 +707,7 @@
     let renovacaoAlarmeAtivoId = null;    // id de quem tá com o pop-up sonoro na tela agora
     let renovacaoAlarmePopupTimeoutId = null;
     let renovacaoAlarmeCronometroIntervalId = null;
-    let gpsIniciado = false, posicaoPronta = false, ultimaPosicao = null;
+    let gpsIniciado = false, posicaoPronta = false, ultimaPosicao = null, ultimaAccuracyM = null;
     let ultimaRotaCalculadaEm = 0, ultimaRotaPos = null, rotaPontosLatLng = [];
     let telaCheiaAtiva = false, pausarAutoCentralizar = 0;
     const ZOOM_NAVEGACAO = 19; // zoom usado em tela cheia — mais "perto" do caminho (antes era 18)
@@ -1025,6 +1137,8 @@
     async function carregarMotoristas() {
         try {
             motoristas = await getMotoristas();
+            const areaSalva = extrairAreaConfig(motoristas);
+            if (areaSalva) aplicarAreaPoligono(areaSalva); // usa a área definida no admin, se já existir uma salva
             renderMotoristaLista();
             marcarConexao(true);
         } catch (e) {
@@ -1043,11 +1157,12 @@
     function renderMotoristaLista() {
         const lista = document.getElementById('motoristaLista');
         const selecionadoAtual = document.getElementById('motoristaSelecionado').value;
-        if (!motoristas.length) {
+        const visiveis = motoristasVisiveis(motoristas);
+        if (!visiveis.length) {
             lista.innerHTML = '<p class="text-center text-slate-400 py-4">Nenhum motorista cadastrado</p>';
             return;
         }
-        lista.innerHTML = motoristas.map(m => `
+        lista.innerHTML = visiveis.map(m => `
             <button type="button" onclick="selecionarMotorista('${escapeHtml(m.id)}')"
                     data-id="${escapeHtml(m.id)}"
                     class="motorista-card w-full flex items-center gap-4 p-3 rounded-2xl border-2 transition-colors text-left ${selecionadoAtual === m.id ? 'border-emerald-500 bg-[#132018]' : 'border-transparent bg-[#1a2338]'}">
@@ -1510,17 +1625,10 @@
             if (marker) marker.setIcon(iconeCarro(estaNoRaio, compassHeading !== null ? compassHeading : 0));
         });
 
-        const pontosPoligono = AREA_POLIGONO.map(p => [p.lat, p.lng]);
-
-        // Cobre o mapa inteiro de vermelho, com um "buraco" no formato da área
-        // permitida (fica vermelho fora, e o buraco deixa o verde de baixo aparecer)
-        const mundo = [[85, -180], [85, 180], [-85, 180], [-85, -180]];
-        L.polygon([mundo, pontosPoligono], {
-            stroke: false, fillColor: '#ef4444', fillOpacity: 0.28
-        }).addTo(map);
-
-        // área permitida em verde, por cima, seguindo o contorno real do local
-        L.polygon(pontosPoligono, { color: '#22c55e', weight: 3, fillColor: '#22c55e', fillOpacity: 0.35 }).addTo(map);
+        // desenha a área permitida (vermelho por fora / verde por dentro) —
+        // função compartilhada com a edição de área no admin, pra poder
+        // redesenhar na hora se a área for trocada com o mapa já aberto
+        desenharAreaNoMapa(map);
 
         // marcador do destino/endereço (bandeira fixa)
         destinoMarker = L.marker([DESTINO.lat, DESTINO.lng], {
@@ -1654,6 +1762,7 @@
         // GPS abaixo.
         const exibir = posicaoSuavizadaParaExibir(latitude, longitude, accuracy, agoraGps);
         ultimaPosicao = exibir;
+        ultimaAccuracyM = accuracy;
         if (marker) {
             moverMarcadorSuave(exibir.lat, exibir.lng);
         }
@@ -1713,13 +1822,68 @@
         if (dados.entradas.some(m => m.id === user.id)) { carregarFila(); return; }
 
         const outros = dados.entradas.filter(m => m.id !== user.id);
-        outros.push({ id: user.id, nome: user.nome, foto: user.foto || '', timestamp: Date.now() });
+        outros.push({ id: user.id, nome: user.nome, foto: user.foto || '', timestamp: Date.now(), posEntrada: posicaoAtualParaRegistro() });
         reindexar(outros);
         await salvarFilaData(outros, dados.config, dados.comunicados);
 
         delete alertadosUltimoMin[user.id];
         document.getElementById('statusUser').textContent = 'Na fila ✅ (entrada automática)';
         carregarFila();
+    }
+
+    // ---------- modal com hora e posição exata da entrada na fila (botão de mapa ao lado do nome) ----------
+    let mapaEntradaInfo = null;
+    function abrirInfoEntrada(id) {
+        const m = entradasCache.find(e => e.id === id);
+        if (!m) return;
+
+        document.getElementById('entradaInfoOverlay').classList.remove('hidden');
+        document.getElementById('entradaInfoNome').textContent = m.nome;
+        document.getElementById('entradaInfoHora').textContent = m.timestamp ? new Date(m.timestamp).toLocaleString('pt-BR') : '--';
+
+        const precisaoEl = document.getElementById('entradaInfoPrecisao');
+        if (m.posEntrada && typeof m.posEntrada.accuracy === 'number') {
+            precisaoEl.textContent = `Precisão do GPS: ±${Math.round(m.posEntrada.accuracy)} m`;
+            precisaoEl.classList.remove('hidden');
+        } else {
+            precisaoEl.classList.add('hidden');
+        }
+
+        const mapaWrap = document.getElementById('entradaInfoMapaWrap');
+        const semPosicao = document.getElementById('entradaInfoSemPosicao');
+        if (m.posEntrada) {
+            mapaWrap.classList.remove('hidden');
+            semPosicao.classList.add('hidden');
+            setTimeout(() => montarMiniMapaEntrada(m.posEntrada), 60); // só monta depois do container ficar visível (senão o Leaflet mede tamanho 0)
+        } else {
+            mapaWrap.classList.add('hidden');
+            semPosicao.classList.remove('hidden');
+        }
+        lucide.createIcons();
+    }
+
+    function fecharInfoEntrada() {
+        document.getElementById('entradaInfoOverlay').classList.add('hidden');
+    }
+
+    function montarMiniMapaEntrada(pos) {
+        const el = document.getElementById('mapEntradaInfo');
+        if (mapaEntradaInfo) { mapaEntradaInfo.remove(); mapaEntradaInfo = null; }
+        el.innerHTML = '';
+        mapaEntradaInfo = L.map('mapEntradaInfo', { zoomControl: false, attributionControl: false }).setView([pos.lat, pos.lng], 18);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(mapaEntradaInfo);
+
+        // contorno da área permitida, só de referência visual
+        const pontosPoligono = AREA_POLIGONO.map(p => [p.lat, p.lng]);
+        if (pontosPoligono.length >= 3) {
+            L.polygon(pontosPoligono, { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.15 }).addTo(mapaEntradaInfo);
+        }
+        // ponto exato de onde a pessoa entrou/renovou na fila
+        L.circleMarker([pos.lat, pos.lng], { radius: 8, color: '#fff', weight: 2, fillColor: '#0ea5e9', fillOpacity: 1 }).addTo(mapaEntradaInfo);
+        if (typeof pos.accuracy === 'number') {
+            L.circle([pos.lat, pos.lng], { radius: pos.accuracy, color: '#0ea5e9', weight: 1, fillColor: '#0ea5e9', fillOpacity: 0.08 }).addTo(mapaEntradaInfo);
+        }
+        setTimeout(() => mapaEntradaInfo.invalidateSize(), 100);
     }
 
     function tratarErroGps(err) {
@@ -1736,7 +1900,7 @@
         poligono.forEach(p => { lat += p.lat; lng += p.lng; });
         return { lat: lat / poligono.length, lng: lng / poligono.length };
     }
-    const CENTRO_MAPA = centroidePoligono(AREA_POLIGONO);
+    let CENTRO_MAPA = centroidePoligono(AREA_POLIGONO);
 
     // Ray casting: verifica se o ponto (lat, lng) está dentro do polígono da área permitida
     function pontoDentroDaArea(lat, lng) {
@@ -2145,6 +2309,12 @@
 
 
 
+    // pacotinho com a posição de GPS mais recente + precisão, pra guardar junto
+    // de cada entrada na fila (mostrado depois no botão de mapa da fila)
+    function posicaoAtualParaRegistro() {
+        return ultimaPosicao ? { lat: ultimaPosicao.lat, lng: ultimaPosicao.lng, accuracy: ultimaAccuracyM ?? null } : null;
+    }
+
     async function renovar() {
         if (!user) return;
         if (!estaNoRaio) return alert("Você não está na área permitida! O GPS precisa te mostrar dentro da área verde pra renovar.");
@@ -2155,9 +2325,9 @@
 
         if (existente) {
             outros.splice(existente.pos ? Math.min(existente.pos - 1, outros.length) : outros.length, 0,
-                { ...existente, timestamp: Date.now() });
+                { ...existente, timestamp: Date.now(), posEntrada: posicaoAtualParaRegistro() });
         } else {
-            outros.push({ id: user.id, nome: user.nome, foto: user.foto || '', timestamp: Date.now() });
+            outros.push({ id: user.id, nome: user.nome, foto: user.foto || '', timestamp: Date.now(), posEntrada: posicaoAtualParaRegistro() });
         }
         reindexar(outros);
         await salvarFilaData(outros, dados.config, dados.comunicados);
@@ -2272,9 +2442,13 @@
                     </div>
                     <span class="flex-1 truncate">${escapeHtml(m.nome)}</span>
                     <span class="text-xs font-mono text-slate-400" id="cd-${m.id}">--:--</span>
+                    <button onclick="abrirInfoEntrada('${escapeHtml(m.id)}')" class="p-1.5 text-slate-500 hover:text-emerald-400 flex-shrink-0" title="Ver hora e local de entrada">
+                        <i data-lucide="map-pin" class="w-4 h-4"></i>
+                    </button>
                 </div>`;
         }).join('');
         atualizarContadores();
+        lucide.createIcons();
     }
 
     // roda a cada 1s: atualiza os cronômetros na tela sem precisar buscar no servidor toda hora
@@ -2609,19 +2783,23 @@
         document.getElementById('tabMotoristas').classList.toggle('active', tab === 'motoristas');
         document.getElementById('tabFila').classList.toggle('active', tab === 'fila');
         document.getElementById('tabAvisos').classList.toggle('active', tab === 'avisos');
+        document.getElementById('tabArea').classList.toggle('active', tab === 'area');
         document.getElementById('painelMotoristas').classList.toggle('hidden', tab !== 'motoristas');
         document.getElementById('painelFila').classList.toggle('hidden', tab !== 'fila');
         document.getElementById('painelAvisos').classList.toggle('hidden', tab !== 'avisos');
+        document.getElementById('painelArea').classList.toggle('hidden', tab !== 'area');
         if (tab === 'motoristas') renderMotoristasAdmin();
         if (tab === 'fila') renderFilaAdmin();
         if (tab === 'avisos') renderAvisosAdmin();
+        if (tab === 'area') renderAreaAdminInfo();
     }
 
     async function renderMotoristasAdmin() {
         const motos = await getMotoristas();
         motoristas = motos;
+        const visiveis = motoristasVisiveis(motos);
         const el = document.getElementById('listaMotoristasAdmin');
-        el.innerHTML = motos.length ? motos.map(m => `
+        el.innerHTML = visiveis.length ? visiveis.map(m => `
             <div class="bg-[#1a2338] p-3 rounded-2xl flex justify-between items-center">
                 <div class="flex items-center gap-2">
                     <img src="${escapeHtml(m.foto || avatarPadrao(m.nome))}" class="w-7 h-7 rounded-full object-cover">
@@ -2685,7 +2863,7 @@
     }
 
     async function renderFilaAdmin() {
-        const motos = motoristas.length ? motoristas : (motoristas = await getMotoristas());
+        const motos = motoristasVisiveis(motoristas.length ? motoristas : (motoristas = await getMotoristas()));
         const dados = await getFilaData();
         const real = dados.entradas.sort((a, b) => (a.pos ?? 999999) - (b.pos ?? 999999));
         reindexar(real);
@@ -2815,6 +2993,168 @@
         renderAvisosAdmin();
     }
 
+    function renderAreaAdminInfo() {
+        document.getElementById('areaInfoPontos').textContent = AREA_POLIGONO_BASE.length;
+        document.getElementById('areaInfoMetros').textContent = formatarAreaM2(areaPoligonoM2(AREA_POLIGONO_BASE));
+    }
+
+    // ---------- edição da área permitida no mapa (aba "Área" do admin) ----------
+    let mapaAreaEdit = null;
+    let pontosNovaArea = []; // { lat, lng, marker }
+    let poligonoEdicaoLayer = null;
+    let areaEdicaoFechada = false;
+
+    function abrirAreaMapModal() {
+        document.getElementById('areaMapOverlay').classList.remove('hidden');
+        lucide.createIcons();
+        reiniciarAreaEdicao();
+        setTimeout(() => {
+            if (!mapaAreaEdit) {
+                const centro = [CENTRO_MAPA.lat, CENTRO_MAPA.lng];
+                mapaAreaEdit = L.map('mapAreaEdit').setView(centro, 18);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 21,
+                    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+                }).addTo(mapaAreaEdit);
+                // mostra a área atual só de referência (contorno azul tracejado, não editável)
+                const pontosAtual = AREA_POLIGONO_BASE.map(p => [p.lat, p.lng]);
+                if (pontosAtual.length >= 3) {
+                    L.polygon(pontosAtual, { color: '#38bdf8', weight: 2, dashArray: '6 6', fillOpacity: 0.05 })
+                        .addTo(mapaAreaEdit).bindTooltip('Área atual', { permanent: false });
+                }
+                mapaAreaEdit.on('click', (e) => adicionarPontoArea(e.latlng));
+            }
+            mapaAreaEdit.invalidateSize();
+        }, 50);
+    }
+
+    function fecharAreaMapModal() {
+        document.getElementById('areaMapOverlay').classList.add('hidden');
+    }
+
+    function reiniciarAreaEdicao() {
+        pontosNovaArea.forEach(p => { if (mapaAreaEdit && p.marker) mapaAreaEdit.removeLayer(p.marker); });
+        pontosNovaArea = [];
+        if (poligonoEdicaoLayer && mapaAreaEdit) { mapaAreaEdit.removeLayer(poligonoEdicaoLayer); poligonoEdicaoLayer = null; }
+        areaEdicaoFechada = false;
+        atualizarInfoAreaEdicao();
+    }
+
+    function desfazerUltimoPontoArea() {
+        areaEdicaoFechada = false;
+        const ultimo = pontosNovaArea.pop();
+        if (ultimo && mapaAreaEdit) mapaAreaEdit.removeLayer(ultimo.marker);
+        redesenharPoligonoEdicao();
+        atualizarInfoAreaEdicao();
+    }
+
+    // toque no mapa: adiciona um ponto novo no contorno (a não ser que a
+    // área já esteja fechada — nesse caso usa "Desfazer" ou "Recomeçar")
+    function adicionarPontoArea(latlng) {
+        if (areaEdicaoFechada) return;
+        const ehPrimeiro = pontosNovaArea.length === 0;
+        const marker = L.circleMarker(latlng, {
+            radius: ehPrimeiro ? 10 : 7,
+            color: '#fff', weight: 2,
+            fillColor: ehPrimeiro ? '#facc15' : '#22c55e', fillOpacity: 1
+        }).addTo(mapaAreaEdit);
+
+        if (ehPrimeiro) {
+            // tocar de novo no primeiro pin (amarelo) fecha o contorno
+            marker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                fecharAreaEdicao();
+            });
+        }
+
+        pontosNovaArea.push({ lat: latlng.lat, lng: latlng.lng, marker });
+        redesenharPoligonoEdicao();
+        atualizarInfoAreaEdicao();
+    }
+
+    function fecharAreaEdicao() {
+        if (pontosNovaArea.length < 3) {
+            alert('Marque pelo menos 3 pontos antes de fechar a área.');
+            return;
+        }
+        areaEdicaoFechada = true;
+        redesenharPoligonoEdicao();
+        atualizarInfoAreaEdicao();
+    }
+
+    function redesenharPoligonoEdicao() {
+        if (!mapaAreaEdit) return;
+        if (poligonoEdicaoLayer) { mapaAreaEdit.removeLayer(poligonoEdicaoLayer); poligonoEdicaoLayer = null; }
+        if (pontosNovaArea.length < 2) return;
+        const latlngs = pontosNovaArea.map(p => [p.lat, p.lng]);
+        if (areaEdicaoFechada) {
+            poligonoEdicaoLayer = L.polygon(latlngs, { color: '#22c55e', weight: 3, fillColor: '#22c55e', fillOpacity: 0.3 }).addTo(mapaAreaEdit);
+        } else {
+            poligonoEdicaoLayer = L.polyline(latlngs, { color: '#22c55e', weight: 3, dashArray: '4 6' }).addTo(mapaAreaEdit);
+        }
+    }
+
+    function atualizarInfoAreaEdicao() {
+        document.getElementById('areaEditContadorPontos').textContent = pontosNovaArea.length;
+        const status = document.getElementById('areaEditStatus');
+        const metrosEl = document.getElementById('areaEditMetros');
+        const btn = document.getElementById('btnAtualizarArea');
+        if (areaEdicaoFechada) {
+            status.textContent = '✅ Área fechada';
+            metrosEl.textContent = formatarAreaM2(areaPoligonoM2(pontosNovaArea));
+            btn.disabled = false;
+        } else if (pontosNovaArea.length >= 3) {
+            status.textContent = 'Toque no 1º ponto (amarelo) pra fechar';
+            metrosEl.textContent = '--';
+            btn.disabled = true;
+        } else {
+            status.textContent = pontosNovaArea.length === 0 ? 'Toque no mapa pra começar' : `Marque mais ${3 - pontosNovaArea.length} ponto(s)`;
+            metrosEl.textContent = '--';
+            btn.disabled = true;
+        }
+    }
+
+    // camadas do polígono desenhado no mapa principal do motorista (a área
+    // verde/vermelha) — guardadas aqui pra poder redesenhar na hora se o
+    // admin trocar a área com esse mapa já aberto na mesma página
+    let areaLayersMapaPrincipal = [];
+    function desenharAreaNoMapa(mapaAlvo) {
+        areaLayersMapaPrincipal.forEach(l => mapaAlvo.removeLayer(l));
+        areaLayersMapaPrincipal = [];
+        const pontosPoligono = AREA_POLIGONO.map(p => [p.lat, p.lng]);
+        const mundo = [[85, -180], [85, 180], [-85, 180], [-85, -180]];
+        const vermelho = L.polygon([mundo, pontosPoligono], {
+            stroke: false, fillColor: '#ef4444', fillOpacity: 0.28
+        }).addTo(mapaAlvo);
+        const verde = L.polygon(pontosPoligono, { color: '#22c55e', weight: 3, fillColor: '#22c55e', fillOpacity: 0.35 }).addTo(mapaAlvo);
+        areaLayersMapaPrincipal.push(vermelho, verde);
+    }
+
+    async function salvarAreaPermitida() {
+        if (!areaEdicaoFechada || pontosNovaArea.length < 3) {
+            return alert('Feche a área tocando no primeiro ponto (amarelo) antes de atualizar.');
+        }
+        const coords = pontosNovaArea.map(p => ({ lat: p.lat, lng: p.lng }));
+        const btn = document.getElementById('btnAtualizarArea');
+        btn.disabled = true;
+        try {
+            const motos = await getMotoristas();
+            const idx = motos.findIndex(m => m.id === AREA_CONFIG_ID);
+            const registro = { id: AREA_CONFIG_ID, tipo: 'area_config', coordenadas: coords, atualizadoEm: Date.now() };
+            if (idx > -1) motos[idx] = registro; else motos.push(registro);
+            await putMotoristas(motos);
+            motoristas = motos;
+            aplicarAreaPoligono(coords);
+            if (map) desenharAreaNoMapa(map); // atualiza na hora o mapa do motorista, se já estiver aberto
+            alert('Área permitida atualizada! Quem já estiver com o app aberto recebe a nova área ao recarregar (ou na próxima vez que entrar).');
+            fecharAreaMapModal();
+            renderAreaAdminInfo();
+        } catch (e) {
+            alert('Não deu pra salvar a área — confere sua conexão e tenta de novo.');
+            btn.disabled = false;
+        }
+    }
+
     async function adminAdicionarFila() {
         const id = document.getElementById('selectAdicionarFila').value;
         if (!id) return alert("Selecione um motorista");
@@ -2827,7 +3167,7 @@
         const posDesejada = posInput ? parseInt(posInput) : real.length + 1;
         const idx = Math.max(0, Math.min(real.length, posDesejada - 1));
 
-        real.splice(idx, 0, { id, nome: motorista.nome, foto: motorista.foto || '', timestamp: Date.now() });
+        real.splice(idx, 0, { id, nome: motorista.nome, foto: motorista.foto || '', timestamp: Date.now(), posEntrada: null });
         reindexar(real);
         await salvarFilaData(real, dados.config, dados.comunicados);
 
