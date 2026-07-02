@@ -77,6 +77,16 @@
         /* efeito de toque nos botões: encolhe rapidinho ao tocar/clicar */
         button { transition: transform .1s ease, opacity .1s ease; }
         button:active { transform: scale(0.94); opacity: .85; }
+
+        /* ---------- padrão de desenho (senha tipo Android pattern lock) ---------- */
+        .pattern-grid { width: 220px; height: 220px; margin: 0 auto; touch-action: none; position: relative; }
+        .pattern-grid svg { position: absolute; inset: 0; pointer-events: none; }
+        .pattern-dot {
+            position: absolute; width: 22px; height: 22px; margin-left: -11px; margin-top: -11px;
+            border-radius: 9999px; border: 2px solid #475569; background: #1a2338;
+            transition: background .15s, border-color .15s, transform .15s;
+        }
+        .pattern-dot.ativo { background: #22c55e; border-color: #22c55e; transform: scale(1.2); }
     </style>
 </head>
 <body class="min-h-screen p-4">
@@ -113,13 +123,6 @@
                        class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl px-5 py-4">
 
                 <button onclick="login()" class="w-full bg-emerald-500 py-5 rounded-2xl font-bold">ENTRAR</button>
-            </div>
-
-            <div id="loginSenhaAssinatura" class="hidden space-y-2">
-                <p class="text-center text-sm text-slate-400">Faça sua assinatura pra entrar</p>
-                <canvas id="loginAssinaturaCanvas" width="340" height="170"
-                        class="w-full bg-[#1a2338] border border-slate-600 rounded-2xl" style="touch-action:none;"></canvas>
-                <p id="loginAssinaturaStatus" class="text-center text-xs font-medium h-4">&nbsp;</p>
             </div>
 
             <div id="statusGpsLogin" class="text-center py-3 rounded-2xl font-medium text-sm bg-[#1a2338]">Solicitando localização...</div>
@@ -222,6 +225,70 @@
     </div>
 </div>
 
+<!-- AVISO DISCRETO: última sincronização com o servidor falhou (sem internet,
+     JSONbin fora do ar etc). Some sozinho assim que uma sincronização der certo. -->
+<div id="erroConexaoUI" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-[10006] bg-red-900/90 backdrop-blur text-red-200 text-xs font-medium px-4 py-2 rounded-2xl shadow-xl">
+    ⚠️ Sem conexão com o servidor — tentando de novo...
+</div>
+
+<!-- AVISO VISUAL: motoristas há mais de 10min sem renovar (sem som), visível pra
+     todo mundo com o site aberto. Some sozinho quando não sobrar ninguém nessa janela. -->
+<div id="avisoRenovacaoDropdown" class="hidden fixed top-3 left-3 right-16 z-[9998] bg-[#0c1220]/95 backdrop-blur border border-amber-500/40 rounded-2xl shadow-xl max-h-[40vh] overflow-y-auto">
+    <div id="avisoRenovacaoLista" class="divide-y divide-slate-700"></div>
+</div>
+
+<!-- POP-UP: alarme de renovação nos últimos 30s antes de expulsar (som + vibração,
+     visível/audível pra todo mundo com o site aberto). Toca só 1 vez por renovação. -->
+<div id="alarmeRenovacaoOverlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[10003]">
+  <div class="bg-[#0c1220] border-2 border-red-500 rounded-3xl w-full max-w-[380px] p-6 text-center space-y-3">
+    <img id="alarmeRenovacaoFoto" class="w-20 h-20 rounded-2xl object-cover mx-auto border-2 border-red-500">
+    <h3 id="alarmeRenovacaoNome" class="text-xl font-bold"></h3>
+    <p id="alarmeRenovacaoCronometro" class="text-3xl font-mono font-bold text-red-400">00:30</p>
+    <p class="text-sm text-slate-300">Será retirado da fila automaticamente se não renovar!</p>
+  </div>
+</div>
+
+<!-- MODAL DE COMUNICADOS: aparece pra quem abre o site, enquanto houver algum
+     comunicado ativo criado no Admin. Fecha com o X (por comunicado). -->
+<div id="comunicadosOverlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[10004]">
+  <div class="bg-[#0c1220] border border-slate-700 rounded-3xl w-full max-w-[420px] max-h-[80vh] overflow-y-auto p-5 space-y-3">
+    <div id="comunicadosLista" class="space-y-3"></div>
+  </div>
+</div>
+
+<!-- MODAL: padrão de desenho no cadastro do admin (só confirma com OK) -->
+<div id="padraoAdminOverlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[10005]">
+  <div class="bg-[#0c1220] border border-slate-700 rounded-3xl w-full max-w-[320px] p-6 space-y-3 text-center">
+    <h3 class="text-lg font-bold">Padrão de desbloqueio</h3>
+    <p class="text-xs text-slate-400">Peça pro motorista desenhar o padrão (mínimo 4 pontos)</p>
+    <div id="novoPadraoGrid" class="pattern-grid" style="width:220px;height:220px;">
+        <svg id="novoPadraoSvg"></svg>
+    </div>
+    <p id="novoPadraoStatus" class="text-xs text-slate-500 h-4">Nenhum padrão capturado</p>
+    <div class="flex gap-2">
+      <button type="button" onclick="limparNovoPadrao()" class="flex-1 bg-slate-700 py-2.5 rounded-xl text-sm font-medium">Limpar</button>
+      <button type="button" id="btnOkPadraoAdmin" onclick="confirmarPadraoAdmin()" disabled
+              class="flex-1 bg-emerald-500 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed">OK</button>
+    </div>
+    <button type="button" onclick="fecharModalPadraoAdmin()" class="text-xs text-slate-400 underline">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL: padrão de desenho no login (sem botão OK — desenhando certo já entra) -->
+<div id="loginPadraoOverlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[10005]">
+  <div class="bg-[#0c1220] border border-slate-700 rounded-3xl w-full max-w-[320px] p-6 space-y-3 text-center relative">
+    <button type="button" onclick="fecharModalPadraoLogin()" class="absolute top-3 right-3 p-1.5 bg-slate-800 rounded-lg">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
+    <h3 id="loginPadraoNomeModal" class="text-lg font-bold"></h3>
+    <p class="text-xs text-slate-400">Desenhe seu padrão pra entrar</p>
+    <div id="loginPadraoGrid" class="pattern-grid" style="width:220px;height:220px;">
+        <svg id="loginPadraoSvg"></svg>
+    </div>
+    <p id="loginPadraoStatus" class="text-center text-xs font-medium h-4">&nbsp;</p>
+  </div>
+</div>
+
 <!-- MODAL ADMIN -->
 <div id="adminOverlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center p-4 z-50">
   <div class="bg-[#0c1220] border border-slate-700 rounded-3xl w-full max-w-[420px] max-h-[85vh] overflow-hidden flex flex-col">
@@ -247,6 +314,7 @@
       <div class="flex px-4 pt-3 gap-2">
         <button id="tabMotoristas" onclick="mostrarTab('motoristas')" class="tab-btn active flex-1 py-2 rounded-xl text-sm font-medium">Motoristas</button>
         <button id="tabFila" onclick="mostrarTab('fila')" class="tab-btn flex-1 py-2 rounded-xl text-sm font-medium bg-[#1a2338]">Fila</button>
+        <button id="tabAvisos" onclick="mostrarTab('avisos')" class="tab-btn flex-1 py-2 rounded-xl text-sm font-medium bg-[#1a2338]">Avisos</button>
       </div>
 
       <!-- Tab motoristas -->
@@ -260,24 +328,22 @@
           <div class="flex gap-2">
             <button type="button" id="btnTipoPin" onclick="escolherTipoSenha('pin')"
                     class="flex-1 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-[#03170f]">PIN (números/letras)</button>
-            <button type="button" id="btnTipoAssinatura" onclick="escolherTipoSenha('assinatura')"
-                    class="flex-1 py-2 rounded-xl text-xs font-bold bg-[#0c1220] border border-slate-600">Assinatura</button>
+            <button type="button" id="btnTipoPadrao" onclick="escolherTipoSenha('padrao')"
+                    class="flex-1 py-2 rounded-xl text-xs font-bold bg-[#0c1220] border border-slate-600">Padrão (desenho)</button>
           </div>
 
-          <input id="novaSenha" placeholder="Senha" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
+          <input id="novaSenha" placeholder="Senha (sem aspas)" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
 
-          <div id="novaAssinaturaWrap" class="hidden space-y-2">
-            <p class="text-xs text-slate-500">Peça pro motorista assinar abaixo, num traço só (sem soltar o dedo no meio)</p>
-            <canvas id="novaAssinaturaCanvas" width="300" height="150"
-                    class="w-full bg-[#0c1220] border border-slate-600 rounded-xl" style="touch-action:none;"></canvas>
-            <div class="flex justify-between items-center">
-              <span id="novaAssinaturaStatus" class="text-xs text-slate-500">Nenhuma assinatura capturada</span>
-              <button type="button" onclick="if(padAdminAssinatura){padAdminAssinatura.limpar();} novaAssinaturaCapturada=null; document.getElementById('novaAssinaturaStatus').textContent='Nenhuma assinatura capturada'; document.getElementById('novaAssinaturaStatus').style.color='';" class="text-xs text-red-400 underline">Limpar</button>
-            </div>
+          <div id="novoPadraoWrap" class="hidden space-y-2">
+            <button type="button" onclick="abrirModalPadraoAdmin()"
+                    class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-3 text-sm text-left flex justify-between items-center gap-2">
+              <span id="novoPadraoResumo" class="text-slate-500">Toque pra desenhar o padrão (mínimo 4 pontos)</span>
+              <i data-lucide="pencil" class="w-4 h-4 text-slate-500 flex-shrink-0"></i>
+            </button>
           </div>
 
           <input id="novaFoto" placeholder="Link da foto (opcional)" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
-          <button onclick="adicionarMotorista()" class="w-full bg-emerald-500 py-2 rounded-xl font-bold text-sm">Adicionar</button>
+          <button onclick="adicionarMotorista()" id="btnAdicionarMotorista" class="w-full bg-emerald-500 py-2 rounded-xl font-bold text-sm disabled:opacity-50">Adicionar</button>
         </div>
         <div id="listaMotoristasAdmin" class="space-y-2"></div>
       </div>
@@ -305,6 +371,23 @@
           <p class="text-[11px] text-slate-500">Obs: essa pessoa só sai automaticamente por localização quando abrir o app no celular dela e o GPS detectar que está fora da área.</p>
         </div>
         <div id="listaFilaAdmin" class="space-y-2"></div>
+      </div>
+
+      <!-- Tab avisos -->
+      <div id="painelAvisos" class="hidden p-4 space-y-3 overflow-y-auto">
+        <div class="bg-[#1a2338] p-4 rounded-2xl space-y-2">
+          <p class="text-xs text-slate-400 uppercase font-semibold" id="tituloFormAviso">Criar comunicado</p>
+          <input type="hidden" id="avisoEditandoId" value="">
+          <textarea id="avisoTexto" rows="3" placeholder="Texto do comunicado"
+                    class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm resize-none"></textarea>
+          <p class="text-xs text-slate-400 pt-1">Ativo até</p>
+          <input id="avisoAtivoAte" type="datetime-local" class="w-full bg-[#0c1220] border border-slate-600 rounded-xl px-4 py-2 text-sm">
+          <div class="flex gap-2">
+            <button id="btnSalvarAviso" onclick="salvarComunicado()" class="flex-1 bg-emerald-500 py-2 rounded-xl font-bold text-sm">Criar comunicado</button>
+            <button id="btnCancelarEdicaoAviso" onclick="cancelarEdicaoComunicado()" class="hidden bg-slate-700 px-4 rounded-xl font-medium text-sm">Cancelar</button>
+          </div>
+        </div>
+        <div id="listaAvisosAdmin" class="space-y-2"></div>
       </div>
     </div>
   </div>
@@ -502,11 +585,16 @@
         return `linear-gradient(120deg, ${c[0]}, ${c[1]}, ${c[2]}, ${c[1]}, ${c[0]})`;
     }
 
-    // ---------- alarme de fim de tempo na fila (só no aparelho do próprio motorista) ----------
-    let alarmeEmergenciaAtivo = false, alarmeEmergenciaTimeoutId = null;
+    // ---------- alarme de renovação (visível/audível pra todo mundo com o site aberto) ----------
     let beepLembreteIntervalId = null;
     const INTERVALO_LEMBRETE_MS = 5 * 60 * 1000;      // 3 bips a cada 5 minutos, enquanto dentro da área
-    const JANELA_ALARME_EMERGENCIA_MS = 5 * 60 * 1000; // liga o alarme de emergência faltando 5 min pra expirar
+    const JANELA_VISUAL_RENOVACAO_MS = 5 * 60 * 1000;  // faltando 5min: aviso visual (sem som) pra todo mundo
+    const JANELA_ALARME_RENOVACAO_MS = 30 * 1000;      // faltando 30s: alarme sonoro + pop-up pra todo mundo, 1x só
+    let renovacaoAlarmeTocadoPara = {};   // { [id]: timestamp da entrada que já disparou o alarme sonoro, pra não repetir }
+    let renovacaoAlarmeFilaPendente = []; // motoristas esperando a vez de mostrar o pop-up sonoro
+    let renovacaoAlarmeAtivoId = null;    // id de quem tá com o pop-up sonoro na tela agora
+    let renovacaoAlarmePopupTimeoutId = null;
+    let renovacaoAlarmeCronometroIntervalId = null;
     let gpsIniciado = false, posicaoPronta = false, ultimaPosicao = null;
     let ultimaRotaCalculadaEm = 0, ultimaRotaPos = null, rotaPontosLatLng = [];
     let telaCheiaAtiva = false, pausarAutoCentralizar = 0;
@@ -637,13 +725,24 @@
     const headersPut = { 'Content-Type': 'application/json', 'X-Master-Key': KEY };
 
     // ---------- helpers de dados ----------
+    // Guarda se a última tentativa de falar com o servidor deu certo, pra
+    // mostrar um aviso discreto (ver erroConexaoUI) em vez de a tela travar
+    // ou parecer que "sumiu" tudo quando o wi-fi/dados cai por um instante.
+    let ultimaSincronizacaoFalhou = false;
+    function marcarConexao(ok) {
+        ultimaSincronizacaoFalhou = !ok;
+        const el = document.getElementById('erroConexaoUI');
+        if (el) el.classList.toggle('hidden', ok);
+    }
     async function getMotoristas() {
         const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_MOTO}/latest`, { headers: headersGet });
+        if (!res.ok) throw new Error('Falha ao buscar motoristas (HTTP ' + res.status + ')');
         const data = await res.json();
         return data.record || [];
     }
     async function putMotoristas(lista) {
-        await fetch(`https://api.jsonbin.io/v3/b/${BIN_MOTO}`, { method: 'PUT', headers: headersPut, body: JSON.stringify(lista) });
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_MOTO}`, { method: 'PUT', headers: headersPut, body: JSON.stringify(lista) });
+        if (!res.ok) throw new Error('Falha ao salvar motoristas (HTTP ' + res.status + ')');
     }
 
     // O bin da fila agora guarda um OBJETO { config, entradas }.
@@ -651,275 +750,286 @@
     // o registro em si nunca é um array vazio, então o JSONbin nunca fica "vazio" de verdade.
     async function getFilaData() {
         const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_FILA}/latest`, { headers: headersGet });
+        if (!res.ok) throw new Error('Falha ao buscar a fila (HTTP ' + res.status + ')');
         const data = await res.json();
         const rec = data.record;
         if (Array.isArray(rec)) {
             // migração de um formato antigo (array puro / fantasma manual)
-            return { config: { duracaoMinutos: DURACAO_PADRAO_MIN }, entradas: rec.filter(m => m.id !== 'fantasma') };
+            return { config: { duracaoMinutos: DURACAO_PADRAO_MIN }, entradas: rec.filter(m => m.id !== 'fantasma'), comunicados: [] };
         }
         return {
             config: { duracaoMinutos: (rec && rec.config && rec.config.duracaoMinutos) || DURACAO_PADRAO_MIN },
-            entradas: (rec && rec.entradas) || []
+            entradas: (rec && rec.entradas) || [],
+            comunicados: (rec && rec.comunicados) || []
         };
     }
-    async function salvarFilaData(entradas, config) {
-        const body = { config: config || { duracaoMinutos }, entradas };
-        await fetch(`https://api.jsonbin.io/v3/b/${BIN_FILA}`, { method: 'PUT', headers: headersPut, body: JSON.stringify(body) });
+    async function salvarFilaData(entradas, config, comunicados) {
+        const body = { config: config || { duracaoMinutos }, entradas, comunicados: comunicados || [] };
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_FILA}`, { method: 'PUT', headers: headersPut, body: JSON.stringify(body) });
+        if (!res.ok) throw new Error('Falha ao salvar a fila (HTTP ' + res.status + ')');
     }
     function reindexar(lista) {
         lista.forEach((m, i) => { m.pos = i + 1; });
         return lista;
     }
 
-    // ---------- assinatura (senha por gesto) ----------
-    // Cada "senha do tipo assinatura" é guardada como uma sequência de pontos
-    // (um traço reamostrado e normalizado), não como texto. Pra comparar duas
-    // assinaturas sem se importar em que ponto exato da tela a pessoa começou
-    // ou terminou o gesto, nem o tamanho do traço: sempre reamostramos pro
-    // mesmo número de pontos, centralizamos no zero (centróide) e reescalamos
-    // pela diagonal do traço — só a FORMA importa na comparação.
-    const ASSINATURA_N_PONTOS = 64;           // pontos reamostrados pra comparação
-    const ASSINATURA_LIMIAR_DIFERENCA = 25;   // % máximo de diferença aceitável (pedido do cliente)
-    const ASSINATURA_ESCALA_REF = 0.42;       // calibração: distância média (já normalizada) equivalente a "100% diferente" — ajustar aqui se ficar rígido/frouxo demais depois de testar com assinaturas reais
-    const ASSINATURA_MIN_PONTOS_BRUTOS = 6;   // traço mínimo pra não aceitar um simples toque/risco muito curto
-
-    function distanciaPt(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-
-    function comprimentoTraco(pontos) {
-        let total = 0;
-        for (let i = 1; i < pontos.length; i++) total += distanciaPt(pontos[i - 1], pontos[i]);
-        return total;
+    // ---------- senha de texto: bloqueia caracteres que quebrariam o JSON salvo no servidor ----------
+    // Deixa livre letras, números e a maioria dos símbolos — só tira aspas
+    // simples/duplas e barra invertida, que são os únicos que de fato podem
+    // corromper o JSON guardado (o resto é seguro dentro de uma string JSON).
+    function limparCaracteresPerigosos(valor) {
+        return (valor || '').replace(/["'\\]/g, '');
     }
 
-    // reamostra o traço em N pontos igualmente espaçados ao longo do
-    // comprimento — independe de quantos pontos brutos o dedo gerou ou da
-    // velocidade do gesto
-    function reamostrarTraco(pontos, n) {
-        const comprimento = comprimentoTraco(pontos);
-        if (comprimento === 0) return new Array(n).fill(null).map(() => ({ x: pontos[0].x, y: pontos[0].y }));
-        const intervalo = comprimento / (n - 1);
-        const novos = [{ x: pontos[0].x, y: pontos[0].y }];
-        let distAcumulada = 0;
-        let anterior = pontos[0];
-        let i = 1;
-        while (novos.length < n && i < pontos.length) {
-            const atual = pontos[i];
-            const d = distanciaPt(anterior, atual);
-            if (d > 0 && distAcumulada + d >= intervalo) {
-                const t = (intervalo - distAcumulada) / d;
-                const novoPonto = {
-                    x: anterior.x + t * (atual.x - anterior.x),
-                    y: anterior.y + t * (atual.y - anterior.y)
-                };
-                novos.push(novoPonto);
-                anterior = novoPonto;
-                distAcumulada = 0;
-            } else {
-                distAcumulada += d;
-                anterior = atual;
-                i++;
-            }
-        }
-        while (novos.length < n) novos.push({ x: pontos[pontos.length - 1].x, y: pontos[pontos.length - 1].y });
-        return novos;
+    // ---------- escapa HTML antes de jogar texto/URL vindos de dados salvos dentro de innerHTML ----------
+    // Nome de motorista, texto de comunicado e link de foto são digitados livremente
+    // no Admin; sem isso, alguém poderia colar algo tipo <img onerror=...> e rodar
+    // script no navegador de quem tá olhando a fila (XSS refletido/armazenado).
+    function escapeHtml(valor) {
+        return String(valor ?? '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[ch]));
     }
 
-    // centraliza no centróide e reescala pela diagonal do retângulo que
-    // envolve o traço — assim não importa onde na tela a pessoa desenhou nem
-    // o tamanho do gesto, só a forma dele (arredondada, suave, sem quinas)
-    function normalizarTraco(pontos) {
-        let cx = 0, cy = 0;
-        pontos.forEach(p => { cx += p.x; cy += p.y; });
-        cx /= pontos.length; cy /= pontos.length;
+    // ---------- padrão de desenho (senha tipo "Android pattern lock") ----------
+    // Em vez de um traço livre, a pessoa conecta bolinhas de uma grade 3x3
+    // (mínimo 4, igual ao padrão do Android). A "senha" é simplesmente a
+    // sequência de índices (0 a 8) das bolinhas na ordem que foram tocadas —
+    // pra bater, o padrão desenhado agora precisa ser EXATAMENTE a mesma
+    // sequência do que foi salvo no cadastro.
+    const PADRAO_MIN_PONTOS = 4;
+    const PADRAO_RAIO_TOQUE_PX = 24; // distância máxima do dedo até o centro de uma bolinha pra "grudar" nela
 
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        pontos.forEach(p => {
-            minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-            minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
-        });
-        const diagonal = Math.hypot(maxX - minX, maxY - minY) || 1;
-
-        return pontos.map(p => ({ x: (p.x - cx) / diagonal, y: (p.y - cy) / diagonal }));
+    function padroesIguais(a, b) {
+        if (!a || !b || a.length !== b.length) return false;
+        return a.every((v, i) => v === b[i]);
     }
 
-    // gera o "template" pronto pra guardar (no cadastro) ou comparar (no login)
-    function processarTraco(pontosBrutos) {
-        return normalizarTraco(reamostrarTraco(pontosBrutos, ASSINATURA_N_PONTOS));
-    }
-
-    // diferença percentual entre duas assinaturas já processadas (0% = idêntica)
-    function diferencaAssinaturas(a, b) {
-        if (!a || !b || !a.length || !b.length || a.length !== b.length) return 100;
-        let somaDist = 0;
-        for (let i = 0; i < a.length; i++) somaDist += distanciaPt(a[i], b[i]);
-        const distMedia = somaDist / a.length;
-        return Math.min(100, (distMedia / ASSINATURA_ESCALA_REF) * 100);
-    }
-
-    // ---------- pad de assinatura (canvas) ----------
-    // Captura o traço em um único movimento (aperta, arrasta, solta — nunca
-    // mais de um traço), desenha suavizado com curvas por vetores entre os
-    // pontos (nunca linha reta ponto-a-ponto, que fica torta/serrilhada) e
-    // devolve o traço já processado assim que o dedo/mouse solta.
-    function criarSignaturePad(canvas, aoTerminar) {
-        const ctx = canvas.getContext('2d');
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.lineWidth = 3.2;
-        ctx.strokeStyle = '#22c55e';
-
-        let pontos = [];       // pontos brutos (usados pra comparar a assinatura, não mudou)
+    function criarPatternPad(container, svg, aoTerminar) {
+        const N = 3; // grade 3x3
+        const margem = 12;
+        let centros = [];
+        let caminho = [];
         let desenhando = false;
 
-        // distância mínima entre um ponto e o próximo pra ser aceito no
-        // desenho — descarta a "tremedeira" miúda do dedo/mouse que deixaria
-        // o traço com micro-quinas em vez de uma curva lisa tipo pincel
-        const DIST_MINIMA_PONTO = 1.5;
+        function montarGrade() {
+            container.querySelectorAll('.pattern-dot').forEach(el => el.remove());
+            const rect = container.getBoundingClientRect();
+            centros = [];
+            for (let lin = 0; lin < N; lin++) {
+                for (let col = 0; col < N; col++) {
+                    const cx = margem + col * (rect.width - margem * 2) / (N - 1);
+                    const cy = margem + lin * (rect.height - margem * 2) / (N - 1);
+                    centros.push({ x: cx, y: cy });
+                    const dot = document.createElement('div');
+                    dot.className = 'pattern-dot';
+                    dot.dataset.i = centros.length - 1;
+                    dot.style.left = cx + 'px';
+                    dot.style.top = cy + 'px';
+                    container.appendChild(dot);
+                }
+            }
+        }
 
         function limpar() {
-            pontos = [];
+            caminho = [];
             desenhando = false;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            svg.innerHTML = '';
+            container.querySelectorAll('.pattern-dot').forEach(el => el.classList.remove('ativo'));
+        }
+
+        function desenharLinha(a, b) {
+            const linha = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            linha.setAttribute('x1', a.x); linha.setAttribute('y1', a.y);
+            linha.setAttribute('x2', b.x); linha.setAttribute('y2', b.y);
+            linha.setAttribute('stroke', '#22c55e');
+            linha.setAttribute('stroke-width', '4');
+            linha.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(linha);
+        }
+
+        function redesenharLinhas(pontoSolto) {
+            svg.innerHTML = '';
+            for (let i = 0; i < caminho.length - 1; i++) desenharLinha(centros[caminho[i]], centros[caminho[i + 1]]);
+            if (pontoSolto && caminho.length) desenharLinha(centros[caminho[caminho.length - 1]], pontoSolto);
         }
 
         function posRelativa(evt) {
-            const rect = canvas.getBoundingClientRect();
-            const p = evt.touches && evt.touches.length ? evt.touches[0] : (evt.changedTouches && evt.changedTouches.length ? evt.changedTouches[0] : evt);
-            return {
-                x: (p.clientX - rect.left) * (canvas.width / rect.width),
-                y: (p.clientY - rect.top) * (canvas.height / rect.height)
-            };
+            const rect = container.getBoundingClientRect();
+            return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
         }
 
-        // redesenha o traço inteiro suavizado com spline Catmull-Rom (convertida
-        // em curvas bezier) — passa exatamente pelos pontos captados mas com
-        // curvatura contínua nas viradas, sem nunca desenhar segmento reto/quina
-        // "de régua" como um traço cru ponto-a-ponto faria. Resultado fica com
-        // cara de traço de pincel/caneta, arredondado nas mudanças de direção.
-        function redesenhar() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (pontos.length === 1) {
-                ctx.beginPath();
-                ctx.arc(pontos[0].x, pontos[0].y, ctx.lineWidth / 2, 0, Math.PI * 2);
-                ctx.fillStyle = ctx.strokeStyle;
-                ctx.fill();
-                return;
+        function dotSobre(pos) {
+            for (let i = 0; i < centros.length; i++) {
+                if (Math.hypot(centros[i].x - pos.x, centros[i].y - pos.y) < PADRAO_RAIO_TOQUE_PX) return i;
             }
-            if (pontos.length === 2) {
-                ctx.beginPath();
-                ctx.moveTo(pontos[0].x, pontos[0].y);
-                ctx.lineTo(pontos[1].x, pontos[1].y);
-                ctx.stroke();
-                return;
-            }
+            return -1;
+        }
 
-            ctx.beginPath();
-            ctx.moveTo(pontos[0].x, pontos[0].y);
-            for (let i = 0; i < pontos.length - 1; i++) {
-                const p0 = pontos[i - 1] || pontos[i];
-                const p1 = pontos[i];
-                const p2 = pontos[i + 1];
-                const p3 = pontos[i + 2] || p2;
-                // pontos de controle da bezier cúbica equivalente ao trecho
-                // Catmull-Rom entre p1 e p2 — curva suave que respeita a
-                // tangente natural do gesto em cada ponto
-                const cp1x = p1.x + (p2.x - p0.x) / 6;
-                const cp1y = p1.y + (p2.y - p0.y) / 6;
-                const cp2x = p2.x - (p3.x - p1.x) / 6;
-                const cp2y = p2.y - (p3.y - p1.y) / 6;
-                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-            }
-            ctx.stroke();
+        function marcarDot(i) {
+            caminho.push(i);
+            const dot = container.querySelector(`.pattern-dot[data-i="${i}"]`);
+            if (dot) dot.classList.add('ativo');
+            redesenharLinhas(null);
         }
 
         function iniciar(evt) {
             evt.preventDefault();
             limpar();
             desenhando = true;
-            pontos.push(posRelativa(evt));
-            redesenhar();
+            const i = dotSobre(posRelativa(evt));
+            if (i > -1) marcarDot(i);
         }
         function mover(evt) {
             if (!desenhando) return;
             evt.preventDefault();
-            const novo = posRelativa(evt);
-            const ultimo = pontos[pontos.length - 1];
-            if (ultimo && distanciaPt(ultimo, novo) < DIST_MINIMA_PONTO) return; // ignora tremedeira miúda
-            pontos.push(novo);
-            redesenhar();
+            const pos = posRelativa(evt);
+            const i = dotSobre(pos);
+            if (i > -1 && !caminho.includes(i)) marcarDot(i);
+            else redesenharLinhas(pos);
         }
-        function soltar(evt) {
+        function soltar() {
             if (!desenhando) return;
             desenhando = false;
-            if (pontos.length < ASSINATURA_MIN_PONTOS_BRUTOS) { limpar(); return; }
-            const processado = processarTraco(pontos);
-            aoTerminar(processado, limpar);
+            if (caminho.length < PADRAO_MIN_PONTOS) { limpar(); return; }
+            aoTerminar(caminho.slice(), limpar);
         }
 
-        canvas.addEventListener('mousedown', iniciar);
-        canvas.addEventListener('mousemove', mover);
-        window.addEventListener('mouseup', soltar);
-        canvas.addEventListener('touchstart', iniciar, { passive: false });
-        canvas.addEventListener('touchmove', mover, { passive: false });
-        canvas.addEventListener('touchend', soltar);
-        canvas.addEventListener('touchcancel', limpar);
+        container.addEventListener('pointerdown', iniciar);
+        container.addEventListener('pointermove', mover);
+        window.addEventListener('pointerup', soltar);
+        window.addEventListener('resize', montarGrade);
 
-        return { limpar };
+        montarGrade();
+        return { limpar, montarGrade };
     }
 
-    let padLoginAssinatura = null, padAdminAssinatura = null, novaAssinaturaCapturada = null;
+    let padLoginPadrao = null, padAdminPadrao = null;
+    let novoPadraoCapturado = null;  // rascunho: último gesto desenhado no modal, ainda não confirmado
+    let novoPadraoConfirmado = null; // valor que de fato vai ser salvo no motorista (só muda no OK)
 
-    function initSignaturePads() {
-        const canvasLogin = document.getElementById('loginAssinaturaCanvas');
-        if (canvasLogin) {
-            padLoginAssinatura = criarSignaturePad(canvasLogin, (processado, limparFn) => {
+    function initPatternPads() {
+        const gridLogin = document.getElementById('loginPadraoGrid');
+        const svgLogin = document.getElementById('loginPadraoSvg');
+        if (gridLogin && svgLogin) {
+            padLoginPadrao = criarPatternPad(gridLogin, svgLogin, (caminho, limparFn) => {
                 const id = document.getElementById('motoristaSelecionado').value;
                 const m = motoristas.find(x => x.id === id);
                 if (!m) { limparFn(); return; }
-                const diferenca = diferencaAssinaturas(processado, m.assinatura);
-                if (diferenca <= ASSINATURA_LIMIAR_DIFERENCA) {
-                    document.getElementById('loginAssinaturaStatus').textContent = '';
+                if (padroesIguais(caminho, m.padrao)) {
+                    document.getElementById('loginPadraoStatus').textContent = '';
+                    fecharModalPadraoLogin();
                     efetuarLogin(m);
                 } else {
-                    const status = document.getElementById('loginAssinaturaStatus');
-                    status.textContent = '❌ Assinatura não reconhecida. Assine de novo.';
+                    const status = document.getElementById('loginPadraoStatus');
+                    status.textContent = '❌ Padrão incorreto. Desenhe de novo.';
                     status.style.color = '#f87171';
                     setTimeout(limparFn, 500);
                 }
             });
         }
-        const canvasAdmin = document.getElementById('novaAssinaturaCanvas');
-        if (canvasAdmin) {
-            padAdminAssinatura = criarSignaturePad(canvasAdmin, (processado) => {
-                novaAssinaturaCapturada = processado;
-                const status = document.getElementById('novaAssinaturaStatus');
-                status.textContent = '✅ Assinatura capturada';
+        const gridAdmin = document.getElementById('novoPadraoGrid');
+        const svgAdmin = document.getElementById('novoPadraoSvg');
+        if (gridAdmin && svgAdmin) {
+            padAdminPadrao = criarPatternPad(gridAdmin, svgAdmin, (caminho, limparFn) => {
+                novoPadraoCapturado = caminho;
+                const status = document.getElementById('novoPadraoStatus');
+                status.textContent = '✅ Padrão capturado (' + caminho.length + ' pontos)';
                 status.style.color = '#4ade80';
+                const btnOk = document.getElementById('btnOkPadraoAdmin');
+                if (btnOk) btnOk.disabled = false;
+            });
+        }
+        // tira aspas/barra invertida da senha de texto em tempo real, enquanto o admin digita
+        const campoNovaSenha = document.getElementById('novaSenha');
+        if (campoNovaSenha) {
+            campoNovaSenha.addEventListener('input', (e) => {
+                const limpo = limparCaracteresPerigosos(e.target.value);
+                if (limpo !== e.target.value) e.target.value = limpo;
             });
         }
     }
 
-    // alterna entre PIN e Assinatura no formulário de cadastro do admin
+    function limparNovoPadrao() {
+        if (padAdminPadrao) padAdminPadrao.limpar();
+        novoPadraoCapturado = null;
+        document.getElementById('novoPadraoStatus').textContent = 'Nenhum padrão capturado';
+        document.getElementById('novoPadraoStatus').style.color = '';
+        const btnOk = document.getElementById('btnOkPadraoAdmin');
+        if (btnOk) btnOk.disabled = true;
+    }
+
+    // ---------- modal do padrão no cadastro do admin (item 4) ----------
+    function abrirModalPadraoAdmin() {
+        document.getElementById('padraoAdminOverlay').classList.remove('hidden');
+        // carrega o padrão já confirmado antes (se a pessoa reabriu pra conferir/refazer)
+        novoPadraoCapturado = novoPadraoConfirmado;
+        const status = document.getElementById('novoPadraoStatus');
+        if (novoPadraoConfirmado) {
+            status.textContent = '✅ Padrão salvo (' + novoPadraoConfirmado.length + ' pontos) — desenhe de novo pra trocar';
+            status.style.color = '#4ade80';
+        } else {
+            status.textContent = 'Nenhum padrão capturado';
+            status.style.color = '';
+        }
+        document.getElementById('btnOkPadraoAdmin').disabled = !novoPadraoConfirmado;
+        if (padAdminPadrao) { padAdminPadrao.limpar(); padAdminPadrao.montarGrade(); }
+    }
+    function fecharModalPadraoAdmin() {
+        document.getElementById('padraoAdminOverlay').classList.add('hidden');
+        novoPadraoCapturado = novoPadraoConfirmado; // descarta qualquer rascunho não confirmado
+    }
+    function confirmarPadraoAdmin() {
+        if (!novoPadraoCapturado || novoPadraoCapturado.length < PADRAO_MIN_PONTOS) return;
+        novoPadraoConfirmado = novoPadraoCapturado;
+        const resumo = document.getElementById('novoPadraoResumo');
+        resumo.textContent = '✅ Padrão salvo (' + novoPadraoConfirmado.length + ' pontos) — toque pra refazer';
+        resumo.classList.remove('text-slate-500');
+        resumo.classList.add('text-emerald-400');
+        document.getElementById('padraoAdminOverlay').classList.add('hidden');
+    }
+
+    // ---------- modal do padrão no login (item 4 — sem botão OK, desenhar certo já entra) ----------
+    function abrirModalPadraoLogin(motorista) {
+        document.getElementById('loginPadraoNomeModal').textContent = motorista.nome;
+        const status = document.getElementById('loginPadraoStatus');
+        status.textContent = '';
+        document.getElementById('loginPadraoOverlay').classList.remove('hidden');
+        if (padLoginPadrao) { padLoginPadrao.limpar(); padLoginPadrao.montarGrade(); }
+    }
+    function fecharModalPadraoLogin() {
+        document.getElementById('loginPadraoOverlay').classList.add('hidden');
+        if (padLoginPadrao) padLoginPadrao.limpar();
+    }
+
+    // alterna entre PIN e Padrão de desenho no formulário de cadastro do admin
     function escolherTipoSenha(tipo) {
         document.getElementById('novaSenha').classList.toggle('hidden', tipo !== 'pin');
-        document.getElementById('novaAssinaturaWrap').classList.toggle('hidden', tipo !== 'assinatura');
+        document.getElementById('novoPadraoWrap').classList.toggle('hidden', tipo !== 'padrao');
         document.getElementById('btnTipoPin').classList.toggle('bg-emerald-500', tipo === 'pin');
         document.getElementById('btnTipoPin').classList.toggle('text-[#03170f]', tipo === 'pin');
         document.getElementById('btnTipoPin').classList.toggle('bg-[#0c1220]', tipo !== 'pin');
-        document.getElementById('btnTipoAssinatura').classList.toggle('bg-emerald-500', tipo === 'assinatura');
-        document.getElementById('btnTipoAssinatura').classList.toggle('text-[#03170f]', tipo === 'assinatura');
-        document.getElementById('btnTipoAssinatura').classList.toggle('bg-[#0c1220]', tipo !== 'assinatura');
+        document.getElementById('btnTipoPadrao').classList.toggle('bg-emerald-500', tipo === 'padrao');
+        document.getElementById('btnTipoPadrao').classList.toggle('text-[#03170f]', tipo === 'padrao');
+        document.getElementById('btnTipoPadrao').classList.toggle('bg-[#0c1220]', tipo !== 'padrao');
         document.getElementById('novoTipoSenha').value = tipo;
-        if (padAdminAssinatura) padAdminAssinatura.limpar();
-        novaAssinaturaCapturada = null;
-        document.getElementById('novaAssinaturaStatus').textContent = 'Nenhuma assinatura capturada';
-        document.getElementById('novaAssinaturaStatus').style.color = '';
+        novoPadraoConfirmado = null;
+        limparNovoPadrao();
+        const resumo = document.getElementById('novoPadraoResumo');
+        resumo.textContent = 'Toque pra desenhar o padrão (mínimo 4 pontos)';
+        resumo.classList.remove('text-emerald-400');
+        resumo.classList.add('text-slate-500');
     }
 
     // ---------- login do motorista ----------
     async function carregarMotoristas() {
-        motoristas = await getMotoristas();
-        renderMotoristaLista();
+        try {
+            motoristas = await getMotoristas();
+            renderMotoristaLista();
+            marcarConexao(true);
+        } catch (e) {
+            marcarConexao(false); // mantém a última lista carregada na tela em vez de esvaziar tudo
+        }
     }
 
     function toggleMotoristaDropdown(forcarFechado) {
@@ -938,11 +1048,11 @@
             return;
         }
         lista.innerHTML = motoristas.map(m => `
-            <button type="button" onclick="selecionarMotorista('${m.id}')"
-                    data-id="${m.id}"
+            <button type="button" onclick="selecionarMotorista('${escapeHtml(m.id)}')"
+                    data-id="${escapeHtml(m.id)}"
                     class="motorista-card w-full flex items-center gap-4 p-3 rounded-2xl border-2 transition-colors text-left ${selecionadoAtual === m.id ? 'border-emerald-500 bg-[#132018]' : 'border-transparent bg-[#1a2338]'}">
-                <img src="${m.foto || avatarPadrao(m.nome)}" class="w-16 h-16 rounded-2xl object-cover flex-shrink-0 border-2 border-slate-600">
-                <span class="text-2xl font-bold leading-tight">${m.nome}</span>
+                <img src="${escapeHtml(m.foto || avatarPadrao(m.nome))}" class="w-16 h-16 rounded-2xl object-cover flex-shrink-0 border-2 border-slate-600">
+                <span class="text-2xl font-bold leading-tight">${escapeHtml(m.nome)}</span>
             </button>
         `).join('');
     }
@@ -968,15 +1078,16 @@
         toggleMotoristaDropdown(true); // fecha o dropdown depois de escolher
 
         // troca a caixa de senha conforme o tipo cadastrado pra esse motorista:
-        // PIN mostra o campo de texto de sempre; assinatura já pede o gesto
-        // direto, sem precisar clicar em ENTRAR
+        // PIN mostra o campo de texto de sempre; padrão de desenho abre um modal
+        // que já loga sozinho ao acertar o gesto, sem precisar de botão OK
         const tipo = (m && m.tipoSenha) || 'pin';
         document.getElementById('loginSenhaPin').classList.toggle('hidden', tipo !== 'pin');
-        document.getElementById('loginSenhaAssinatura').classList.toggle('hidden', tipo !== 'assinatura');
         document.getElementById('pass').value = '';
-        if (tipo === 'assinatura' && padLoginAssinatura) padLoginAssinatura.limpar();
-        const status = document.getElementById('loginAssinaturaStatus');
-        if (status) { status.textContent = ''; }
+        if (tipo === 'padrao' && m) {
+            abrirModalPadraoLogin(m);
+        } else {
+            fecharModalPadraoLogin();
+        }
     }
 
     // ponto único de "entrada confirmada", chamado tanto pelo PIN quanto pela
@@ -1002,10 +1113,10 @@
         }
     }
 
-    // login por PIN (botão ENTRAR) — a assinatura loga sozinha, veja initSignaturePads()
+    // login por PIN (botão ENTRAR) — o padrão de desenho loga sozinho, veja initPatternPads()
     function login() {
         const id = document.getElementById('motoristaSelecionado').value;
-        const senha = document.getElementById('pass').value.trim();
+        const senha = limparCaracteresPerigosos(document.getElementById('pass').value.trim());
         if (!id) return alert("Selecione um motorista");
         if (!senha) return alert("Digite a senha");
 
@@ -1017,7 +1128,6 @@
 
     function logout() {
         if (telaCheiaAtiva) sairTelaCheia();
-        pararAlarmeEmergencia();
         pararLembreteBeeps();
         document.getElementById('avisoViradaUI').classList.add('hidden');
         rotaSteps = [];
@@ -1032,8 +1142,7 @@
         document.getElementById('motoristaTriggerNome').textContent = 'Motorista';
         document.getElementById('motoristaTriggerNome').classList.add('text-slate-300');
         document.getElementById('loginSenhaPin').classList.remove('hidden');
-        document.getElementById('loginSenhaAssinatura').classList.add('hidden');
-        if (padLoginAssinatura) padLoginAssinatura.limpar();
+        fecharModalPadraoLogin();
         toggleMotoristaDropdown(true);
         renderMotoristaLista();
     }
@@ -1142,7 +1251,7 @@
             const idx = dados.entradas.findIndex(e => e.id === user.id);
             if (idx > -1) {
                 dados.entradas[idx] = { ...dados.entradas[idx], nome: novoNome, foto: novaFoto };
-                await salvarFilaData(dados.entradas, dados.config);
+                await salvarFilaData(dados.entradas, dados.config, dados.comunicados);
             }
         }
 
@@ -1591,7 +1700,6 @@
             iniciarLembreteBeeps();
         } else {
             pararLembreteBeeps();
-            pararAlarmeEmergencia();
         }
     }
 
@@ -1607,7 +1715,7 @@
         const outros = dados.entradas.filter(m => m.id !== user.id);
         outros.push({ id: user.id, nome: user.nome, foto: user.foto || '', timestamp: Date.now() });
         reindexar(outros);
-        await salvarFilaData(outros, dados.config);
+        await salvarFilaData(outros, dados.config, dados.comunicados);
 
         delete alertadosUltimoMin[user.id];
         document.getElementById('statusUser').textContent = 'Na fila ✅ (entrada automática)';
@@ -2052,7 +2160,7 @@
             outros.push({ id: user.id, nome: user.nome, foto: user.foto || '', timestamp: Date.now() });
         }
         reindexar(outros);
-        await salvarFilaData(outros, dados.config);
+        await salvarFilaData(outros, dados.config, dados.comunicados);
 
         delete alertadosUltimoMin[user.id];
         document.getElementById('statusUser').textContent = 'Na fila ✅';
@@ -2064,28 +2172,79 @@
         const dados = await getFilaData();
         const restante = dados.entradas.filter(m => m.id !== id);
         reindexar(restante);
-        await salvarFilaData(restante, dados.config);
+        await salvarFilaData(restante, dados.config, dados.comunicados);
         delete alertadosUltimoMin[id];
         carregarFila();
     }
 
     // ---------- fila pública ----------
     async function carregarFila() {
-        const [dados, motos] = await Promise.all([getFilaData(), motoristas.length ? Promise.resolve(motoristas) : getMotoristas()]);
-        motoristas = motos;
-        duracaoMinutos = dados.config.duracaoMinutos;
-        document.getElementById('duracaoLabel').textContent = duracaoMinutos;
+        try {
+            const [dados, motos] = await Promise.all([getFilaData(), motoristas.length ? Promise.resolve(motoristas) : getMotoristas()]);
+            motoristas = motos;
+            duracaoMinutos = dados.config.duracaoMinutos;
+            document.getElementById('duracaoLabel').textContent = duracaoMinutos;
 
-        const idsValidos = new Set(motos.map(m => m.id));
-        let validas = dados.entradas.filter(m => idsValidos.has(m.id));
-        if (validas.length !== dados.entradas.length) {
-            reindexar(validas);
-            salvarFilaData(validas, dados.config);
+            const idsValidos = new Set(motos.map(m => m.id));
+            let validas = dados.entradas.filter(m => idsValidos.has(m.id));
+            if (validas.length !== dados.entradas.length) {
+                reindexar(validas);
+                salvarFilaData(validas, dados.config, dados.comunicados);
+            }
+            validas.sort((a, b) => (a.pos ?? 999999) - (b.pos ?? 999999));
+            entradasCache = validas;
+
+            verificarAusencias(); // detecta quem está sem sinal há 15min e toca o alarme nesse aparelho
+            verificarComunicados(dados.comunicados || []); // mostra comunicados ativos ainda não vistos nesse aparelho
+            renderFilaPublica();
+            marcarConexao(true);
+        } catch (e) {
+            // sem internet / servidor fora do ar por um instante: mantém a última
+            // fila conhecida na tela (não apaga tudo) e só mostra o aviso discreto;
+            // a próxima tentativa automática já é em 10s (ver setInterval no onload)
+            marcarConexao(false);
         }
-        validas.sort((a, b) => (a.pos ?? 999999) - (b.pos ?? 999999));
-        entradasCache = validas;
+    }
 
-        renderFilaPublica();
+    // ---------- comunicados (visão pública) ----------
+    // Guarda quais comunicados já foram fechados (X) nesse aparelho, pra não
+    // ficar reaparecendo a cada sincronização (10s) ou ao reabrir o site.
+    let comunicadosVistos = {};
+    try { comunicadosVistos = JSON.parse(localStorage.getItem('comunicadosVistos') || '{}'); } catch (e) { /* ignora */ }
+
+    function verificarComunicados(comunicados) {
+        const agora = Date.now();
+        const ativos = comunicados.filter(c => (!c.ativoAte || agora <= c.ativoAte) && !comunicadosVistos[c.id]);
+        const overlay = document.getElementById('comunicadosOverlay');
+        const lista = document.getElementById('comunicadosLista');
+
+        if (!ativos.length) {
+            if (!lista.children.length) overlay.classList.add('hidden');
+            return;
+        }
+        // só (re)monta o modal se ele ainda não estiver aberto — evita resetar/piscar
+        // enquanto a pessoa já está lendo o comunicado
+        if (overlay.classList.contains('hidden')) {
+            lista.innerHTML = ativos.map(c => `
+                <div class="bg-[#1a2338] p-4 rounded-2xl relative" data-id="${c.id}">
+                    <button onclick="fecharComunicado('${c.id}')" class="absolute top-2 right-2 p-1.5 bg-slate-800 rounded-lg">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                    <p class="text-sm whitespace-pre-wrap pr-6">${escapeHtml(c.texto)}</p>
+                </div>`).join('');
+            overlay.classList.remove('hidden');
+            lucide.createIcons();
+        }
+    }
+
+    function fecharComunicado(id) {
+        comunicadosVistos[id] = true;
+        try { localStorage.setItem('comunicadosVistos', JSON.stringify(comunicadosVistos)); } catch (e) { /* ignora */ }
+        const item = document.querySelector(`#comunicadosLista [data-id="${id}"]`);
+        if (item) item.remove();
+        if (!document.getElementById('comunicadosLista').children.length) {
+            document.getElementById('comunicadosOverlay').classList.add('hidden');
+        }
     }
 
     function renderFilaPublica() {
@@ -2108,10 +2267,10 @@
             return `
                 <div class="fila-item ${posClass} bg-[#1a2338] p-3 rounded-2xl flex items-center gap-3"${estiloVars}>
                     <span class="font-bold text-sm w-5 text-center">${i + 1}</span>
-                    <div class="avatar-wrap" onclick="abrirPerfil('${m.id}')">
-                        <img src="${m.foto || avatarPadrao(m.nome)}" class="avatar-fila">
+                    <div class="avatar-wrap" onclick="abrirPerfil('${escapeHtml(m.id)}')">
+                        <img src="${escapeHtml(m.foto || avatarPadrao(m.nome))}" class="avatar-fila">
                     </div>
-                    <span class="flex-1 truncate">${m.nome}</span>
+                    <span class="flex-1 truncate">${escapeHtml(m.nome)}</span>
                     <span class="text-xs font-mono text-slate-400" id="cd-${m.id}">--:--</span>
                 </div>`;
         }).join('');
@@ -2122,7 +2281,7 @@
     async function atualizarContadores() {
         const agora = Date.now();
         const expirados = [];
-        let dentroJanelaEmergencia = false;
+        const avisosVisuais = []; // quem tá na janela dos 5min finais (mas ainda fora dos 30s do alarme sonoro)
 
         entradasCache.forEach(m => {
             const restanteMs = duracaoMinutos * 60000 - (agora - m.timestamp);
@@ -2144,23 +2303,40 @@
                 avisarUltimoMinuto();
             }
 
-            // alarme de emergência (sirene) faltando até 5 min pra expirar, só pro próprio motorista
-            if (user && m.id === user.id && restanteMs > 0 && restanteMs <= JANELA_ALARME_EMERGENCIA_MS) {
-                dentroJanelaEmergencia = true;
+            // alarme de renovação — visível/audível pra TODO MUNDO com o site aberto (não só o próprio motorista)
+            if (restanteMs > 0) {
+                if (restanteMs <= JANELA_ALARME_RENOVACAO_MS) {
+                    enfileirarAlarmeRenovacao(m); // últimos 30s: pop-up sonoro, 1x por renovação
+                } else if (restanteMs <= JANELA_VISUAL_RENOVACAO_MS) {
+                    avisosVisuais.push(m); // últimos 5min (fora dos 30s finais): só aviso visual, sem som
+                }
             }
         });
 
-        // liga/desliga o alarme conforme a janela — para automaticamente quando
-        // a pessoa renova (o tempo volta pra cima de 5min), sai da fila, ou expira
-        if (dentroJanelaEmergencia) {
-            iniciarAlarmeEmergencia();
-        } else {
-            pararAlarmeEmergencia();
-        }
+        atualizarDropdownRenovacao(avisosVisuais);
 
         if (expirados.length) {
             for (const id of expirados) await removerDaFila(id);
         }
+    }
+
+    // ---------- aviso visual de renovação (sem som) ----------
+    function atualizarDropdownRenovacao(lista) {
+        const wrap = document.getElementById('avisoRenovacaoDropdown');
+        const cont = document.getElementById('avisoRenovacaoLista');
+        if (!lista.length) { wrap.classList.add('hidden'); return; }
+        cont.innerHTML = lista.map(m => {
+            const semRenovarMin = Math.floor((Date.now() - m.timestamp) / 60000);
+            return `
+                <div class="flex items-center gap-3 p-3">
+                    <img src="${escapeHtml(m.foto || avatarPadrao(m.nome))}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold truncate">${escapeHtml(m.nome)}</p>
+                        <p class="text-xs text-amber-400">há mais de ${semRenovarMin}min sem renovar</p>
+                    </div>
+                </div>`;
+        }).join('');
+        wrap.classList.remove('hidden');
     }
 
     function pedirPermissaoNotificacao() {
@@ -2256,25 +2432,156 @@
         } catch (e) { /* ignora */ }
     }
 
-    function cicloAlarmeEmergencia() {
-        if (!alarmeEmergenciaAtivo) return;
-        tocarSireneUmCiclo(30000); // toca 30s
+    // Coloca um motorista na fila de espera do pop-up sonoro (faltando 30s pra
+    // expirar). Só dispara 1 vez por renovação (controlado por timestamp) e,
+    // se mais de um motorista cruzar a janela ao mesmo tempo, mostra um de
+    // cada vez em vez de sobrepor pop-ups.
+    function enfileirarAlarmeRenovacao(m) {
+        if (renovacaoAlarmeTocadoPara[m.id] === m.timestamp) return; // já tocou pra essa renovação
+        if (renovacaoAlarmeAtivoId === m.id || renovacaoAlarmeFilaPendente.some(x => x.id === m.id)) return;
+        renovacaoAlarmeFilaPendente.push(m);
+        processarFilaAlarmeRenovacao();
+    }
+
+    function processarFilaAlarmeRenovacao() {
+        if (renovacaoAlarmeAtivoId) return; // já tem um pop-up na tela, espera terminar
+        const proximo = renovacaoAlarmeFilaPendente.shift();
+        if (!proximo) return;
+        dispararAlarmeRenovacao(proximo);
+    }
+
+    // Toca a sirene 1 única vez por 30s + mostra o pop-up (foto, nome, cronômetro)
+    // pra todo mundo com o site aberto. Ao final dos 30s, o pop-up some sozinho
+    // (a remoção da fila em si acontece por conta própria em atualizarContadores,
+    // já que nesse ponto o tempo restante chega a zero).
+    function dispararAlarmeRenovacao(m) {
+        renovacaoAlarmeAtivoId = m.id;
+        renovacaoAlarmeTocadoPara[m.id] = m.timestamp;
+
+        tocarSireneUmCiclo(30000);
         if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500, 200, 500]);
-        alarmeEmergenciaTimeoutId = setTimeout(() => {
-            if (!alarmeEmergenciaAtivo) return;
-            // fica 30s em silêncio (completando 1 minuto) e toca de novo
-            alarmeEmergenciaTimeoutId = setTimeout(cicloAlarmeEmergencia, 30000);
+
+        document.getElementById('alarmeRenovacaoFoto').src = m.foto || avatarPadrao(m.nome);
+        document.getElementById('alarmeRenovacaoNome').textContent = m.nome;
+        document.getElementById('alarmeRenovacaoOverlay').classList.remove('hidden');
+
+        const fim = Date.now() + 30000;
+        const atualizarCronometro = () => {
+            const restante = Math.max(0, Math.round((fim - Date.now()) / 1000));
+            const el = document.getElementById('alarmeRenovacaoCronometro');
+            if (el) el.textContent = '00:' + String(restante).padStart(2, '0');
+        };
+        atualizarCronometro();
+        renovacaoAlarmeCronometroIntervalId = setInterval(atualizarCronometro, 1000);
+
+        renovacaoAlarmePopupTimeoutId = setTimeout(() => {
+            document.getElementById('alarmeRenovacaoOverlay').classList.add('hidden');
+            if (renovacaoAlarmeCronometroIntervalId) { clearInterval(renovacaoAlarmeCronometroIntervalId); renovacaoAlarmeCronometroIntervalId = null; }
+            renovacaoAlarmeAtivoId = null;
+            processarFilaAlarmeRenovacao(); // se tiver outro motorista esperando, mostra o próximo
         }, 30000);
     }
 
-    function iniciarAlarmeEmergencia() {
-        if (alarmeEmergenciaAtivo) return;
-        alarmeEmergenciaAtivo = true;
-        cicloAlarmeEmergencia();
+    // ---------- alarme de ausência (motorista sem sinal de GPS, mesmo constando na fila) ----------
+    // Diferente da saída da área (que já remove na hora, ver tratarPosicao):
+    // aqui é o caso do aparelho parar de mandar QUALQUER atualização — app
+    // fechado, celular sem sinal/bateria etc. Cada motorista, enquanto
+    // estiver na fila e com GPS confiável, manda um "heartbeat" pro servidor
+    // a cada minuto. Se um motorista ficar 15min sem heartbeat, qualquer
+    // aparelho com o site aberto (não só o dele) toca um alarme: 5 vezes,
+    // 30s de duração cada, com pausa de 30s entre elas. Se ao final desse
+    // ciclo ele continuar sem sinal, é expulso da fila automaticamente.
+    const AUSENCIA_LIMITE_MS = 15 * 60 * 1000;   // 15 minutos sem heartbeat = "ausente"
+    const AUSENCIA_QTD_TOQUES = 5;               // toca 5 vezes
+    const AUSENCIA_DURACAO_TOQUE_MS = 30000;     // 30s de duração cada toque
+    const AUSENCIA_PAUSA_MS = 30000;             // 30s de pausa entre os toques
+    const HEARTBEAT_INTERVALO_MS = 60000;        // o próprio motorista avisa o servidor a cada 60s que está com sinal
+    const HEARTBEAT_FRESCOR_MAX_MS = 90000;      // só manda heartbeat se teve leitura de GPS aceita nos últimos 90s
+
+    let alarmesAusencia = {}; // { [id]: { toques, timeoutId } }
+
+    function ultimoSinalDoMotorista(entrada) {
+        return entrada.ultimoSinal || entrada.timestamp;
     }
-    function pararAlarmeEmergencia() {
-        alarmeEmergenciaAtivo = false;
-        if (alarmeEmergenciaTimeoutId) { clearTimeout(alarmeEmergenciaTimeoutId); alarmeEmergenciaTimeoutId = null; }
+
+    // roda a cada 60s, só no aparelho do próprio motorista logado: se o GPS
+    // dele estiver respondendo de verdade (leitura aceita recentemente),
+    // atualiza o "ultimoSinal" dele no servidor — é isso que os outros
+    // aparelhos (admin, outros motoristas) usam pra saber que ele não sumiu.
+    // Não mexe em nada da leitura/filtro do GPS em si, só lê o que já existe.
+    async function enviarHeartbeatFila() {
+        if (!user) return;
+        if (!entradasCache.some(m => m.id === user.id)) return; // não tá na fila agora
+        const semLeituraFresca = !ultimoAceiteEm || (Date.now() - ultimoAceiteEm) > HEARTBEAT_FRESCOR_MAX_MS;
+        if (semLeituraFresca) return; // sem GPS confiável agora, não finge que tá tudo bem
+
+        try {
+            const dados = await getFilaData();
+            const idx = dados.entradas.findIndex(m => m.id === user.id);
+            if (idx === -1) return;
+            dados.entradas[idx].ultimoSinal = Date.now();
+            await salvarFilaData(dados.entradas, dados.config, dados.comunicados);
+        } catch (e) {
+            // se der erro de rede aqui, não tem problema: a próxima tentativa é
+            // em 60s (ver setInterval no onload), e enquanto isso o pior caso é
+            // o motorista aparecer "sem sinal" um pouco mais cedo pros outros
+        }
+    }
+
+    function motoristaAindaAusente(id) {
+        const m = entradasCache.find(x => x.id === id);
+        if (!m) return false; // já não está mais na fila
+        return (Date.now() - ultimoSinalDoMotorista(m)) >= AUSENCIA_LIMITE_MS;
+    }
+
+    // roda toda vez que a fila é recarregada (a cada 10s, em qualquer
+    // aparelho com o site aberto): detecta quem está "ausente" e liga/desliga
+    // o alarme localmente nesse aparelho.
+    function verificarAusencias() {
+        const idsNaFila = new Set(entradasCache.map(m => m.id));
+        Object.keys(alarmesAusencia).forEach(id => {
+            if (!idsNaFila.has(id)) pararAlarmeAusencia(id); // saiu da fila por outro motivo, limpa o alarme
+        });
+        entradasCache.forEach(m => {
+            const ausente = motoristaAindaAusente(m.id);
+            const jaAlarmando = !!alarmesAusencia[m.id];
+            if (ausente && !jaAlarmando) iniciarAlarmeAusencia(m.id);
+            else if (!ausente && jaAlarmando) pararAlarmeAusencia(m.id); // voltou a mandar sinal antes de completar o ciclo
+        });
+    }
+
+    function iniciarAlarmeAusencia(id) {
+        alarmesAusencia[id] = { toques: 0, timeoutId: null };
+        cicloAlarmeAusencia(id);
+    }
+
+    function pararAlarmeAusencia(id) {
+        const estado = alarmesAusencia[id];
+        if (estado && estado.timeoutId) clearTimeout(estado.timeoutId);
+        delete alarmesAusencia[id];
+    }
+
+    function cicloAlarmeAusencia(id) {
+        const estado = alarmesAusencia[id];
+        if (!estado) return;
+        if (!motoristaAindaAusente(id)) { pararAlarmeAusencia(id); return; }
+
+        estado.toques++;
+        tocarSireneUmCiclo(AUSENCIA_DURACAO_TOQUE_MS); // reaproveita a mesma sirene do alarme de emergência
+        if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+
+        estado.timeoutId = setTimeout(async () => {
+            if (!alarmesAusencia[id]) return;
+            if (!motoristaAindaAusente(id)) { pararAlarmeAusencia(id); return; }
+
+            if (estado.toques >= AUSENCIA_QTD_TOQUES) {
+                // completou os 5 toques e continua sem sinal: expulsa da fila de verdade
+                pararAlarmeAusencia(id);
+                await removerDaFila(id);
+            } else {
+                cicloAlarmeAusencia(id); // próximo toque, depois dos 30s de pausa
+            }
+        }, AUSENCIA_PAUSA_MS);
     }
 
     // ---------- admin ----------
@@ -2301,10 +2608,13 @@
     function mostrarTab(tab) {
         document.getElementById('tabMotoristas').classList.toggle('active', tab === 'motoristas');
         document.getElementById('tabFila').classList.toggle('active', tab === 'fila');
+        document.getElementById('tabAvisos').classList.toggle('active', tab === 'avisos');
         document.getElementById('painelMotoristas').classList.toggle('hidden', tab !== 'motoristas');
         document.getElementById('painelFila').classList.toggle('hidden', tab !== 'fila');
+        document.getElementById('painelAvisos').classList.toggle('hidden', tab !== 'avisos');
         if (tab === 'motoristas') renderMotoristasAdmin();
         if (tab === 'fila') renderFilaAdmin();
+        if (tab === 'avisos') renderAvisosAdmin();
     }
 
     async function renderMotoristasAdmin() {
@@ -2314,43 +2624,55 @@
         el.innerHTML = motos.length ? motos.map(m => `
             <div class="bg-[#1a2338] p-3 rounded-2xl flex justify-between items-center">
                 <div class="flex items-center gap-2">
-                    <img src="${m.foto || avatarPadrao(m.nome)}" class="w-7 h-7 rounded-full object-cover">
-                    <span>${m.nome}</span>
-                    <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${(m.tipoSenha || 'pin') === 'assinatura' ? 'bg-sky-900 text-sky-300' : 'bg-slate-700 text-slate-300'}">${(m.tipoSenha || 'pin') === 'assinatura' ? 'Assinatura' : 'PIN'}</span>
+                    <img src="${escapeHtml(m.foto || avatarPadrao(m.nome))}" class="w-7 h-7 rounded-full object-cover">
+                    <span>${escapeHtml(m.nome)}</span>
+                    <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${(m.tipoSenha || 'pin') === 'padrao' ? 'bg-sky-900 text-sky-300' : 'bg-slate-700 text-slate-300'}">${(m.tipoSenha || 'pin') === 'padrao' ? 'Padrão' : 'PIN'}</span>
                 </div>
-                <button onclick="removerMotorista('${m.id}')" class="text-red-400 text-xs underline">Remover</button>
+                <button onclick="removerMotorista('${escapeHtml(m.id)}')" class="text-red-400 text-xs underline">Remover</button>
             </div>
         `).join('') : '<p class="text-slate-500 text-sm text-center py-4">Nenhum motorista cadastrado</p>';
     }
 
+    let salvandoMotorista = false; // trava clique duplo, que criaria 2 motoristas iguais
     async function adicionarMotorista() {
+        if (salvandoMotorista) return;
         const nome = document.getElementById('novoNome').value.trim();
         const tipoSenha = document.getElementById('novoTipoSenha').value || 'pin';
         const foto = document.getElementById('novaFoto').value.trim();
         if (!nome) return alert("Preencha o nome");
 
         const novoMotorista = { nome, foto, tipoSenha };
-        if (tipoSenha === 'assinatura') {
-            if (!novaAssinaturaCapturada) return alert("Peça pro motorista assinar no quadro antes de adicionar");
-            novoMotorista.assinatura = novaAssinaturaCapturada;
+        if (tipoSenha === 'padrao') {
+            if (!novoPadraoConfirmado) return alert("Peça pro motorista desenhar o padrão e confirmar com OK antes de adicionar");
+            novoMotorista.padrao = novoPadraoConfirmado;
             novoMotorista.senha = ''; // não usa senha de texto nesse modo
         } else {
-            const senha = document.getElementById('novaSenha').value.trim();
+            const senha = limparCaracteresPerigosos(document.getElementById('novaSenha').value.trim());
             if (!senha) return alert("Preencha a senha (PIN)");
             novoMotorista.senha = senha;
         }
 
-        const motos = await getMotoristas();
-        novoMotorista.id = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36);
-        motos.push(novoMotorista);
-        await putMotoristas(motos);
+        salvandoMotorista = true;
+        const btn = document.getElementById('btnAdicionarMotorista');
+        if (btn) btn.disabled = true;
+        try {
+            const motos = await getMotoristas();
+            novoMotorista.id = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36);
+            motos.push(novoMotorista);
+            await putMotoristas(motos);
 
-        document.getElementById('novoNome').value = '';
-        document.getElementById('novaSenha').value = '';
-        document.getElementById('novaFoto').value = '';
-        escolherTipoSenha('pin'); // reseta o formulário de volta pro padrão PIN
-        renderMotoristasAdmin();
-        carregarMotoristas();
+            document.getElementById('novoNome').value = '';
+            document.getElementById('novaSenha').value = '';
+            document.getElementById('novaFoto').value = '';
+            escolherTipoSenha('pin'); // reseta o formulário de volta pro padrão PIN
+            renderMotoristasAdmin();
+            carregarMotoristas();
+        } catch (e) {
+            alert('Não deu pra salvar o motorista — confere sua conexão e tenta de novo.');
+        } finally {
+            salvandoMotorista = false;
+            if (btn) btn.disabled = false;
+        }
     }
 
     async function removerMotorista(id) {
@@ -2375,20 +2697,20 @@
         const idsNaFila = new Set(real.map(m => m.id));
         const select = document.getElementById('selectAdicionarFila');
         select.innerHTML = '<option value="">Selecione o motorista...</option>' +
-            motos.filter(m => !idsNaFila.has(m.id)).map(m => `<option value="${m.id}">${m.nome}</option>`).join('');
+            motos.filter(m => !idsNaFila.has(m.id)).map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.nome)}</option>`).join('');
 
         const el = document.getElementById('listaFilaAdmin');
         el.innerHTML = real.length
             ? '<p class="text-[11px] text-slate-500">Arraste pela alça ⠿ pra reordenar e depois toque em "Confirmar ordem".</p>'
               + '<div id="sortableFila" class="space-y-2">' + real.map((m) => `
-                <div class="bg-[#1a2338] p-3 rounded-2xl flex items-center gap-2" data-id="${m.id}">
+                <div class="bg-[#1a2338] p-3 rounded-2xl flex items-center gap-2" data-id="${escapeHtml(m.id)}">
                     <span class="drag-handle text-slate-500 text-lg px-1">⠿</span>
-                    <img src="${m.foto || avatarPadrao(m.nome)}" class="w-8 h-8 rounded-full object-cover flex-shrink-0">
+                    <img src="${escapeHtml(m.foto || avatarPadrao(m.nome))}" class="w-8 h-8 rounded-full object-cover flex-shrink-0">
                     <div class="flex-1 min-w-0">
-                        <p class="truncate">${m.nome || m.id}</p>
+                        <p class="truncate">${escapeHtml(m.nome || m.id)}</p>
                         <p class="text-xs text-slate-400">${new Date(m.timestamp).toLocaleTimeString()}</p>
                     </div>
-                    <button onclick="removerDaFilaAdmin('${m.id}')" class="text-red-400 text-xs underline whitespace-nowrap">Tirar</button>
+                    <button onclick="removerDaFilaAdmin('${escapeHtml(m.id)}')" class="text-red-400 text-xs underline whitespace-nowrap">Tirar</button>
                 </div>
             `).join('') + '</div>'
               + '<button onclick="salvarOrdemFila()" class="w-full bg-emerald-500 py-2 rounded-xl font-bold text-sm mt-2">Confirmar ordem</button>'
@@ -2413,6 +2735,86 @@
         renderFilaAdmin();
     }
 
+    // ---------- comunicados (admin) ----------
+    function formatarDataHoraLocal(ms) {
+        // formata um timestamp pro formato que o <input type="datetime-local"> espera (yyyy-MM-ddTHH:mm)
+        const d = new Date(ms);
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    async function renderAvisosAdmin() {
+        const dados = await getFilaData();
+        const el = document.getElementById('listaAvisosAdmin');
+        const lista = (dados.comunicados || []).slice().sort((a, b) => b.criadoEm - a.criadoEm);
+        el.innerHTML = lista.length ? lista.map(c => {
+            const expirado = c.ativoAte && Date.now() > c.ativoAte;
+            return `
+                <div class="bg-[#1a2338] p-3 rounded-2xl space-y-1">
+                    <p class="text-sm whitespace-pre-wrap">${escapeHtml(c.texto)}</p>
+                    <p class="text-xs ${expirado ? 'text-red-400' : 'text-slate-400'}">
+                        ${c.ativoAte ? 'Ativo até ' + new Date(c.ativoAte).toLocaleString() + (expirado ? ' (expirado)' : '') : 'Sem data de expiração'}
+                    </p>
+                    <div class="flex gap-3 pt-1">
+                        <button onclick="editarComunicado('${c.id}')" class="text-xs text-emerald-400 underline">Editar</button>
+                        <button onclick="excluirComunicado('${c.id}')" class="text-xs text-red-400 underline">Excluir</button>
+                    </div>
+                </div>`;
+        }).join('') : '<p class="text-slate-500 text-sm text-center py-4">Nenhum comunicado criado</p>';
+    }
+
+    async function salvarComunicado() {
+        const texto = document.getElementById('avisoTexto').value.trim();
+        const ativoAteInput = document.getElementById('avisoAtivoAte').value;
+        if (!texto) return alert('Escreva o texto do comunicado');
+
+        const ativoAte = ativoAteInput ? new Date(ativoAteInput).getTime() : null;
+        const editandoId = document.getElementById('avisoEditandoId').value;
+
+        const dados = await getFilaData();
+        const comunicados = dados.comunicados || [];
+
+        if (editandoId) {
+            const idx = comunicados.findIndex(c => c.id === editandoId);
+            if (idx !== -1) comunicados[idx] = { ...comunicados[idx], texto, ativoAte };
+        } else {
+            comunicados.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), texto, ativoAte, criadoEm: Date.now() });
+        }
+
+        await salvarFilaData(dados.entradas, dados.config, comunicados);
+        cancelarEdicaoComunicado();
+        renderAvisosAdmin();
+    }
+
+    async function editarComunicado(id) {
+        const dados = await getFilaData();
+        const c = (dados.comunicados || []).find(x => x.id === id);
+        if (!c) return;
+        document.getElementById('avisoEditandoId').value = c.id;
+        document.getElementById('avisoTexto').value = c.texto;
+        document.getElementById('avisoAtivoAte').value = c.ativoAte ? formatarDataHoraLocal(c.ativoAte) : '';
+        document.getElementById('tituloFormAviso').textContent = 'Editando comunicado';
+        document.getElementById('btnSalvarAviso').textContent = 'Salvar alterações';
+        document.getElementById('btnCancelarEdicaoAviso').classList.remove('hidden');
+    }
+
+    function cancelarEdicaoComunicado() {
+        document.getElementById('avisoEditandoId').value = '';
+        document.getElementById('avisoTexto').value = '';
+        document.getElementById('avisoAtivoAte').value = '';
+        document.getElementById('tituloFormAviso').textContent = 'Criar comunicado';
+        document.getElementById('btnSalvarAviso').textContent = 'Criar comunicado';
+        document.getElementById('btnCancelarEdicaoAviso').classList.add('hidden');
+    }
+
+    async function excluirComunicado(id) {
+        if (!confirm('Excluir esse comunicado?')) return;
+        const dados = await getFilaData();
+        const comunicados = (dados.comunicados || []).filter(c => c.id !== id);
+        await salvarFilaData(dados.entradas, dados.config, comunicados);
+        renderAvisosAdmin();
+    }
+
     async function adminAdicionarFila() {
         const id = document.getElementById('selectAdicionarFila').value;
         if (!id) return alert("Selecione um motorista");
@@ -2427,7 +2829,7 @@
 
         real.splice(idx, 0, { id, nome: motorista.nome, foto: motorista.foto || '', timestamp: Date.now() });
         reindexar(real);
-        await salvarFilaData(real, dados.config);
+        await salvarFilaData(real, dados.config, dados.comunicados);
 
         document.getElementById('posAdicionarFila').value = '';
         renderFilaAdmin();
@@ -2445,7 +2847,7 @@
         ordemIds.forEach((id, i) => { posMap[id] = i; });
         dados.entradas.sort((a, b) => (posMap[a.id] ?? 999999) - (posMap[b.id] ?? 999999));
         reindexar(dados.entradas);
-        await salvarFilaData(dados.entradas, dados.config);
+        await salvarFilaData(dados.entradas, dados.config, dados.comunicados);
 
         renderFilaAdmin();
         carregarFila();
@@ -2456,7 +2858,7 @@
         if (!val || val < 1) return alert('Informe um número de minutos válido');
         const dados = await getFilaData();
         dados.config.duracaoMinutos = val;
-        await salvarFilaData(dados.entradas, dados.config);
+        await salvarFilaData(dados.entradas, dados.config, dados.comunicados);
         duracaoMinutos = val;
         document.getElementById('duracaoAtual').textContent = val;
         document.getElementById('duracaoLabel').textContent = val;
@@ -2496,12 +2898,13 @@
         lucide.createIcons();
         atualizarIconeMudo();
         atualizarIconeAlertaVisual();
-        initSignaturePads(); // liga os pads de assinatura (login e cadastro admin)
+        initPatternPads(); // liga os pads de padrão de desenho (login e cadastro admin)
         iniciarGpsGlobal(); // pede a permissão de localização já no carregamento, antes do login
         await carregarMotoristas();
         await carregarFila();
         setInterval(carregarFila, 10000);   // sincroniza com o servidor
         setInterval(atualizarContadores, 1000); // atualiza cronômetro na tela a cada segundo
+        setInterval(enviarHeartbeatFila, HEARTBEAT_INTERVALO_MS); // avisa o servidor que o GPS deste motorista está vivo
     };
 </script>
 </body>
