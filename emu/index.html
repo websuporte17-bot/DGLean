@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SNES Web Emu - Multiplayer</title>
+    <title>SNES Web Emu - Multiplayer Seguro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -30,7 +30,10 @@
         .tab-btn.active { border-bottom-color: #a855f7; color: #a855f7; }
         .slot-btn.taken { opacity:.35; cursor:not-allowed; }
         .slot-btn.selected { outline: 3px solid #22c55e; }
-        #lobby-overlay, #slot-overlay { backdrop-filter: blur(4px); }
+        #lobby-overlay, #slot-overlay, #sync-overlay { backdrop-filter: blur(4px); }
+        
+        /* Previne que a página role quando usar as setas do teclado */
+        html, body { overflow-x: hidden; }
     </style>
 </head>
 <body class="text-gray-200 font-sans min-h-screen flex flex-col">
@@ -41,7 +44,7 @@
             <i class="ph-fill ph-game-controller text-4xl text-purple-500"></i>
             <div>
                 <h1 class="text-2xl font-bold text-white tracking-wide">SNES P2P <span class="text-purple-400">Web</span></h1>
-                <p class="text-xs text-gray-400">Jogue com amigos sem delay</p>
+                <p class="text-xs text-gray-400">Jogue com amigos (Use o mesmo arquivo ROM!)</p>
             </div>
         </div>
         <div class="flex items-center gap-3">
@@ -68,12 +71,22 @@
                     <p class="text-sm text-gray-600 mt-2">Escolha uma ROM ao lado para começar.</p>
                 </div>
 
-                <!-- Overlay: Lobby (aparece depois de carregar a ROM, antes do jogo iniciar) -->
+                <!-- Overlay: Lobby -->
                 <div id="lobby-overlay" class="hidden absolute inset-0 bg-gray-950/90 z-20 flex flex-col p-4 md:p-6 overflow-y-auto">
-                    <h2 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
-                        <i class="ph-fill ph-broadcast text-purple-400"></i> Quem está online
-                    </h2>
-                    <p class="text-xs text-gray-400 mb-4">ROM carregada: <span id="lobby-my-game" class="text-purple-300 font-semibold"></span>. Escolha alguém pra jogar junto ou comece sozinho.</p>
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                                <i class="ph-fill ph-broadcast text-purple-400"></i> Quem está online
+                            </h2>
+                            <p class="text-xs text-yellow-300 font-semibold">IMPORTANTE: Ambos devem usar EXATAMENTE a mesma ROM.</p>
+                        </div>
+                        <div class="bg-gray-800 border border-purple-500/50 rounded-lg p-2 text-center">
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wider">Seu PIN de Convite</p>
+                            <p id="lobby-my-pin" class="text-xl text-purple-400 font-mono font-bold tracking-widest"></p>
+                        </div>
+                    </div>
+                    
+                    <p class="text-xs text-gray-400 mb-4">ROM carregada: <span id="lobby-my-game" class="text-purple-300 font-semibold"></span>.</p>
                     <div id="lobby-list" class="flex-1 space-y-2 mb-4"></div>
                     <div class="flex gap-2">
                         <button onclick="startSolo()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex justify-center items-center gap-2">
@@ -84,11 +97,20 @@
 
                 <!-- Overlay: escolha de slot/controle -->
                 <div id="slot-overlay" class="hidden absolute inset-0 bg-gray-950/90 z-30 flex flex-col items-center justify-center p-6">
-                    <h2 class="text-lg font-bold text-white mb-1">Escolha seu controle</h2>
-                    <p class="text-xs text-gray-400 mb-4">Sala: <span id="slot-room-info"></span></p>
-                    <div class="grid grid-cols-4 gap-3 mb-4" id="slot-buttons"></div>
+                    <h2 class="text-lg font-bold text-white mb-1">Sala Pronta</h2>
+                    <p class="text-xs text-gray-400 mb-4">Conexão segura estabelecida. <span id="slot-room-info"></span></p>
+                    <div class="grid grid-cols-2 gap-3 mb-4" id="slot-buttons">
+                        <!-- Limitado a 2 players para evitar bugs do multitap no SNES -->
+                    </div>
                     <p id="slot-wait-msg" class="text-xs text-gray-500 hidden">Aguardando o host iniciar a partida...</p>
-                    <button id="slot-start-btn" onclick="hostStartGame()" class="hidden bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg mt-2">Iniciar Partida</button>
+                    <button id="slot-start-btn" onclick="hostStartGame()" class="hidden bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg mt-2 shadow-[0_0_15px_rgba(147,51,234,0.5)]">Iniciar Partida</button>
+                </div>
+
+                <!-- Overlay: Loading Sync -->
+                <div id="sync-overlay" class="hidden absolute inset-0 bg-gray-950/90 z-40 flex flex-col items-center justify-center p-6">
+                    <i class="ph-duotone ph-spinner-gap text-6xl text-purple-500 animate-spin mb-4"></i>
+                    <h2 class="text-lg font-bold text-white mb-1">Sincronizando Jogadores...</h2>
+                    <p class="text-xs text-gray-400 text-center">Aguardando ambos carregarem a ROM para iniciar ao mesmo tempo.<br>Isso evita falhas (desync).</p>
                 </div>
             </div>
 
@@ -100,7 +122,7 @@
                     <p><span class="font-bold text-purple-400">A / S:</span> Botões Y / X</p>
                     <p><span class="font-bold text-purple-400">Enter / Shift:</span> Start / Select</p>
                 </div>
-                <p id="mp-warning" class="hidden text-xs text-yellow-400 mt-3 flex items-center gap-2"><i class="ph-fill ph-shield-warning"></i> Multiplayer ativo: save state, cheats e turbo desabilitados.</p>
+                <p id="mp-warning" class="hidden text-xs text-yellow-400 mt-3 flex items-center gap-2"><i class="ph-fill ph-shield-warning"></i> Multiplayer ativo: Mantenha o foco nesta tela para jogar.</p>
             </div>
         </div>
 
@@ -127,7 +149,7 @@
                 </div>
 
                 <div id="content-url" class="hidden">
-                    <label class="block text-sm text-gray-400 mb-1">Link Direto (Evite Google Drive se der erro)</label>
+                    <label class="block text-sm text-gray-400 mb-1">Link Direto</label>
                     <input type="text" id="rom-url" placeholder="https://site.com/jogo.zip"
                            class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500 mb-3">
                     <button onclick="loadGameFromUrl()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex justify-center items-center gap-2">
@@ -136,17 +158,30 @@
                 </div>
             </div>
 
-            <!-- Seu perfil no lobby -->
+            <!-- Seu perfil no lobby com PIN -->
             <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-lg">
                 <h2 class="text-lg font-bold text-white flex items-center gap-2 mb-3">
-                    <i class="ph-fill ph-user-circle text-green-400"></i> Seu nome no lobby
+                    <i class="ph-fill ph-user-circle text-green-400"></i> Seu Perfil
                 </h2>
-                <div class="flex gap-2">
+                
+                <label class="block text-xs text-gray-400 mb-1">Nome no Lobby</label>
+                <div class="flex gap-2 mb-4">
                     <input type="text" id="my-name" placeholder="Como te chamam..."
                            class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-green-500">
                     <button onclick="saveMyName()" class="bg-green-600 hover:bg-green-500 text-white font-bold px-4 rounded-lg">OK</button>
                 </div>
-                <p class="text-xs text-gray-500 mt-2">Visível pra todo mundo que estiver online. Sem cadastro, sem senha.</p>
+
+                <div class="p-3 bg-gray-900 rounded-lg border border-gray-700 flex justify-between items-center relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-purple-900/20 to-transparent pointer-events-none"></div>
+                    <div class="relative z-10">
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><i class="ph-fill ph-lock-key"></i> PIN de Segurança</p>
+                        <p class="text-2xl font-mono font-bold text-purple-400 tracking-widest" id="my-pin-display">----</p>
+                    </div>
+                    <button onclick="refreshPin()" class="relative z-10 p-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg text-gray-300 transition-colors" title="Gerar novo PIN">
+                        <i class="ph-bold ph-arrows-clockwise text-xl"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Apenas quem tiver esse PIN de 4 dígitos poderá entrar na sua sala.</p>
             </div>
 
             <!-- Log -->
@@ -164,29 +199,42 @@
 
     <script>
     /* ============================================================
-       0. ESTADO GLOBAL
+       0. ESTADO GLOBAL E PIN
     ============================================================ */
-    const LOBBY_ID = 'snesp2p-lobby-relay-v1'; // "sala" fixa só pra descoberta de presença
-    const MAX_SLOTS = 4;
+    const LOBBY_ID = 'snesp2p-lobby-relay-v2-br'; 
+    const MAX_SLOTS = 2; // Para evitar bugs, limitamos a 2 jogadores
 
-    let myPeer = null;          // instância PeerJS deste cliente
-    let isCoordinator = false;  // este cliente virou o "quadro" do lobby?
-    let lobbyConn = null;       // conexão com o coordenador (se eu não sou o coordenador)
-    let lobbyMembers = new Map(); // (só no coordenador) peerId -> DataConnection
-    let roster = new Map();     // peerId -> {name, game, hostId, roomSize}
+    let myPeer = null;          
+    let isCoordinator = false;  
+    let lobbyConn = null;       
+    let lobbyMembers = new Map(); 
+    let roster = new Map();     
 
     let myName = localStorage.getItem('snesp2p-name') || ('Player' + Math.floor(Math.random()*1000));
+    let myPin = '';
+    
     let gameLoaded = false;
     let pendingGameUrl = null;
     let pendingGameName = null;
 
     let isHost = false;
     let hostId = null;
-    let roomConns = new Map();  // host: peerId->conn de cada membro | membro: só a conexão com o host
-    let players = new Map();    // peerId -> {name, slot}
+    let roomConns = new Map();  
+    let players = new Map();    
     let mySlot = null;
     let multiplayerActive = false;
-    let resyncTimer = null;
+    let isGameRunning = false;
+    
+    let amIReady = false;
+    let isPeerReady = false;
+
+    // Gerador de PIN
+    function refreshPin() {
+        myPin = Math.floor(1000 + Math.random() * 9000).toString();
+        document.getElementById('my-pin-display').textContent = myPin;
+        document.getElementById('lobby-my-pin').textContent = myPin;
+        addLog('Novo PIN de segurança gerado.', 'text-gray-400');
+    }
 
     /* ============================================================
        1. UI Tabs
@@ -241,29 +289,24 @@
             sendPresenceUpdate();
         }
     }
+
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('my-name').value = myName;
+        refreshPin();
     });
 
     /* ============================================================
-       2. LOBBY DE PRESENÇA (sem IDs manuais, sem banco de dados)
-       Um peer fixo (LOBBY_ID) age como "quadro de avisos". O primeiro
-       a abrir a página vira o coordenador; os demais só se conectam
-       nele automaticamente e recebem a lista de quem está online.
+       2. LOBBY DE PRESENÇA 
     ============================================================ */
     let reconnectAttempts = 0;
 
     function attachReconnect(peerObj, label) {
         peerObj.on('disconnected', () => {
             setLobbyStatus('Conexão caiu, reconectando...');
-            addLog('Sinal perdido (' + label + '). Tentando reconectar...', 'text-yellow-400');
             if (reconnectAttempts < 8) {
                 reconnectAttempts++;
                 setTimeout(() => { if (!peerObj.destroyed) peerObj.reconnect(); }, 1500 * reconnectAttempts);
             }
-        });
-        peerObj.on('close', () => {
-            setLobbyStatus('Lobby desconectado permanentemente');
         });
     }
 
@@ -273,7 +316,6 @@
 
         coordCandidate.on('open', () => {
             reconnectAttempts = 0;
-            // Ninguém tinha esse ID ainda -> este cliente é o coordenador do lobby
             isCoordinator = true;
             myPeer = coordCandidate;
             setLobbyStatus('Você é o nó central do lobby');
@@ -293,13 +335,11 @@
                         conn.send({ t: 'roster', list: rosterAsList() });
                     });
                 }
-                // conexões sem metadata "lobby" são tratadas por bindGameConnectionHandlers (convites de jogo)
             });
         });
 
         coordCandidate.on('error', (err) => {
             if (err.type === 'unavailable-id') {
-                // Já existe um coordenador -> vira cliente normal do lobby
                 myPeer = new Peer();
                 attachReconnect(myPeer, 'cliente');
                 myPeer.on('open', () => {
@@ -311,13 +351,7 @@
                         sendPresenceUpdate();
                     });
                     lobbyConn.on('data', (data) => handleLobbyMessage(LOBBY_ID, data));
-                    lobbyConn.on('close', () => {
-                        setLobbyStatus('Lobby indisponível (recarregue a página)');
-                    });
                 });
-                myPeer.on('error', (e2) => addLog('Erro de rede: ' + e2.type, 'text-red-500'));
-            } else {
-                addLog('Erro no lobby: ' + err.type, 'text-red-500');
             }
         });
     }
@@ -327,9 +361,7 @@
         document.getElementById('lobby-status-text').textContent = txt;
     }
 
-    function rosterAsList() {
-        return Array.from(roster.entries()).map(([id, v]) => ({ id, ...v }));
-    }
+    function rosterAsList() { return Array.from(roster.entries()).map(([id, v]) => ({ id, ...v })); }
 
     function handleLobbyMessage(fromId, data) {
         if (data.t === 'register' || data.t === 'update') {
@@ -340,8 +372,6 @@
         } else if (data.t === 'roster') {
             roster = new Map(data.list.map(p => [p.id, { name: p.name, game: p.game, hostId: p.hostId, roomSize: p.roomSize }]));
             renderLobbyList();
-        } else if (data.t === 'invite-relay') {
-            // reservado para futura ampliação de convites via coordenador
         }
     }
 
@@ -368,26 +398,25 @@
         if (!box) return;
         const others = rosterAsList().filter(p => p.id !== (myPeer ? myPeer.id : null));
         if (others.length === 0) {
-            box.innerHTML = '<p class="text-sm text-gray-500 italic">Ninguém mais online agora. Você pode jogar sozinho ou esperar.</p>';
+            box.innerHTML = '<p class="text-sm text-gray-500 italic">Ninguém mais online agora. Jogue sozinho ou aguarde seus amigos.</p>';
             return;
         }
         box.innerHTML = '';
         others.forEach(p => {
             const row = document.createElement('div');
             row.className = 'flex items-center justify-between bg-gray-800 border border-gray-700 rounded-lg px-4 py-3';
-            const roomTxt = p.hostId ? `Sala (${p.roomSize}/${MAX_SLOTS})` : 'Sozinho no lobby';
+            const roomTxt = p.hostId ? `Sala (${p.roomSize}/${MAX_SLOTS})` : 'Aguardando adversário';
             row.innerHTML = `
                 <div>
                     <p class="font-bold text-white">${escapeHtml(p.name)}</p>
                     <p class="text-xs text-gray-400">${p.game ? '🎮 ' + escapeHtml(p.game) : 'Nenhum jogo carregado'} · ${roomTxt}</p>
                 </div>
-                <button class="bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold py-1.5 px-3 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">Jogar</button>
+                <button class="bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold py-1.5 px-4 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"><i class="ph-bold ph-plugs-connected mr-1"></i> Conectar</button>
             `;
             const btn = row.querySelector('button');
             const full = p.hostId && p.roomSize >= MAX_SLOTS;
             if (!p.game || full) {
                 btn.disabled = true;
-                btn.title = !p.game ? 'Essa pessoa ainda não carregou uma ROM' : 'Sala cheia';
             } else {
                 btn.onclick = () => requestJoin(p);
             }
@@ -398,7 +427,7 @@
     function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
     /* ============================================================
-       3. CONVITE / SALA (conexão P2P direta, sem passar pelo coordenador)
+       3. CONVITE / SALA (COM PIN DE SEGURANÇA)
     ============================================================ */
     function bindGameConnectionHandlers(peerObj) {
         peerObj.on('connection', (conn) => {
@@ -408,45 +437,62 @@
         });
     }
 
-    function requestJoin(targetInfo) {
-        if (!gameLoaded && !pendingGameUrl) {
+    async function requestJoin(targetInfo) {
+        if (!pendingGameUrl) {
             Swal.fire({ icon: 'info', title: 'Carregue uma ROM primeiro', background: '#1f2937', color: '#fff' });
             return;
         }
-        const targetPeerId = targetInfo.hostId || targetInfo.id; // se já tem sala, entra direto pelo host
-        addLog(`Pedindo pra entrar na sala de ${targetInfo.name}...`, 'text-yellow-400');
-        const conn = myPeer.connect(targetPeerId, { metadata: { kind: 'invite', name: myName, game: pendingGameName } });
-        conn.on('open', () => { /* aguarda resposta do host */ });
-        conn.on('data', (data) => handleRoomMessage(targetPeerId, data, conn));
-        conn.on('close', () => {
-            if (!isHost && hostId === targetPeerId && multiplayerActive) {
-                addLog('Conexão com o host caiu. Tentando reconectar...', 'text-yellow-400');
-                retryJoinRoom(targetInfo, targetPeerId, 0);
-            } else if (!isHost && !multiplayerActive) {
-                addLog('Convite recusado ou sala fechada.', 'text-red-500');
+
+        // PERGUNTA O PIN DO HOST
+        const { value: typedPin } = await Swal.fire({
+            title: `Conectar a ${targetInfo.name}`,
+            text: 'Digite o PIN de 4 dígitos do Host:',
+            input: 'text',
+            inputAttributes: {
+                maxlength: 4,
+                inputmode: 'numeric',
+                pattern: '[0-9]*'
+            },
+            showCancelButton: true,
+            confirmButtonText: 'Conectar',
+            cancelButtonText: 'Cancelar',
+            background: '#1f2937', color: '#fff',
+            inputValidator: (value) => {
+                if (!value || value.length !== 4) return 'Digite um PIN válido de 4 números!';
             }
         });
-        conn.on('error', () => addLog('Não foi possível conectar a essa sala.', 'text-red-500'));
+
+        if (!typedPin) return;
+
+        const targetPeerId = targetInfo.hostId || targetInfo.id;
+        addLog(`Enviando solicitação com PIN para ${targetInfo.name}...`, 'text-yellow-400');
+        
+        // Envia o PIN junto com os metadados de conexão
+        const conn = myPeer.connect(targetPeerId, { metadata: { kind: 'invite', name: myName, game: pendingGameName, pin: typedPin } });
+        
+        conn.on('data', (data) => handleRoomMessage(targetPeerId, data, conn));
+        conn.on('close', () => { addLog('Conexão fechada. (Pode ser erro de PIN ou Sala cheia)', 'text-red-500'); });
+        conn.on('error', () => addLog('Não foi possível conectar.', 'text-red-500'));
+        
         roomConns.set(targetPeerId, conn);
     }
 
-    function retryJoinRoom(targetInfo, targetPeerId, attempt) {
-        if (attempt >= 5 || !myPeer || myPeer.destroyed) return;
-        setTimeout(() => {
-            const conn = myPeer.connect(targetPeerId, { metadata: { kind: 'invite', name: myName, game: pendingGameName, rejoin: true, slot: mySlot } });
-            conn.on('open', () => { addLog('Reconectado à sala!', 'text-green-400'); roomConns.set(targetPeerId, conn); });
-            conn.on('data', (data) => handleRoomMessage(targetPeerId, data, conn));
-            conn.on('error', () => retryJoinRoom(targetInfo, targetPeerId, attempt + 1));
-        }, 1500 * (attempt + 1));
-    }
-
     function handleIncomingInvite(conn) {
-        // Se eu ainda não sou host de nada, viro host agora (sala começa comigo)
+        // VERIFICAÇÃO DO PIN DE SEGURANÇA
+        const receivedPin = conn.metadata.pin;
+
+        if (receivedPin !== myPin) {
+            addLog(`Tentativa bloqueada. ${conn.metadata.name} errou o PIN.`, 'text-red-500');
+            setTimeout(() => conn.close(), 500); // delay pequeno para não bugar o WebRTC
+            return;
+        }
+
+        // SE O PIN ESTÁ CORRETO
         if (!isHost && roomConns.size === 0) {
             Swal.fire({
-                title: `${conn.metadata.name} quer jogar com você`,
-                text: `Jogo: ${conn.metadata.game || '???'}`,
-                icon: 'question', showCancelButton: true,
+                title: `PIN Correto!`,
+                html: `<span class="text-purple-400 font-bold">${conn.metadata.name}</span> digitou sua senha e quer jogar.<br><br><b>Ambos têm a mesma ROM?</b>`,
+                icon: 'success', showCancelButton: true,
                 confirmButtonText: 'Aceitar', cancelButtonText: 'Recusar',
                 background: '#1f2937', color: '#fff'
             }).then(res => {
@@ -458,160 +504,171 @@
                 }
             });
         } else if (isHost) {
-            // Já sou host, mais um jogador quer entrar (até 4)
             if (players.size >= MAX_SLOTS) { conn.close(); return; }
-            Swal.fire({
-                title: `${conn.metadata.name} quer entrar na sua sala`,
-                icon: 'question', showCancelButton: true,
-                confirmButtonText: 'Aceitar', cancelButtonText: 'Recusar',
-                background: '#1f2937', color: '#fff'
-            }).then(res => {
-                if (res.isConfirmed) acceptRoomMember(conn);
-                else conn.close();
-            });
+            acceptRoomMember(conn);
         } else {
-            conn.close(); // não sou host e já estou em outra sala
+            conn.close();
         }
     }
 
     function becomeHost() {
         isHost = true;
         hostId = myPeer.id;
-        players.set(myPeer.id, { name: myName, slot: null });
+        players.set(myPeer.id, { name: myName, slot: 1 }); // Host é sempre P1
+        mySlot = 1;
         openSlotOverlay();
     }
 
     function acceptRoomMember(conn) {
         roomConns.set(conn.peer, conn);
-        players.set(conn.peer, { name: conn.metadata.name, slot: null });
+        players.set(conn.peer, { name: conn.metadata.name, slot: 2 }); // Convidado é P2
+        
         conn.on('data', (data) => handleRoomMessage(conn.peer, data, conn));
         conn.on('close', () => {
             players.delete(conn.peer);
             roomConns.delete(conn.peer);
-            broadcastToRoom({ t: 'playerLeft', id: conn.peer });
-            addLog('Um jogador saiu da sala.', 'text-red-500');
+            addLog('O outro jogador saiu da sala.', 'text-red-500');
             updateSlotUI();
-            sendPresenceUpdate({ hostId: myPeer.id, roomSize: players.size });
         });
-        conn.send({ t: 'welcome', players: playersList(), slotsTaken: takenSlots() });
-        broadcastToRoom({ t: 'playersUpdate', players: playersList() }, conn.peer);
+        
+        conn.send({ t: 'welcome', players: playersList(), hostId: myPeer.id });
         addLog(`${conn.metadata.name} entrou na sala.`, 'text-green-400');
         sendPresenceUpdate({ hostId: myPeer.id, roomSize: players.size });
         openSlotOverlay();
     }
 
     function playersList() { return Array.from(players.entries()).map(([id, v]) => ({ id, ...v })); }
-    function takenSlots() { return playersList().filter(p => p.slot).map(p => p.slot); }
-
-    function broadcastToRoom(msg, exceptId) {
-        for (const [id, conn] of roomConns.entries()) {
-            if (id !== exceptId && conn.open) conn.send(msg);
-        }
-    }
 
     function handleRoomMessage(fromId, data, conn) {
         if (data.t === 'welcome') {
-            hostId = fromId; isHost = false;
+            hostId = data.hostId; 
+            isHost = false;
             players = new Map(data.players.map(p => [p.id, { name: p.name, slot: p.slot }]));
-            players.set(myPeer.id, { name: myName, slot: null });
+            
+            const myPlayerInfo = data.players.find(p => p.id === myPeer.id);
+            if(myPlayerInfo) mySlot = myPlayerInfo.slot;
+            
             openSlotOverlay();
-        } else if (data.t === 'playersUpdate') {
-            const mine = players.get(myPeer.id);
-            players = new Map(data.players.map(p => [p.id, { name: p.name, slot: p.slot }]));
-            if (mine) players.set(myPeer.id, mine);
-            updateSlotUI();
-        } else if (data.t === 'slotUpdate') {
-            players = new Map(data.players.map(p => [p.id, { name: p.name, slot: p.slot }]));
-            updateSlotUI();
-        } else if (data.t === 'slotPick' && isHost) {
-            trySetSlot(fromId, data.slot);
-        } else if (data.t === 'start') {
-            beginMultiplayerGame(data.startAt);
-        } else if (data.t === 'input') {
+            addLog('Conectado à sala! Você é o P' + mySlot, 'text-green-400');
+        } 
+        else if (data.t === 'start_sync') {
+            beginMultiplayerSync();
+        }
+        else if (data.t === 'client_ready') {
+            isPeerReady = true;
+            checkSyncAndStart();
+        }
+        else if (data.t === 'host_ready_go') {
+            isPeerReady = true;
+            checkSyncAndStart();
+        }
+        else if (data.t === 'input') {
             applyRemoteInput(data.slot, data.index, data.value);
-            if (isHost) broadcastToRoom(data, fromId); // host retransmite pros demais
-        } else if (data.t === 'playerLeft') {
-            players.delete(data.id);
-            roomConns.delete(data.id);
-            updateSlotUI();
-            addLog('Um jogador saiu da sala.', 'text-red-500');
         }
     }
 
     /* ============================================================
-       4. ESCOLHA DE SLOT (1-4)
+       4. ESCOLHA DE SLOT (Simplificada)
     ============================================================ */
     function openSlotOverlay() {
         document.getElementById('lobby-overlay').classList.add('hidden');
         document.getElementById('slot-overlay').classList.remove('hidden');
-        document.getElementById('slot-room-info').textContent = isHost ? 'Você é o host' : ('Host: ' + (players.get(hostId)?.name || '...'));
+        document.getElementById('slot-room-info').textContent = isHost ? 'Você é o Host da sala' : ('Host: ' + (players.get(hostId)?.name || '...'));
         updateSlotUI();
     }
 
     function updateSlotUI() {
         const box = document.getElementById('slot-buttons');
         box.innerHTML = '';
-        const taken = takenSlots();
+        
         for (let i = 1; i <= MAX_SLOTS; i++) {
-            const btn = document.createElement('button');
+            const btn = document.createElement('div');
             const isMine = mySlot === i;
-            btn.className = 'slot-btn w-16 h-16 rounded-lg bg-gray-800 border-2 border-gray-600 text-white font-bold text-lg' + (taken.includes(i) && !isMine ? ' taken' : '') + (isMine ? ' selected border-green-500' : '');
-            btn.textContent = 'P' + i;
-            if (!taken.includes(i) || isMine) btn.onclick = () => pickSlot(i);
+            
+            const playerInSlot = Array.from(players.values()).find(p => p.slot === i);
+            const isTaken = !!playerInSlot;
+            
+            btn.className = 'w-24 h-24 rounded-lg bg-gray-800 border-2 border-gray-600 flex flex-col items-center justify-center text-white font-bold text-lg' + 
+                            (isTaken && !isMine ? ' opacity-50' : '') + 
+                            (isMine ? ' border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : '');
+            
+            btn.innerHTML = `<span>P${i}</span><span class="text-xs font-normal mt-2 truncate w-full px-2 text-center text-gray-400">${playerInSlot ? escapeHtml(playerInSlot.name) : 'Aguardando...'}</span>`;
             box.appendChild(btn);
         }
-        document.getElementById('slot-start-btn').classList.toggle('hidden', !(isHost && mySlot));
-        document.getElementById('slot-wait-msg').classList.toggle('hidden', !(mySlot && !isHost));
-    }
-
-    function pickSlot(i) {
-        mySlot = i;
-        if (isHost) {
-            trySetSlot(myPeer.id, i);
+        
+        const canStart = isHost && players.size === 2;
+        document.getElementById('slot-start-btn').classList.toggle('hidden', !canStart);
+        
+        if(isHost && players.size < 2) {
+             document.getElementById('slot-wait-msg').textContent = `Passe seu PIN (${myPin}) para o Player 2.`;
+             document.getElementById('slot-wait-msg').classList.remove('hidden');
+        } else if (!isHost) {
+             document.getElementById('slot-wait-msg').textContent = "Aguardando o host clicar em Iniciar...";
+             document.getElementById('slot-wait-msg').classList.remove('hidden');
         } else {
-            const conn = roomConns.get(hostId);
-            if (conn && conn.open) conn.send({ t: 'slotPick', slot: i });
+             document.getElementById('slot-wait-msg').classList.add('hidden');
         }
-        updateSlotUI();
-    }
-
-    function trySetSlot(playerId, slot) {
-        if (takenSlots().includes(slot)) return; // slot já ocupado, ignora
-        const p = players.get(playerId);
-        if (!p) return;
-        p.slot = slot;
-        players.set(playerId, p);
-        broadcastToRoom({ t: 'slotUpdate', players: playersList() });
-        updateSlotUI();
     }
 
     function hostStartGame() {
-        if (!mySlot) return;
-        const startAt = Date.now() + 1500;
-        broadcastToRoom({ t: 'start', startAt });
-        beginMultiplayerGame(startAt);
+        if (!isHost || players.size < 2) return;
+        broadcastToRoom({ t: 'start_sync' });
+        beginMultiplayerSync();
+    }
+
+    function broadcastToRoom(msg) {
+        for (const [id, conn] of roomConns.entries()) {
+            if (conn.open) conn.send(msg);
+        }
     }
 
     /* ============================================================
-       5. INÍCIO DO JOGO (solo ou multiplayer)
+       5. SISTEMA DE SYNC E INÍCIO DE JOGO
     ============================================================ */
     function startSolo() {
         document.getElementById('lobby-overlay').classList.add('hidden');
-        initEmulator(pendingGameUrl);
+        initEmulator(pendingGameUrl, false);
     }
 
-    function beginMultiplayerGame(startAt) {
+    function beginMultiplayerSync() {
         document.getElementById('slot-overlay').classList.add('hidden');
         document.getElementById('lobby-overlay').classList.add('hidden');
+        document.getElementById('sync-overlay').classList.remove('hidden');
+        
         multiplayerActive = true;
+        amIReady = false;
+        isPeerReady = false;
+        isGameRunning = false;
+        
         document.getElementById('mp-warning').classList.remove('hidden');
-        const delay = Math.max(0, startAt - Date.now());
-        setTimeout(() => {
-            initEmulator(pendingGameUrl, true);
+        initEmulator(pendingGameUrl, true);
+    }
+
+    function onEmulatorReady() {
+        amIReady = true;
+        if (isHost) {
+            checkSyncAndStart();
+        } else {
+            const conn = roomConns.get(hostId);
+            if (conn && conn.open) conn.send({ t: 'client_ready' });
+        }
+    }
+
+    function checkSyncAndStart() {
+        if (amIReady && isPeerReady && !isGameRunning) {
+            isGameRunning = true;
+            document.getElementById('sync-overlay').classList.add('hidden');
             updateStatus(true);
-            addLog('Partida multiplayer iniciada! Você é P' + mySlot + '.', 'text-green-400');
+            
+            if (isHost) {
+                broadcastToRoom({ t: 'host_ready_go' });
+                addLog('Sincronização concluída! Jogo iniciado. Você é P1.', 'text-green-400');
+            } else {
+                addLog('Sincronização concluída! Jogo iniciado. Você é P2.', 'text-green-400');
+            }
+            
             setupMultiplayerInput();
-        }, delay);
+        }
     }
 
     /* ============================================================
@@ -628,15 +685,12 @@
         window.EJS_color = '#9333ea';
 
         if (mp) {
-            // Anti-trapaça: sem save state, sem cheat, sem turbo/slow-motion enquanto multiplayer
             window.EJS_Buttons = {
                 saveState: false, loadState: false, quickSave: false, quickLoad: false,
                 cheat: false, screenRecord: false, cacheManager: false
             };
             window.EJS_disableCheats = true;
-            // SNES só tem 2 portas físicas. Pra 3º/4º jogador (ex: Bomberman) é OBRIGATÓRIO
-            // ligar o multitap, senão o core nem lê o input desses controles.
-            if (players.size > 2) window.EJS_multitap = true;
+            window.EJS_multitap = false;
         }
 
         const script = document.createElement('script');
@@ -645,22 +699,12 @@
 
         gameLoaded = true;
 
-        if (mp) {
-            window.EJS_ready = () => {
-                // desliga o teclado nativo do EmulatorJS: nós controlamos os inputs manualmente
+        window.EJS_ready = () => {
+            if (mp) {
                 try { EJS_emulator.gameManager.setKeyboardEnabled(false); } catch (e) {}
-                // "Aquece" o simulateInput pra cada slot. Sem isso o EmulatorJS às vezes só
-                // aceita input simulado depois de uma interação real no canvas (bug conhecido
-                // da lib) e os controles 2/3/4 ficam "mudos" mesmo enviando o comando certo.
-                try {
-                    const canvas = document.querySelector('#ejs-player canvas');
-                    if (canvas) canvas.focus();
-                    for (let s = 0; s < MAX_SLOTS; s++) {
-                        EJS_emulator.gameManager.simulateInput(s, 0, 0);
-                    }
-                } catch (e) {}
-            };
-        }
+                onEmulatorReady();
+            }
+        };
     }
 
     function loadGameFromFile() {
@@ -702,39 +746,47 @@
     }
 
     /* ============================================================
-       7. INPUT MULTIPLAYER (relay via host + anti-cheat)
-       Mapeamento RetroPad padrão: B=0 Y=1 SELECT=2 START=3 UP=4 DOWN=5
-       LEFT=6 RIGHT=7 A=8 X=9 L=10 R=11
+       7. INPUT MULTIPLAYER (Isolamento total e roteamento correto)
     ============================================================ */
     const KEY_MAP = {
         ArrowUp: 4, ArrowDown: 5, ArrowLeft: 6, ArrowRight: 7,
         KeyZ: 0, KeyX: 8, KeyA: 1, KeyS: 9,
         Enter: 3, ShiftLeft: 2, ShiftRight: 2
     };
-    let lastInputTime = {};
 
     function setupMultiplayerInput() {
-        document.addEventListener('keydown', handleLocalKey);
-        document.addEventListener('keyup', handleLocalKey);
+        document.removeEventListener('keydown', handleLocalKey);
+        document.removeEventListener('keyup', handleLocalKey);
+        
+        window.addEventListener('keydown', handleLocalKey, { capture: true });
+        window.addEventListener('keyup', handleLocalKey, { capture: true });
     }
 
     function handleLocalKey(e) {
-        if (!multiplayerActive || !mySlot) return;
+        if (!multiplayerActive || !isGameRunning || !mySlot) return;
+        
         const idx = KEY_MAP[e.code];
         if (idx === undefined) return;
+        
         e.preventDefault();
+        e.stopPropagation();
+        
         const value = e.type === 'keydown' ? 1 : 0;
+        const ejsSlot = mySlot - 1; 
+        
+        applyLocalInput(ejsSlot, idx, value);
         sendInput(mySlot, idx, value);
-        applyRemoteInput(mySlot, idx, value); // aplica local (baixa latência)
+    }
+
+    function applyLocalInput(slotIndex, btnIndex, value) {
+        try {
+            if(window.EJS_emulator && window.EJS_emulator.gameManager) {
+                window.EJS_emulator.gameManager.simulateInput(slotIndex, btnIndex, value);
+            }
+        } catch (e) { }
     }
 
     function sendInput(slot, index, value) {
-        // simples anti-spam: no máx. ~120 msgs/seg por combinação
-        const key = slot + ':' + index;
-        const now = performance.now();
-        if (lastInputTime[key] && now - lastInputTime[key] < 8) return;
-        lastInputTime[key] = now;
-
         const msg = { t: 'input', slot, index, value };
         if (isHost) {
             broadcastToRoom(msg);
@@ -744,20 +796,14 @@
         }
     }
 
-    function applyRemoteInput(slot, index, value) {
-        // bloqueia índices de hotkey (24-29: save state, cheat etc.) vindos da rede
-        if (index >= 24) return;
-        try {
-            EJS_emulator.gameManager.simulateInput(slot - 1, index, value);
-        } catch (e) { /* emulador ainda não pronto */ }
+    function applyRemoteInput(remoteSlot, index, value) {
+        if (index >= 24) return; // Bloqueia hotkeys
+        const ejsSlot = remoteSlot - 1;
+        applyLocalInput(ejsSlot, index, value);
     }
 
     /* ============================================================
        8. BOOT
-       (Removido o resync por save state: cada cliente processa o jogo
-       individualmente a partir dos mesmos inputs, sem "pulos no tempo".
-       O anti-cheat vem de bloquear save state/cheat/turbo na UI e de
-       ignorar índices de hotkey vindos da rede.)
     ============================================================ */
     initLobby();
     </script>
