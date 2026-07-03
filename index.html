@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F.R Transportes - FilaDrive</title>
+    <title>F.R Transportes</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -240,19 +240,20 @@
 
 <!-- POP-UP: alarme de renovação, do momento que faltam 5min até a expulsão (som +
      vibração em loop, visível/audível pra todo mundo com o site aberto). Fica
-     tocando o tempo todo até renovar/expulsar; o botão "Fechar" só silencia
-     por 1 minuto pra essa pessoa, depois volta a tocar sozinho se ainda não
-     tiver renovado. -->
+     tocando até renovar, ser expulso, ou a pessoa fechar no X — nesse caso
+     esse alerta específico não aparece mais pra ela (mas continua valendo
+     pros outros aparelhos, e volta a valer pra ela também se a vez for
+     renovada de novo depois). -->
 <div id="alarmeRenovacaoOverlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[10003]">
   <div class="bg-[#0c1220] border-2 border-red-500 rounded-3xl w-full max-w-[380px] p-6 text-center space-y-3 relative">
-    <button onclick="fecharAlarmeRenovacao()" class="absolute top-3 right-3 p-2 bg-slate-800 rounded-xl" title="Silenciar por 1 minuto">
+    <button onclick="fecharAlarmeRenovacao()" class="absolute top-3 right-3 p-2 bg-slate-800 rounded-xl" title="Fechar">
       <i data-lucide="x" class="w-4 h-4"></i>
     </button>
     <img id="alarmeRenovacaoFoto" class="w-20 h-20 rounded-2xl object-cover mx-auto border-2 border-red-500">
     <h3 id="alarmeRenovacaoNome" class="text-xl font-bold"></h3>
     <p id="alarmeRenovacaoCronometro" class="text-3xl font-mono font-bold text-red-400">00:30</p>
-    <p class="text-sm text-slate-300">Será retirado da fila automaticamente se não renovar!</p>
-    <button onclick="fecharAlarmeRenovacao()" class="w-full bg-slate-700 py-3 rounded-2xl font-medium text-sm">Fechar (silenciar por 1 min)</button>
+    <p class="text-sm text-slate-300">⚠️ Será retirado da fila automaticamente se não renovar!</p>
+    <button onclick="fecharAlarmeRenovacao()" class="w-full bg-slate-700 py-3 rounded-2xl font-medium text-sm">Fechar</button>
   </div>
 </div>
 
@@ -713,7 +714,6 @@
     let beepLembreteIntervalId = null;
     const INTERVALO_LEMBRETE_MS = 5 * 60 * 1000;      // 3 bips a cada 5 minutos, enquanto dentro da área
     const JANELA_ALERTA_MS = 5 * 60 * 1000;           // faltando 5min: entra no aviso visual + começa o alarme sonoro
-    const ALARME_SILENCIO_MS = 60 * 1000;             // ao tocar "Fechar", fica mudo por 1 minuto só pra essa pessoa
     const ALARME_CICLO_TOQUE_MS = 3000;               // duração de cada "toque" da sirene dentro do loop
     const ALARME_CICLO_PAUSA_MS = 2000;               // pausa entre um toque e outro do loop
     let renovacaoAlarmeFilaPendente = []; // motoristas esperando a vez de mostrar o pop-up sonoro
@@ -721,7 +721,9 @@
     let renovacaoAlarmeAtivoTimestamp = null; // timestamp da entrada que está com o alarme ativo, pra detectar renovação
     let renovacaoAlarmeCronometroIntervalId = null;
     let renovacaoAlarmeCicloTimeoutId = null; // controla o loop de toques da sirene enquanto o alarme está ativo
-    let renovacaoAlarmeSilenciadoAte = {}; // { [id]: timestamp até quando o alarme fica mudo pra essa pessoa, depois de tocar "Fechar" }
+    let renovacaoAlarmeDispensado = {}; // { [id]: timestamp da entrada que a pessoa já fechou (X) — não mostra mais o
+                                         // pop-up pra essa entrada específica; se a entrada renovar (timestamp novo),
+                                         // o alarme pode aparecer de novo normalmente.
     let gpsIniciado = false, posicaoPronta = false, ultimaPosicao = null, ultimaAccuracyM = null;
     let ultimaRotaCalculadaEm = 0, ultimaRotaPos = null, rotaPontosLatLng = [];
     let telaCheiaAtiva = false, pausarAutoCentralizar = 0;
@@ -2650,11 +2652,10 @@
     }
 
     // Coloca um motorista na fila de espera do pop-up sonoro (a partir de 5min
-    // pra expirar). Não entra se já estiver temporariamente silenciado (botão
-    // "Fechar"), se já for o alarme ativo, ou se já estiver esperando a vez.
+    // pra expirar). Não entra se essa mesma entrada já foi dispensada (X) por
+    // essa pessoa, se já for o alarme ativo, ou se já estiver esperando a vez.
     function enfileirarAlarmeRenovacao(m) {
-        const agora = Date.now();
-        if (renovacaoAlarmeSilenciadoAte[m.id] && agora < renovacaoAlarmeSilenciadoAte[m.id]) return; // silenciado por 1min
+        if (renovacaoAlarmeDispensado[m.id] === m.timestamp) return; // essa pessoa já fechou esse alerta, não mostra de novo
         if (renovacaoAlarmeAtivoId === m.id) return; // já é o alarme ativo agora
         if (renovacaoAlarmeFilaPendente.some(x => x.id === m.id)) return; // já está esperando a vez
         renovacaoAlarmeFilaPendente.push(m);
@@ -2663,11 +2664,10 @@
 
     function processarFilaAlarmeRenovacao() {
         if (renovacaoAlarmeAtivoId) return; // já tem um pop-up/alarme ativo, espera terminar
-        const agora = Date.now();
         while (renovacaoAlarmeFilaPendente.length) {
             const candidato = renovacaoAlarmeFilaPendente.shift();
-            if (renovacaoAlarmeSilenciadoAte[candidato.id] && agora < renovacaoAlarmeSilenciadoAte[candidato.id]) {
-                continue; // ainda silenciado; volta a entrar na fila sozinho quando o silêncio acabar (ver atualizarContadores)
+            if (renovacaoAlarmeDispensado[candidato.id] === candidato.timestamp) {
+                continue; // essa pessoa já dispensou esse alerta pra essa entrada
             }
             dispararAlarmeRenovacao(candidato);
             return;
@@ -2676,7 +2676,8 @@
 
     // Mostra o pop-up (foto, nome, cronômetro) e liga o loop da sirene — fica
     // tocando enquanto a pessoa continuar dentro da janela de 5min, até
-    // renovar, ser expulsa, ou tocar em "Fechar" (que só silencia por 1min).
+    // renovar, ser expulsa, ou a pessoa fechar no X (que dispensa esse
+    // alerta de vez pra ela, sem voltar a tocar sozinho depois).
     function dispararAlarmeRenovacao(m) {
         renovacaoAlarmeAtivoId = m.id;
         renovacaoAlarmeAtivoTimestamp = m.timestamp;
@@ -2721,11 +2722,13 @@
         processarFilaAlarmeRenovacao();
     }
 
-    // botão "Fechar" do pop-up: só silencia por 1 minuto pra essa pessoa — se
-    // ela continuar sem renovar depois desse minuto, o alarme volta a tocar sozinho
+    // botão "Fechar" (X) do pop-up: dispensa de vez esse alerta pra essa pessoa —
+    // não volta a aparecer pra ela enquanto for a mesma entrada. Se a pessoa
+    // renovar a vez (o que gera um timestamp novo), o alarme pode aparecer de
+    // novo normalmente no próximo ciclo.
     function fecharAlarmeRenovacao() {
         if (!renovacaoAlarmeAtivoId) return;
-        renovacaoAlarmeSilenciadoAte[renovacaoAlarmeAtivoId] = Date.now() + ALARME_SILENCIO_MS;
+        renovacaoAlarmeDispensado[renovacaoAlarmeAtivoId] = renovacaoAlarmeAtivoTimestamp;
         encerrarAlarmeRenovacao();
     }
 
@@ -2734,11 +2737,11 @@
     // aqui é o caso do aparelho parar de mandar QUALQUER atualização — app
     // fechado, celular sem sinal/bateria etc. Cada motorista, enquanto
     // estiver na fila e com GPS confiável, manda um "heartbeat" pro servidor
-    // a cada minuto. Se um motorista ficar 15min sem heartbeat, qualquer
-    // aparelho com o site aberto (não só o dele) toca um alarme: 5 vezes,
-    // 30s de duração cada, com pausa de 30s entre elas. Se ao final desse
-    // ciclo ele continuar sem sinal, é expulso da fila automaticamente.
-    const AUSENCIA_LIMITE_MS = 15 * 60 * 1000;   // 15 minutos sem heartbeat = "ausente"
+    // a cada minuto. Se um motorista ficar 5min sem heartbeat, o sistema
+    // conta 5 ciclos de 30s (com pausa de 30s entre eles) em silêncio — sem
+    // som, sem vibração, sem pop-up — e se ao final ele continuar sem sinal,
+    // é expulso da fila automaticamente.
+    const AUSENCIA_LIMITE_MS = 5 * 60 * 1000;    // 5 minutos sem heartbeat = "ausente"
     const AUSENCIA_QTD_TOQUES = 5;               // toca 5 vezes
     const AUSENCIA_DURACAO_TOQUE_MS = 30000;     // 30s de duração cada toque
     const AUSENCIA_PAUSA_MS = 30000;             // 30s de pausa entre os toques
@@ -2814,8 +2817,7 @@
         if (!motoristaAindaAusente(id)) { pararAlarmeAusencia(id); return; }
 
         estado.toques++;
-        tocarSireneUmCiclo(AUSENCIA_DURACAO_TOQUE_MS); // reaproveita a mesma sirene do alarme de emergência
-        if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+        // (sem som/vibração aqui — só conta os ciclos em silêncio até decidir se expulsa)
 
         estado.timeoutId = setTimeout(async () => {
             if (!alarmesAusencia[id]) return;
