@@ -1,0 +1,14 @@
+{
+  "name": "backend-loja",
+  "version": "1.0.0",
+  "description": "Backend para pagamentos",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "mercadopago": "^2.0.9"
+  }
+}
