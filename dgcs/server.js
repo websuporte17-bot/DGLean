@@ -7,7 +7,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. INICIALIZAÇÃO DO FIREBASE ADMIN
 try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
     admin.initializeApp({
@@ -19,11 +18,8 @@ try {
 }
 
 const db = admin.firestore();
-
-// 2. INICIALIZAÇÃO DO MERCADO PAGO (SDK V2)
 const client = new MercadoPagoConfig({ accessToken: process.env.ACCESS_TOKEN_MP });
 
-// 3. ROTA DE PROCESSAMENTO E ATIVAÇÃO AUTOMÁTICA DO ACESSO
 app.post('/process_payment', async (req, res) => {
     try {
         const body = req.body;
@@ -48,49 +44,35 @@ app.post('/process_payment', async (req, res) => {
         const payment = new Payment(client);
         const response = await payment.create({ body: paymentData });
 
-        // SE O PAGAMENTO FOR APROVADO, LIBERA O ACESSO IMEDIATAMENTE NO FIREBASE
         if (response.status === 'approved') {
-            const userEmail = body.payer?.email;
-            // Captura o ID corretamente usando firebase_uid ou user_id
             const userId = body.metadata?.firebase_uid || body.metadata?.user_id || body.user_id;
+            const userEmail = body.payer?.email;
             
-            const updateData = {
-                acesso_liberado: true, // Campo exigido pela sua app.html
-                plano: 'ativo',
+            // Pega a data e hora exata do momento da aprovação
+            const agora = new Date();
+            const dataFormatada = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+            
+            const dadosAtualizacao = {
+                acesso_liberado: true,
                 statusPagamento: 'aprovado',
-                updatedAt: new Date()
+                dataAssinatura: dataFormatada,
+                updatedAt: agora
             };
 
-            const possibleCollections = ['usuarios', 'users', 'assinaturas', 'clients'];
-
-            for (const colName of possibleCollections) {
-                try {
-                    const colRef = db.collection(colName);
-                    
-                    // Se tivermos o ID exato do usuário, atualiza direto
-                    if (userId) {
-                        const docRef = colRef.doc(userId);
-                        const docSnap = await docRef.get();
-                        if (docSnap.exists) {
-                            await docRef.set(updateData, { merge: true });
-                            console.log(`Acesso liberado na collection '${colName}' via ID: ${userId}`);
-                        }
-                    }
-
-                    // Se tivermos o e-mail, busca e atualiza todos os correspondentes
-                    if (userEmail) {
-                        const snapshot = await colRef.where('email', '==', userEmail).get();
-                        if (!snapshot.empty) {
-                            const batch = db.batch();
-                            snapshot.docs.forEach((doc) => {
-                                batch.set(doc.ref, updateData, { merge: true });
-                            });
-                            await batch.commit();
-                            console.log(`Acesso liberado na collection '${colName}' via e-mail: ${userEmail}`);
-                        }
-                    }
-                } catch (err) {
-                    // Ignora se a coleção não existir e prossegue
+            if (userId) {
+                const userRef = db.collection('usuarios').doc(userId);
+                // GARANTE QUE SÓ RESPONDE DEPOIS DE GRAVAR NO FIREBASE COM SUCESSO
+                await userRef.set(dadosAtualizacao, { merge: true });
+                console.log(`[SUCESSO] Acesso gravado no Firebase para o UID: ${userId}`);
+            } else if (userEmail) {
+                const snapshot = await db.collection('usuarios').where('email', '==', userEmail).get();
+                if (!snapshot.empty) {
+                    const batch = db.batch();
+                    snapshot.docs.forEach((doc) => {
+                        batch.update(doc.ref, dadosAtualizacao);
+                    });
+                    await batch.commit();
+                    console.log(`[SUCESSO] Acesso gravado no Firebase para o e-mail: ${userEmail}`);
                 }
             }
         }
