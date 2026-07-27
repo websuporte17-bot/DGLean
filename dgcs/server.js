@@ -7,6 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 1. INICIALIZAÇÃO DO FIREBASE ADMIN
 try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
     admin.initializeApp({
@@ -17,11 +18,16 @@ try {
     console.error("Erro ao inicializar o Firebase:", error.message);
 }
 
+const db = admin.firestore();
+
+// 2. INICIALIZAÇÃO DO MERCADO PAGO (SDK V2)
 const client = new MercadoPagoConfig({ accessToken: process.env.ACCESS_TOKEN_MP });
 
+// 3. ROTA DE PROCESSAMENTO E ATUALIZAÇÃO DO PLANO
 app.post('/process_payment', async (req, res) => {
     try {
         const body = req.body;
+        
         const paymentData = {
             transaction_amount: Number(body.transaction_amount),
             token: body.token,
@@ -41,6 +47,41 @@ app.post('/process_payment', async (req, res) => {
 
         const payment = new Payment(client);
         const response = await payment.create({ body: paymentData });
+
+        // SE O PAGAMENTO FOR APROVADO, ATUALIZA O PLANO NO FIREBASE
+        if (response.status === 'approved') {
+            const userEmail = body.payer?.email;
+            
+            if (userEmail) {
+                try {
+                    const usersRef = db.collection('users');
+                    const snapshot = await usersRef.where('email', '==', userEmail).get();
+                    
+                    if (!snapshot.empty) {
+                        const userDocId = snapshot.docs[0].id;
+                        await usersRef.doc(userDocId).update({
+                            plano: 'ativo',
+                            statusPagamento: 'aprovado',
+                            updatedAt: new Date()
+                        });
+                        console.log(`Plano ativado com sucesso no Firebase para: ${userEmail}`);
+                    } else {
+                        // Caso o usuário não ache por email, tenta salvar pelo metadata se vier o ID
+                        const userId = body.metadata?.user_id;
+                        if (userId) {
+                            await usersRef.doc(userId).update({
+                                plano: 'ativo',
+                                statusPagamento: 'aprovado',
+                                updatedAt: new Date()
+                            });
+                            console.log(`Plano ativado por ID para o usuário: ${userId}`);
+                        }
+                    }
+                } catch (dbError) {
+                    console.error("Erro ao atualizar o plano no Firestore:", dbError);
+                }
+            }
+        }
 
         res.status(200).json({
             status: response.status,
