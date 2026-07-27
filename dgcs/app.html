@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Área Vip | DG DEV HIGH SCHOOL</title>
+    <style>
+        body { background: #050505; color: #00ffcc; font-family: 'Courier New', monospace; margin: 0; padding: 20px;}
+        .header { display: flex; justify-content: space-between; border-bottom: 1px solid #00ffcc; padding-bottom: 10px; margin-bottom: 20px;}
+        .modulo-card { background: #111; border: 1px solid #333; padding: 20px; margin-bottom: 15px; border-radius: 4px; }
+        .bloqueado { opacity: 0.5; border-color: #ff3366; }
+        .btn { background: #00ffcc; color: #000; padding: 10px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; text-decoration: none; display: inline-block;}
+        .btn-danger { background: #ff3366; color: #fff; border: none; padding: 8px 12px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Operador Conectado</h2>
+        <div>
+            Nível: <span id="user-level">0</span> | XP: <span id="user-xp">0</span> 
+            <button class="btn-danger" onclick="logout()" style="margin-left: 15px;">Sair</button>
+        </div>
+    </div>
+
+    <div id="modulos-lista">
+        <p>Carregando arquivos de estudo...</p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA4qjeR-wbHmCtEGcnYN2FG4D9zR4xwQsU",
+            authDomain: "proia-fff09.firebaseapp.com",
+            projectId: "proia-fff09",
+            storageBucket: "proia-fff09.firebasestorage.app",
+            messagingSenderId: "1036426093065",
+            appId: "1:1036426093065:web:be300aec12fafb486bced8"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) return window.location.href = "index.html";
+            
+            const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+            if (!userDoc.data().acesso_liberado) return window.location.href = "index.html";
+
+            const userData = userDoc.data();
+            document.getElementById('user-level').innerText = userData.level || 1;
+            document.getElementById('user-xp').innerText = userData.xp || 0;
+
+            const modulosSnapshot = await getDocs(collection(db, "modulos"));
+            const listaDiv = document.getElementById('modulos-lista');
+            listaDiv.innerHTML = '';
+            
+            modulosSnapshot.forEach((docSnap) => {
+                const mod = docSnap.data();
+                const isUnlocked = userData.xp >= mod.xp_necessario;
+
+                listaDiv.innerHTML += `
+                    <div class="modulo-card ${isUnlocked ? '' : 'bloqueado'}">
+                        <h3 style="color: #fff;">${mod.titulo} [XP Exigido: ${mod.xp_necessario}]</h3>
+                        <p style="color: #aaa; margin: 10px 0;">${mod.descricao}</p>
+                        ${isUnlocked ? `<a href="${mod.video_url}" target="_blank" class="btn">Acessar Arquivos</a>` : '<p style="color:#ff3366; font-weight:bold;">[ BLOQUEADO - XP INSUFICIENTE ]</p>'}
+                    </div>
+                `;
+            });
+        });
+
+        window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
+    </script>
+</body>
+</html>
