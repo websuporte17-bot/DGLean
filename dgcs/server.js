@@ -7,19 +7,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// INICIALIZA O FIREBASE ADMIN
-const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS || '{}');
-if (Object.keys(serviceAccount).length > 0) {
+// 1. INICIALIZAÇÃO DO FIREBASE ADMIN COM A CHAVE SEGURA DO RENDER
+let db;
+try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
+    db = admin.firestore();
+    console.log("Firebase Admin conectado com sucesso pelo Render!");
+} catch (error) {
+    console.error("ERRO: FIREBASE_CREDENTIALS não configurado no Render ou JSON inválido.", error);
 }
-const db = admin.firestore();
 
-// INICIALIZA O MERCADO PAGO
+// 2. INICIALIZAÇÃO DO MERCADO PAGO COM O TOKEN DE SEGURANÇA
 const client = new MercadoPagoConfig({ accessToken: process.env.ACCESS_TOKEN_MP });
 
-// ROTA DE PAGAMENTO
+// 3. ROTA DE PROCESSAMENTO DE PAGAMENTO
 app.post('/process_payment', async (req, res) => {
     const payment = new Payment(client);
     try {
@@ -30,16 +34,16 @@ app.post('/process_payment', async (req, res) => {
             id: response.id
         });
     } catch (error) {
-        console.error("Erro na API do MP:", error);
-        res.status(500).json({ error: 'Erro ao processar' });
+        console.error("Erro na API do Mercado Pago:", error);
+        res.status(500).json({ error: 'Erro ao processar o pagamento' });
     }
 });
 
-// ROTA DO WEBHOOK (LIBERAÇÃO AUTOMÁTICA)
+// 4. ROTA DE WEBHOOK PARA LIBERAÇÃO AUTOMÁTICA DA CONTA
 app.post('/webhook', async (req, res) => {
     const paymentId = req.query.id || req.body.data?.id;
     
-    if (paymentId && Object.keys(serviceAccount).length > 0) {
+    if (paymentId && db) {
         try {
             const payment = new Payment(client);
             const paymentInfo = await payment.get({ id: paymentId });
@@ -52,11 +56,11 @@ app.post('/webhook', async (req, res) => {
                         acesso_liberado: true,
                         pago: true
                     });
-                    console.log(`Acesso liberado: UID ${uidDoAluno}`);
+                    console.log(`[SUCESSO] Conta liberada automaticamente para o UID: ${uidDoAluno}`);
                 }
             }
         } catch (error) {
-            console.error("Erro no Webhook:", error);
+            console.error("Erro ao processar o Webhook:", error);
         }
     }
     res.status(200).send('OK');
@@ -64,5 +68,5 @@ app.post('/webhook', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}!`);
+    console.log(`Servidor blindado online rodando na porta ${PORT}!`);
 });
