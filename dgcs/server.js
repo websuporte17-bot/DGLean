@@ -23,7 +23,7 @@ const db = admin.firestore();
 // 2. INICIALIZAÇÃO DO MERCADO PAGO (SDK V2)
 const client = new MercadoPagoConfig({ accessToken: process.env.ACCESS_TOKEN_MP });
 
-// 3. ROTA DE PROCESSAMENTO E ATUALIZAÇÃO DO PLANO
+// 3. ROTA DE PROCESSAMENTO E ATIVAÇÃO AUTOMÁTICA
 app.post('/process_payment', async (req, res) => {
     try {
         const body = req.body;
@@ -48,38 +48,40 @@ app.post('/process_payment', async (req, res) => {
         const payment = new Payment(client);
         const response = await payment.create({ body: paymentData });
 
-        // SE O PAGAMENTO FOR APROVADO, ATUALIZA O PLANO NO FIREBASE
+        // SE O PAGAMENTO FOR APROVADO, ATIVA O PLANO NO BANCO AUTOMATICAMENTE
         if (response.status === 'approved') {
             const userEmail = body.payer?.email;
+            const userId = body.metadata?.user_id || body.user_id;
             
-            if (userEmail) {
-                try {
-                    const usersRef = db.collection('users');
+            try {
+                const usersRef = db.collection('users');
+                
+                if (userId) {
+                    // Atualiza direto pelo ID se o front mandou
+                    await usersRef.doc(userId).set({
+                        plano: 'ativo',
+                        statusPagamento: 'aprovado',
+                        updatedAt: new Date()
+                    }, { merge: true });
+                    console.log(`Plano ativado pelo ID: ${userId}`);
+                } else if (userEmail) {
+                    // Se não tiver o ID, busca e atualiza pelo e-mail
                     const snapshot = await usersRef.where('email', '==', userEmail).get();
-                    
                     if (!snapshot.empty) {
-                        const userDocId = snapshot.docs[0].id;
-                        await usersRef.doc(userDocId).update({
-                            plano: 'ativo',
-                            statusPagamento: 'aprovado',
-                            updatedAt: new Date()
-                        });
-                        console.log(`Plano ativado com sucesso no Firebase para: ${userEmail}`);
-                    } else {
-                        // Caso o usuário não ache por email, tenta salvar pelo metadata se vier o ID
-                        const userId = body.metadata?.user_id;
-                        if (userId) {
-                            await usersRef.doc(userId).update({
+                        const batch = db.batch();
+                        snapshot.docs.forEach((doc) => {
+                            batch.update(doc.ref, {
                                 plano: 'ativo',
                                 statusPagamento: 'aprovado',
                                 updatedAt: new Date()
                             });
-                            console.log(`Plano ativado por ID para o usuário: ${userId}`);
-                        }
+                        });
+                        await batch.commit();
+                        console.log(`Plano ativado pelo e-mail: ${userEmail}`);
                     }
-                } catch (dbError) {
-                    console.error("Erro ao atualizar o plano no Firestore:", dbError);
                 }
+            } catch (dbError) {
+                console.error("Erro ao atualizar o plano automaticamente:", dbError);
             }
         }
 
