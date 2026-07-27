@@ -32,6 +32,10 @@
         #spinnerOverlay.visible { display: flex; }
         .spinner { border: 6px solid #f3f3f3; border-top: 6px solid #00ffcc; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* floating debug panel */
+        #debugPanel { position: fixed; right: 12px; bottom: 12px; z-index: 10000; background: rgba(0,0,0,0.8); color: #00ffcc; border: 1px solid #00ffcc; padding: 8px; border-radius: 8px; font-size: 13px; }
+        #debugPanel button { background: transparent; color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 8px; margin: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -62,6 +66,13 @@
 
     <div id="spinnerOverlay"><div class="spinner"></div></div>
 
+    <div id="debugPanel">
+        <div style="margin-bottom:6px; font-weight:bold;">Debug</div>
+        <button id="downloadLogsBtn">Download Logs</button>
+        <button id="sendLogsBtn">Enviar logs ao servidor</button>
+        <button id="clearLogsBtn">Limpar logs</button>
+    </div>
+
     <!-- SCRIPTS DE LÓGICA E FIREBASE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -87,6 +98,79 @@
         const spinner = document.getElementById('spinnerOverlay');
         function showSpinner() { spinner.classList.add('visible'); }
         function hideSpinner() { spinner.classList.remove('visible'); }
+
+        // --- Client-side logger ---
+        const LOG_KEY = 'dgcs_client_logs_v1';
+        let logs = [];
+        try {
+            const raw = localStorage.getItem(LOG_KEY);
+            if (raw) logs = JSON.parse(raw);
+        } catch (e) { logs = []; }
+
+        function pushLog(entry) {
+            try {
+                const item = Object.assign({ ts: new Date().toISOString() }, entry);
+                logs.push(item);
+                localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+                console.debug('[logger] ', item);
+            } catch (e) { console.warn('logger err', e); }
+        }
+
+        // Intercept fetch to capture requests/responses
+        (function(){
+            const originalFetch = window.fetch.bind(window);
+            window.fetch = async function(input, init) {
+                const started = Date.now();
+                let url = (typeof input === 'string') ? input : (input && input.url) || 'unknown';
+                pushLog({ type: 'fetch_start', url, init: (init && { method: init.method }) || null });
+                try {
+                    const resp = await originalFetch(input, init);
+                    const text = await resp.clone().text().catch(()=>'<non-text>');
+                    pushLog({ type: 'fetch_end', url, status: resp.status, duration_ms: Date.now() - started, body_preview: text.slice(0,1000) });
+                    return resp;
+                } catch (err) {
+                    pushLog({ type: 'fetch_error', url, error: (err && err.message) || String(err) });
+                    throw err;
+                }
+            };
+        })();
+
+        // Capture unhandled errors and promise rejections
+        window.addEventListener('error', (ev) => {
+            pushLog({ type: 'window_error', message: ev.message, filename: ev.filename, lineno: ev.lineno, colno: ev.colno });
+        });
+        window.addEventListener('unhandledrejection', (ev) => {
+            pushLog({ type: 'unhandledrejection', reason: ev.reason && (ev.reason.message || JSON.stringify(ev.reason)) });
+        });
+
+        // Debug panel buttons
+        document.getElementById('downloadLogsBtn').addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), logs }, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'dgcs_client_logs.json';
+            document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('clearLogsBtn').addEventListener('click', () => {
+            logs = []; localStorage.removeItem(LOG_KEY); alert('Logs limpos localmente');
+        });
+
+        document.getElementById('sendLogsBtn').addEventListener('click', async () => {
+            try {
+                const resp = await fetch('/client_logs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: location.href, logs }) });
+                const data = await resp.json();
+                if (resp.ok) alert('Logs enviados ao servidor: ' + (data.filename || 'ok'));
+                else alert('Erro enviando logs: ' + JSON.stringify(data));
+            } catch (err) {
+                alert('Erro enviando logs: ' + err.message);
+            }
+        });
+
+        // Push some initial info
+        pushLog({ type: 'page_load', href: location.href, userAgent: navigator.userAgent });
+
+        // --- End logger ---
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -124,11 +208,13 @@
                 callbacks: {
                     onReady: () => {
                         console.log('Formulário do Mercado Pago destravado e carregado!');
+                        pushLog({ type: 'mp_onReady' });
                     },
                     onSubmit: async ({ formData }) => {
                         // attach uid for server-side mapping
                         formData.metadata = { firebase_uid: uid };
                         console.log('onSubmit formData:', formData);
+                        pushLog({ type: 'mp_onSubmit', formData_preview: JSON.stringify(formData).slice(0,1000) });
 
                         showSpinner();
                         try {
@@ -149,6 +235,7 @@
                             }
 
                             console.log('process_payment response:', data);
+                            pushLog({ type: 'process_payment_response', data_preview: JSON.stringify(data).slice(0,1000) });
 
                             if (data.status === 'approved') {
                                 alert('Pagamento Aprovado! O sistema está liberando seu acesso...');
@@ -158,6 +245,7 @@
                             }
                         } catch (err) {
                             console.error('Erro de conexão ou processamento:', err);
+                            pushLog({ type: 'process_payment_error', error: err.message });
                             alert('Erro ao processar pagamento: ' + err.message);
                         } finally {
                             hideSpinner();
@@ -165,6 +253,7 @@
                     },
                     onError: (error) => {
                         console.error('Erro no Brick:', error);
+                        pushLog({ type: 'mp_onError', error: (error && error.message) || JSON.stringify(error) });
                         alert('Erro no componente de pagamento: ' + (error?.message || JSON.stringify(error)));
                     }
                 }

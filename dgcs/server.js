@@ -2,12 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const mercadopago = require('mercadopago');
 const admin = require('firebase-admin');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 // Allow CORS from a configured origin or fallback to all (for debugging set ALLOWED_ORIGIN)
 const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
 app.use(cors({ origin: allowedOrigin }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 let db;
 // Initialize Firebase Admin with service account JSON from env
@@ -66,6 +68,28 @@ app.post('/process_payment', async (req, res) => {
     // Do not leak sensitive data in production responses
     const safeMessage = error?.response?.body || error?.message || 'Erro ao processar o pagamento';
     return safeJson(res, 500, { error: safeMessage });
+  }
+});
+
+// Endpoint to receive client-side logs (sent from index.html)
+app.post('/client_logs', async (req, res) => {
+  try {
+    const logs = req.body || {};
+    const logsDir = path.join(__dirname, 'logs');
+    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+    const filename = `client_logs_${Date.now()}.json`;
+    const filepath = path.join(logsDir, filename);
+    fs.writeFile(filepath, JSON.stringify({ received_at: new Date().toISOString(), logs }, null, 2), (err) => {
+      if (err) {
+        console.error('[client_logs] erro ao salvar:', err);
+        return res.status(500).json({ error: 'Erro ao salvar logs no servidor' });
+      }
+      console.log('[client_logs] logs salvos em', filepath);
+      return res.status(200).json({ saved: true, filename });
+    });
+  } catch (error) {
+    console.error('[client_logs] erro geral:', error);
+    return res.status(500).json({ error: 'Erro interno' });
   }
 });
 
