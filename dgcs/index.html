@@ -3,30 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DG DEV HIGH SCHOOL | Teste Vermelho</title>
+    <title>DG DEV HIGH SCHOOL | Teste Branco</title>
     <!-- Importando a biblioteca oficial do Mercado Pago -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
-        /* TEMA ALTERADO PARA VERMELHO PARA TESTAR A ATUALIZAÇÃO */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
         
-        /* FUNDO TOTALMENTE VERMELHO */
-        body { background: red; color: #00ffcc; overflow-x: hidden; }
+        /* FUNDO BRANCO PARA CONFIRMAR A ATUALIZAÇÃO */
+        body { background: white; color: #000000; overflow-x: hidden; }
         
         .container { max-width: 800px; margin: 40px auto; padding: 20px; }
         
-        /* Caixas escuras para contraste */
-        .box { background: #0a0a0a; padding: 30px; border: 1px solid #00ffcc; box-shadow: 0 0 15px rgba(0,0,0,0.5); margin-bottom: 20px; text-align: center; }
+        .box { background: #f0f0f0; padding: 30px; border: 1px solid #000000; box-shadow: 0 0 15px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
         
-        .video-container { width: 100%; margin: 0 auto 20px; border: 2px solid #00ffcc; background: #000; }
+        .video-container { width: 100%; margin: 0 auto 20px; border: 2px solid #000000; background: #000; }
         
         input, .btn { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 4px; outline: none; }
-        input { background: #111; border: 1px solid #333; color: #00ffcc; }
-        .btn { background: #000; color: #00ffcc; border: 1px solid #00ffcc; cursor: pointer; text-transform: uppercase; font-weight: bold; }
-        .btn:hover { background: #00ffcc; color: #050505; }
+        input { background: #ffffff; border: 1px solid #ccc; color: #000000; }
+        .btn { background: #000000; color: #ffffff; border: 1px solid #000000; cursor: pointer; text-transform: uppercase; font-weight: bold; }
+        .btn:hover { background: #333333; color: #ffffff; }
         
         .hidden { display: none !important; }
-        .alert { color: #ff3366; border: 1px solid #ff3366; padding: 15px; margin-bottom: 15px; background: rgba(255,51,102,0.1); font-weight: bold; }
+        .alert { color: #d9534f; border: 1px solid #d9534f; padding: 15px; margin-bottom: 15px; background: rgba(217, 83, 79, 0.1); font-weight: bold; }
     </style>
 </head>
 <body>
@@ -43,15 +41,14 @@
             <input type="email" id="email" placeholder="E-mail de Acesso">
             <input type="password" id="senha" placeholder="Chave de Segurança">
             <button class="btn" onclick="login()">Iniciar Sessão</button>
-            <button class="btn" onclick="cadastrar()" style="border-color: #555; color: #aaa;">Registrar Nova Conta</button>
+            <button class="btn" onclick="cadastrar()" style="border-color: #999; color: #333;">Registrar Nova Conta</button>
         </div>
 
-        <!-- TELA DE COBRANÇA (Aparece se a conta estiver inativa) -->
+        <!-- TELA DE COBRANÇA -->
         <div id="payment-box" class="box hidden">
             <div class="alert">CONTA INATIVA. Taxa de liberação: R$ 50,00.</div>
-            <!-- O formulário do Mercado Pago vai renderizar aqui dentro -->
             <div id="paymentBrick_container"></div>
-            <button class="btn" onclick="logout()" style="margin-top: 20px; border-color: #ff3366; color: #ff3366;">Desconectar</button>
+            <button class="btn" onclick="logout()" style="margin-top: 20px; border-color: #d9534f; color: #d9534f; background: transparent;">Desconectar</button>
         </div>
     </div>
 
