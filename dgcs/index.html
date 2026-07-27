@@ -115,21 +115,30 @@
                         console.log('Formulário do Mercado Pago destravado e carregado!');
                     },
                     onSubmit: ({ formData }) => {
-                        formData.metadata = { firebase_uid: uid }; 
-                        
-                        return fetch('https://dglean.onrender.com/process_payment', {
-                            method: 'POST', 
-                            headers: { 'Content-Type': 'application/json' }, 
-                            body: JSON.stringify(formData)
-                        }).then(res => res.json()).then(data => {
-                            if (data.status === 'approved') {
-                                alert('Pagamento Aprovado! O sistema está liberando seu acesso...');
-                                setTimeout(() => window.location.reload(), 4000); 
-                            } else {
-                                alert('Pagamento não aprovado: ' + data.status_detail);
-                            }
-                        }).catch(error => {
-                            alert("Erro de conexão com a API.");
+                        return new Promise((resolve, reject) => {
+                            formData.transaction_amount = 50.00;
+                            formData.metadata = { firebase_uid: uid }; 
+                            
+                            fetch('https://dglean.onrender.com/process_payment', {
+                                method: 'POST', 
+                                headers: { 'Content-Type': 'application/json' }, 
+                                body: JSON.stringify(formData)
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                resolve(); // Encerra a Promise do Brick corretamente
+                                if (data.status === 'approved') {
+                                    alert('Pagamento Aprovado! O sistema está liberando seu acesso...');
+                                    setTimeout(() => window.location.reload(), 4000); 
+                                } else {
+                                    alert('Pagamento não aprovado: ' + (data.status_detail || 'Recusado'));
+                                }
+                            })
+                            .catch(error => {
+                                reject(); // Encerra a Promise com erro sem travar a tela
+                                console.error("Erro no fetch:", error);
+                                alert("Erro de conexão com a API.");
+                            });
                         });
                     },
                     onError: (error) => {
@@ -143,7 +152,7 @@
 
         window.login = async () => {
             const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha').value;
+            const senha = document.getElementById('senha'].value;
             if(!email || !senha) return alert("Preencha os dados.");
             try { 
                 await signInWithEmailAndPassword(auth, email, senha); 
@@ -154,7 +163,7 @@
 
         window.cadastrar = async () => {
             const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha').value;
+            const senha = document.getElementById('senha'].value;
             if(!email || !senha) return alert("Preencha os dados.");
             try {
                 const cred = await createUserWithEmailAndPassword(auth, email, senha);
