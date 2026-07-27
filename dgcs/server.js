@@ -7,7 +7,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. INICIALIZAÇÃO DO FIREBASE ADMIN
 try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
     admin.initializeApp({
@@ -18,16 +17,11 @@ try {
     console.error("Erro ao inicializar o Firebase:", error.message);
 }
 
-const db = admin.firestore();
-
-// 2. INICIALIZAÇÃO CORRETA DO MERCADO PAGO (SDK V2)
 const client = new MercadoPagoConfig({ accessToken: process.env.ACCESS_TOKEN_MP });
 
-// 3. ROTA DE PROCESSAMENTO DE PAGAMENTO
 app.post('/process_payment', async (req, res) => {
     try {
         const body = req.body;
-        
         const paymentData = {
             transaction_amount: Number(body.transaction_amount),
             token: body.token,
