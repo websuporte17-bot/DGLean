@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DG DEV HIGH SCHOOL | Teste Rosa</title>
+    <title>DG DEV HIGH SCHOOL | Teste Vermelho</title>
     <!-- Importando a biblioteca oficial do Mercado Pago -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
-        /* TEMA ALTERADO PARA ROSA CONFORME PEDIDO PARA TESTE DE ATUALIZAÇÃO */
+        /* TEMA ALTERADO PARA VERMELHO PARA TESTAR A ATUALIZAÇÃO */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
         
-        /* FUNDO TOTALMENTE ROSA */
-        body { background: pink; color: #00ffcc; overflow-x: hidden; }
+        /* FUNDO TOTALMENTE VERMELHO */
+        body { background: red; color: #00ffcc; overflow-x: hidden; }
         
         .container { max-width: 800px; margin: 40px auto; padding: 20px; }
         
-        /* Deixei as caixas escuras por cima do rosa pra você conseguir ler as letras */
+        /* Caixas escuras para contraste */
         .box { background: #0a0a0a; padding: 30px; border: 1px solid #00ffcc; box-shadow: 0 0 15px rgba(0,0,0,0.5); margin-bottom: 20px; text-align: center; }
         
         .video-container { width: 100%; margin: 0 auto 20px; border: 2px solid #00ffcc; background: #000; }
@@ -87,7 +87,6 @@
                 } else {
                     document.getElementById('payment-box').classList.remove('hidden');
                     
-                    // ATRASO DE 200ms PARA NÃO TRAVAR O MERCADO PAGO
                     setTimeout(() => {
                         renderCheckout(user.uid);
                     }, 200);
@@ -126,7 +125,7 @@
                             })
                             .then(res => res.json())
                             .then(data => {
-                                resolve(); // Encerra a Promise do Brick corretamente
+                                resolve();
                                 if (data.status === 'approved') {
                                     alert('Pagamento Aprovado! O sistema está liberando seu acesso...');
                                     setTimeout(() => window.location.reload(), 4000); 
@@ -135,7 +134,7 @@
                                 }
                             })
                             .catch(error => {
-                                reject(); // Encerra a Promise com erro sem travar a tela
+                                reject();
                                 console.error("Erro no fetch:", error);
                                 alert("Erro de conexão com a API.");
                             });
@@ -152,7 +151,7 @@
 
         window.login = async () => {
             const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha'].value;
+            const senha = document.getElementById('senha').value;
             if(!email || !senha) return alert("Preencha os dados.");
             try { 
                 await signInWithEmailAndPassword(auth, email, senha); 
@@ -163,7 +162,7 @@
 
         window.cadastrar = async () => {
             const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha'].value;
+            const senha = document.getElementById('senha').value;
             if(!email || !senha) return alert("Preencha os dados.");
             try {
                 const cred = await createUserWithEmailAndPassword(auth, email, senha);
