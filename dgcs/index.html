@@ -3,56 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DG DEV HIGH SCHOOL | Teste Cinza</title>
-    <!-- Importando a biblioteca oficial do Mercado Pago -->
+    <title>DG DEV HIGH SCHOOL | Portal Oficial</title>
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
-        
-        /* FUNDO CINZA PARA PROVAR A ATUALIZAÇÃO */
         body { background: #808080; color: #000000; overflow-x: hidden; }
-        
         .container { max-width: 800px; margin: 40px auto; padding: 20px; }
-        
         .box { background: #f0f0f0; padding: 30px; border: 1px solid #000000; box-shadow: 0 0 15px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
-        
-        .video-container { width: 100%; margin: 0 auto 20px; border: 2px solid #000000; background: #000; }
-        
         input, .btn { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 4px; outline: none; }
         input { background: #ffffff; border: 1px solid #ccc; color: #000000; }
         .btn { background: #000000; color: #ffffff; border: 1px solid #000000; cursor: pointer; text-transform: uppercase; font-weight: bold; }
         .btn:hover { background: #333333; color: #ffffff; }
-        
+        .btn-cursos { background: #000000; color: #ffffff; padding: 15px; font-size: 16px; text-decoration: none; display: block; margin-top: 15px; text-align: center; border: 1px solid #000; }
         .hidden { display: none !important; }
         .alert { color: #d9534f; border: 1px solid #d9534f; padding: 15px; margin-bottom: 15px; background: rgba(217, 83, 79, 0.1); font-weight: bold; }
+        .success-box { color: #28a745; border: 1px solid #28a745; padding: 15px; margin-bottom: 15px; background: rgba(40, 167, 69, 0.1); font-weight: bold; text-align: left; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- VÍDEO DE INTRODUÇÃO -->
-        <div class="video-container">
-            <video src="COLOQUE_URL_DO_VÍDEO_AQUI.mp4" controls autoplay muted style="width: 100%; display: block;"></video>
-        </div>
-
         <!-- TELA DE LOGIN / CADASTRO -->
         <div id="auth-box" class="box">
-            <h2>Terminal DG Malvadão (Versão Cinza de Teste)</h2>
+            <h2>Terminal DG Malvadão - Acesso</h2>
             <br>
             <input type="email" id="email" placeholder="E-mail de Acesso">
             <input type="password" id="senha" placeholder="Chave de Segurança">
             <button class="btn" onclick="login()">Iniciar Sessão</button>
-            <button class="btn" onclick="cadastrar()" style="border-color: #999; color: #333;">Registrar Nova Conta</button>
+            <button class="btn" onclick="mostrarCadastro()" style="border-color: #999; color: #333;">Cadastrar Nova Conta</button>
         </div>
 
-        <!-- TELA DE COBRANÇA -->
+        <!-- TELA DE CADASTRO COMPLETO -->
+        <div id="register-box" class="box hidden">
+            <h2>Cadastro Completo do Operador</h2>
+            <br>
+            <input type="text" id="reg-nome" placeholder="Nome Completo">
+            <input type="email" id="reg-email" placeholder="E-mail">
+            <input type="password" id="reg-senha" placeholder="Senha">
+            <input type="text" id="reg-cpf" placeholder="CPF">
+            <input type="text" id="reg-telefone" placeholder="Telefone / WhatsApp">
+            <input type="text" id="reg-endereco" placeholder="Endereço Completo">
+            <button class="btn" onclick="cadastrarCompleto()">Finalizar Cadastro</button>
+            <button class="btn" onclick="voltarLogin()" style="background: transparent; color: #000;">Voltar ao Login</button>
+        </div>
+
+        <!-- TELA DE STATUS / PAGAMENTO -->
         <div id="payment-box" class="box hidden">
-            <div class="alert">CONTA INATIVA. Taxa de liberação: R$ 50,00.</div>
-            <div id="paymentBrick_container"></div>
+            <div id="status-assinatura"></div>
+            <div id="form-pagamento-container">
+                <div class="alert">CONTA INATIVA. Taxa de liberação: R$ 50,00.</div>
+                <div id="paymentBrick_container"></div>
+            </div>
             <button class="btn" onclick="logout()" style="margin-top: 20px; border-color: #d9534f; color: #d9534f; background: transparent;">Desconectar</button>
         </div>
     </div>
 
-    <!-- SCRIPTS DE LÓGICA E FIREBASE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -77,20 +81,40 @@
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 document.getElementById('auth-box').classList.add('hidden');
+                document.getElementById('register-box').classList.add('hidden');
+                
                 const docSnap = await getDoc(doc(db, "usuarios", user.uid));
                 
-                // Valida exatamente o campo acesso_liberado exigido pelo app[span_2](start_span)[span_2](end_span)
-                if (docSnap.exists() && docSnap.data().acesso_liberado === true) {
-                    window.location.href = "app.html";
-                } else {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
                     document.getElementById('payment-box').classList.remove('hidden');
-                    setTimeout(() => {
-                        renderCheckout(user.uid);
-                    }, 200);
+                    
+                    if (data.acesso_liberado === true) {
+                        // JÁ TEM ASSINATURA PAGA: EXIBE DETALHES E O BOTÃO CURSOS
+                        document.getElementById('form-pagamento-container').classList.add('hidden');
+                        document.getElementById('status-assinatura').innerHTML = `
+                            <div class="success-box">
+                                <h3>STATUS: ASSINATURA ATIVA</h3>
+                                <hr style="margin: 8px 0;">
+                                <p><strong>Nome:</strong> ${data.nome || 'Não informado'}</p>
+                                <p><strong>E-mail:</strong> ${data.email || user.email}</p>
+                                <p><strong>CPF:</strong> ${data.cpf || 'Não informado'}</p>
+                                <p><strong>Data/Hora da Compra:</strong> ${data.dataAssinatura || 'Registrado'}</p>
+                                <p><strong>Nome no Cartão:</strong> ${data.nomeTitularCartao || 'Processado via Mercado Pago'}</p>
+                            </div>
+                            <a href="app.html" class="btn-cursos">CURSOS</a>
+                        `;
+                    } else {
+                        // CONTA INATIVA: MOSTRA DADOS E ABRE O CHECKOUT
+                        document.getElementById('form-pagamento-container').classList.remove('hidden');
+                        document.getElementById('status-assinatura').innerHTML = '';
+                        setTimeout(() => renderCheckout(user.uid), 200);
+                    }
                 }
             } else {
                 document.getElementById('auth-box').classList.remove('hidden');
                 document.getElementById('payment-box').classList.add('hidden');
+                document.getElementById('register-box').classList.add('hidden');
             }
         });
 
@@ -100,16 +124,10 @@
             }
 
             const settings = {
-                initialization: { 
-                    amount: 50.00 
-                },
-                customization: { 
-                    paymentMethods: { creditCard: "all", pix: "all" } 
-                },
+                initialization: { amount: 50.00 },
+                customization: { paymentMethods: { creditCard: "all", pix: "all" } },
                 callbacks: {
-                    onReady: () => {
-                        console.log('Checkout do Mercado Pago pronto!');
-                    },
+                    onReady: () => {},
                     onSubmit: ({ formData }) => {
                         return new Promise((resolve, reject) => {
                             formData.transaction_amount = 50.00;
@@ -124,7 +142,7 @@
                             .then(data => {
                                 resolve();
                                 if (data.status === 'approved') {
-                                    alert('Pagamento Aprovado! O acesso foi liberado.');
+                                    alert('Pagamento Aprovado! Redirecionando...');
                                     setTimeout(() => window.location.href = "app.html", 2000); 
                                 } else {
                                     alert('Pagamento não aprovado: ' + (data.status_detail || 'Recusado'));
@@ -132,17 +150,13 @@
                             })
                             .catch(error => {
                                 reject();
-                                console.error("Erro no fetch:", error);
                                 alert("Erro de conexão com a API.");
                             });
                         });
                     },
-                    onError: (error) => {
-                        console.error("Erro no Brick:", error);
-                    }
+                    onError: (error) => {}
                 }
             };
-            
             paymentBrickController = await bricksBuilder.create('payment', 'paymentBrick_container', settings);
         }
 
@@ -150,25 +164,44 @@
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
             if(!email || !senha) return alert("Preencha os dados.");
-            try { 
-                await signInWithEmailAndPassword(auth, email, senha); 
-            } catch (e) { 
-                alert("Credenciais inválidas."); 
-            }
+            try { await signInWithEmailAndPassword(auth, email, senha); } catch (e) { alert("Credenciais inválidas."); }
         }
 
-        window.cadastrar = async () => {
-            const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha').value;
-            if(!email || !senha) return alert("Preencha os dados.");
+        window.mostrarCadastro = () => {
+            document.getElementById('auth-box').classList.add('hidden');
+            document.getElementById('register-box').classList.remove('hidden');
+        }
+
+        window.voltarLogin = () => {
+            document.getElementById('register-box').classList.add('hidden');
+            document.getElementById('auth-box').classList.remove('hidden');
+        }
+
+        window.cadastrarCompleto = async () => {
+            const nome = document.getElementById('reg-nome').value;
+            const email = document.getElementById('reg-email').value;
+            const senha = document.getElementById('reg-senha').value;
+            const cpf = document.getElementById('reg-cpf').value;
+            const telefone = document.getElementById('reg-telefone').value;
+            const endereco = document.getElementById('reg-endereco').value;
+
+            if(!nome || !email || !senha || !cpf || !telefone || !endereco) {
+                return alert("Preencha todos os campos do cadastro!");
+            }
+
             try {
                 const cred = await createUserWithEmailAndPassword(auth, email, senha);
                 await setDoc(doc(db, "usuarios", cred.user.uid), { 
+                    nome: nome,
                     email: email, 
+                    cpf: cpf,
+                    telefone: telefone,
+                    endereco: endereco,
                     acesso_liberado: false, 
                     xp: 0, 
                     level: 1 
                 });
+                alert("Cadastro realizado com sucesso!");
             } catch (e) { 
                 alert("Erro ao criar conta: " + e.message); 
             }
