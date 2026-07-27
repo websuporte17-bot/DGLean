@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>DG Malvadão Admin Panel</title>
+    <style>
+        body { background: #111; color: #fff; font-family: Arial; padding: 40px; }
+        input, textarea { width: 100%; padding: 12px; margin-bottom: 15px; background: #222; color: #00ffcc; border: 1px solid #444;}
+        button { background: #00ffcc; color: #000; padding: 12px 20px; font-weight: bold; border: none; cursor: pointer; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <h1 style="color: #00ffcc; border-bottom: 2px solid #333; padding-bottom: 10px;">Painel de Controle - Criar Módulo</h1>
+    <input type="text" id="titulo" placeholder="Título do Módulo">
+    <textarea id="descricao" placeholder="Descrição e links adicionais" rows="4"></textarea>
+    <input type="text" id="video_url" placeholder="URL da Aula ou Script">
+    <input type="number" id="xp_req" placeholder="XP necessário para liberar (Coloque 0 para o primeiro módulo)">
+    
+    <button onclick="salvarModulo()">Registrar na Base de Dados</button>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA4qjeR-wbHmCtEGcnYN2FG4D9zR4xwQsU",
+            authDomain: "proia-fff09.firebaseapp.com",
+            projectId: "proia-fff09",
+            storageBucket: "proia-fff09.firebasestorage.app",
+            messagingSenderId: "1036426093065",
+            appId: "1:1036426093065:web:be300aec12fafb486bced8"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.salvarModulo = async () => {
+            const titulo = document.getElementById('titulo').value;
+            if(!titulo) return alert("Preencha o título!");
+
+            await addDoc(collection(db, "modulos"), {
+                titulo: titulo,
+                descricao: document.getElementById('descricao').value,
+                video_url: document.getElementById('video_url').value,
+                xp_necessario: parseInt(document.getElementById('xp_req').value) || 0
+            });
+            alert("Módulo injetado com sucesso!");
+            document.querySelectorAll('input, textarea').forEach(el => el.value = '');
+        }
+    </script>
+</body>
+</html>
