@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DG DEV HIGH SCHOOL | Teste Branco</title>
+    <title>DG DEV HIGH SCHOOL | Teste Cinza</title>
     <!-- Importando a biblioteca oficial do Mercado Pago -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
         
-        /* FUNDO BRANCO PARA CONFIRMAR A ATUALIZAÇÃO */
-        body { background: white; color: #000000; overflow-x: hidden; }
+        /* FUNDO CINZA PARA PROVAR A ATUALIZAÇÃO */
+        body { background: #808080; color: #000000; overflow-x: hidden; }
         
         .container { max-width: 800px; margin: 40px auto; padding: 20px; }
         
@@ -36,7 +36,7 @@
 
         <!-- TELA DE LOGIN / CADASTRO -->
         <div id="auth-box" class="box">
-            <h2>Terminal DG Malvadão</h2>
+            <h2>Terminal DG Malvadão (Versão Cinza de Teste)</h2>
             <br>
             <input type="email" id="email" placeholder="E-mail de Acesso">
             <input type="password" id="senha" placeholder="Chave de Segurança">
@@ -79,11 +79,11 @@
                 document.getElementById('auth-box').classList.add('hidden');
                 const docSnap = await getDoc(doc(db, "usuarios", user.uid));
                 
-                if (docSnap.exists() && docSnap.data().acesso_liberado) {
+                // Valida exatamente o campo acesso_liberado exigido pelo app[span_2](start_span)[span_2](end_span)
+                if (docSnap.exists() && docSnap.data().acesso_liberado === true) {
                     window.location.href = "app.html";
                 } else {
                     document.getElementById('payment-box').classList.remove('hidden');
-                    
                     setTimeout(() => {
                         renderCheckout(user.uid);
                     }, 200);
@@ -108,7 +108,7 @@
                 },
                 callbacks: {
                     onReady: () => {
-                        console.log('Formulário do Mercado Pago destravado e carregado!');
+                        console.log('Checkout do Mercado Pago pronto!');
                     },
                     onSubmit: ({ formData }) => {
                         return new Promise((resolve, reject) => {
@@ -124,8 +124,8 @@
                             .then(data => {
                                 resolve();
                                 if (data.status === 'approved') {
-                                    alert('Pagamento Aprovado! O sistema está liberando seu acesso...');
-                                    setTimeout(() => window.location.reload(), 4000); 
+                                    alert('Pagamento Aprovado! O acesso foi liberado.');
+                                    setTimeout(() => window.location.href = "app.html", 2000); 
                                 } else {
                                     alert('Pagamento não aprovado: ' + (data.status_detail || 'Recusado'));
                                 }
