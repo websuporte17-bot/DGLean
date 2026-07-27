@@ -1,72 +1,118 @@
 const express = require('express');
 const cors = require('cors');
-const { MercadoPagoConfig, Payment } = require('mercadopago');
+const mercadopago = require('mercadopago');
 const admin = require('firebase-admin');
 
 const app = express();
-app.use(cors());
+// Allow CORS from a configured origin or fallback to all (for debugging set ALLOWED_ORIGIN)
+const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
+app.use(cors({ origin: allowedOrigin }));
 app.use(express.json());
 
-// 1. INICIALIZAÇÃO DO FIREBASE ADMIN COM A CHAVE SEGURA DO RENDER
 let db;
+// Initialize Firebase Admin with service account JSON from env
 try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-    });
-    db = admin.firestore();
-    console.log("Firebase Admin conectado com sucesso pelo Render!");
+  if (!process.env.FIREBASE_CREDENTIALS) throw new Error('FIREBASE_CREDENTIALS not set');
+  const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  db = admin.firestore();
+  console.log('Firebase Admin conectado com sucesso');
 } catch (error) {
-    console.error("ERRO: FIREBASE_CREDENTIALS não configurado no Render ou JSON inválido.", error);
+  console.error('ERRO: FIREBASE_CREDENTIALS não configurado ou JSON inválido.', error);
 }
 
-// 2. INICIALIZAÇÃO DO MERCADO PAGO COM O TOKEN DE SEGURANÇA
-const client = new MercadoPagoConfig({ accessToken: process.env.ACCESS_TOKEN_MP });
+// Configure MercadoPago (expects ACCESS_TOKEN_MP in env)
+if (!process.env.ACCESS_TOKEN_MP) {
+  console.warn('AVISO: ACCESS_TOKEN_MP não configurado. Pagamentos não funcionarão.');
+} else {
+  mercadopago.configure({ access_token: process.env.ACCESS_TOKEN_MP });
+}
 
-// 3. ROTA DE PROCESSAMENTO DE PAGAMENTO
-app.post('/process_payment', async (req, res) => {
-    const payment = new Payment(client);
-    try {
-        const response = await payment.create({ body: req.body });
-        res.json({
-            status: response.status,
-            status_detail: response.status_detail,
-            id: response.id
-        });
-    } catch (error) {
-        console.error("Erro na API do Mercado Pago:", error);
-        res.status(500).json({ error: 'Erro ao processar o pagamento' });
-    }
+// Health endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
-// 4. ROTA DE WEBHOOK PARA LIBERAÇÃO AUTOMÁTICA DA CONTA
-app.post('/webhook', async (req, res) => {
-    const paymentId = req.query.id || req.body.data?.id;
-    
-    if (paymentId && db) {
-        try {
-            const payment = new Payment(client);
-            const paymentInfo = await payment.get({ id: paymentId });
-            
-            if (paymentInfo.status === 'approved') {
-                const uidDoAluno = paymentInfo.metadata?.firebase_uid;
-                
-                if (uidDoAluno) {
-                    await db.collection('usuarios').doc(uidDoAluno).update({
-                        acesso_liberado: true,
-                        pago: true
-                    });
-                    console.log(`[SUCESSO] Conta liberada automaticamente para o UID: ${uidDoAluno}`);
-                }
-            }
-        } catch (error) {
-            console.error("Erro ao processar o Webhook:", error);
-        }
+// Helper to safely reply with JSON
+function safeJson(res, status, payload) {
+  res.status(status).json(payload);
+}
+
+// POST /process_payment
+app.post('/process_payment', async (req, res) => {
+  try {
+    const paymentData = req.body;
+    console.log('[process_payment] request body:', JSON.stringify(paymentData));
+
+    if (!process.env.ACCESS_TOKEN_MP) {
+      return safeJson(res, 500, { error: 'ACCESS_TOKEN_MP não configurado no servidor' });
     }
-    res.status(200).send('OK');
+
+    // Basic validation: Mercado Pago expects transaction_amount or additional fields depending on integration
+    if (!paymentData || (typeof paymentData !== 'object')) {
+      return safeJson(res, 400, { error: 'Payload inválido' });
+    }
+
+    // Create payment via SDK
+    const mpResponse = await mercadopago.payment.create(paymentData);
+    // mpResponse may contain .body (SDK v2) or be the body itself
+    const body = mpResponse?.body || mpResponse;
+    console.log('[process_payment] mp response:', body);
+
+    // Return consistent JSON to the frontend
+    return safeJson(res, 200, body);
+  } catch (error) {
+    console.error('[process_payment] erro:', error);
+    // Do not leak sensitive data in production responses
+    const safeMessage = error?.response?.body || error?.message || 'Erro ao processar o pagamento';
+    return safeJson(res, 500, { error: safeMessage });
+  }
+});
+
+// POST /webhook
+app.post('/webhook', async (req, res) => {
+  // Mercado Pago may send notifications with id in query or body.data.id
+  const paymentId = req.query.id || req.body?.data?.id || req.body?.id;
+
+  if (!paymentId) {
+    console.warn('[webhook] recebido sem paymentId');
+    return res.status(200).send('OK');
+  }
+
+  try {
+    if (!process.env.ACCESS_TOKEN_MP) {
+      console.warn('[webhook] ACCESS_TOKEN_MP não configurado, não é possível verificar o pagamento');
+      return res.status(200).send('OK');
+    }
+
+    // Always fetch payment status from Mercado Pago API to avoid trusting client data
+    const mpGet = await mercadopago.payment.get(paymentId);
+    const paymentInfo = mpGet?.body || mpGet;
+    console.log('[webhook] paymentInfo:', paymentInfo);
+
+    if (paymentInfo && paymentInfo.status === 'approved') {
+      const uid = paymentInfo.metadata?.firebase_uid;
+      if (uid && db) {
+        try {
+          // Use set with merge to avoid failing if the document does not exist
+          await db.collection('usuarios').doc(uid).set({ acesso_liberado: true, pago: true }, { merge: true });
+          console.log(`[SUCESSO] Conta liberada automaticamente para o UID: ${uid}`);
+        } catch (err) {
+          console.error('[webhook] erro ao atualizar Firestore:', err);
+        }
+      } else {
+        console.warn('[webhook] UID não encontrado em metadata ou Firestore não inicializado');
+      }
+    }
+  } catch (error) {
+    console.error('[webhook] erro ao processar webhook:', error);
+  }
+
+  // Always reply 200 quickly to acknowledge receipt
+  return res.status(200).send('OK');
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor blindado online rodando na porta ${PORT}!`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });

@@ -27,6 +27,11 @@
         
         .hidden { display: none !important; }
         .alert { color: #ff3366; border: 1px solid #ff3366; padding: 15px; margin-bottom: 15px; background: rgba(255,51,102,0.1); font-weight: bold; }
+        /* simple spinner overlay */
+        #spinnerOverlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); z-index: 9999; }
+        #spinnerOverlay.visible { display: flex; }
+        .spinner { border: 6px solid #f3f3f3; border-top: 6px solid #00ffcc; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -55,6 +60,8 @@
         </div>
     </div>
 
+    <div id="spinnerOverlay"><div class="spinner"></div></div>
+
     <!-- SCRIPTS DE LÓGICA E FIREBASE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -76,6 +83,10 @@
         const mp = new MercadoPago('TEST-da788e0b-6fa3-43d1-9cfa-81128b766a2e', { locale: 'pt-BR' });
         const bricksBuilder = mp.bricks();
         let paymentBrickController;
+
+        const spinner = document.getElementById('spinnerOverlay');
+        function showSpinner() { spinner.classList.add('visible'); }
+        function hideSpinner() { spinner.classList.remove('visible'); }
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -100,7 +111,7 @@
 
         async function renderCheckout(uid) {
             if (paymentBrickController) {
-                paymentBrickController.unmount();
+                try { paymentBrickController.unmount(); } catch (e) { console.warn('unmount erro', e); }
             }
 
             const settings = {
@@ -114,26 +125,47 @@
                     onReady: () => {
                         console.log('Formulário do Mercado Pago destravado e carregado!');
                     },
-                    onSubmit: ({ formData }) => {
-                        formData.metadata = { firebase_uid: uid }; 
-                        
-                        return fetch('https://dglean.onrender.com/process_payment', {
-                            method: 'POST', 
-                            headers: { 'Content-Type': 'application/json' }, 
-                            body: JSON.stringify(formData)
-                        }).then(res => res.json()).then(data => {
+                    onSubmit: async ({ formData }) => {
+                        // attach uid for server-side mapping
+                        formData.metadata = { firebase_uid: uid };
+                        console.log('onSubmit formData:', formData);
+
+                        showSpinner();
+                        try {
+                            const resp = await fetch('https://dglean.onrender.com/process_payment', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(formData)
+                            });
+
+                            const text = await resp.text();
+                            let data;
+                            try { data = JSON.parse(text); } catch (e) {
+                                throw new Error('Resposta inválida do servidor: ' + text);
+                            }
+
+                            if (!resp.ok) {
+                                throw new Error(data?.error || JSON.stringify(data));
+                            }
+
+                            console.log('process_payment response:', data);
+
                             if (data.status === 'approved') {
                                 alert('Pagamento Aprovado! O sistema está liberando seu acesso...');
-                                setTimeout(() => window.location.reload(), 4000); 
+                                setTimeout(() => window.location.reload(), 3000);
                             } else {
-                                alert('Pagamento não aprovado: ' + data.status_detail);
+                                alert('Pagamento não aprovado: ' + (data.status_detail || JSON.stringify(data)));
                             }
-                        }).catch(error => {
-                            alert("Erro de conexão com a API.");
-                        });
+                        } catch (err) {
+                            console.error('Erro de conexão ou processamento:', err);
+                            alert('Erro ao processar pagamento: ' + err.message);
+                        } finally {
+                            hideSpinner();
+                        }
                     },
                     onError: (error) => {
-                        console.error("Erro no Brick:", error);
+                        console.error('Erro no Brick:', error);
+                        alert('Erro no componente de pagamento: ' + (error?.message || JSON.stringify(error)));
                     }
                 }
             };
@@ -144,28 +176,28 @@
         window.login = async () => {
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
-            if(!email || !senha) return alert("Preencha os dados.");
+            if(!email || !senha) return alert('Preencha os dados.');
             try { 
                 await signInWithEmailAndPassword(auth, email, senha); 
             } catch (e) { 
-                alert("Credenciais inválidas."); 
+                alert('Credenciais inválidas.'); 
             }
         }
 
         window.cadastrar = async () => {
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
-            if(!email || !senha) return alert("Preencha os dados.");
+            if(!email || !senha) return alert('Preencha os dados.');
             try {
                 const cred = await createUserWithEmailAndPassword(auth, email, senha);
-                await setDoc(doc(db, "usuarios", cred.user.uid), { 
+                await setDoc(doc(db, 'usuarios', cred.user.uid), { 
                     email: email, 
                     acesso_liberado: false, 
                     xp: 0, 
                     level: 1 
                 });
             } catch (e) { 
-                alert("Erro ao criar conta: " + e.message); 
+                alert('Erro ao criar conta: ' + e.message); 
             }
         }
 
