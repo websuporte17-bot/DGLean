@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Área Vip | DG DEV HIGH SCHOOL</title>
     <style>
-        body { background: #050505; color: #00ffcc; font-family: 'Courier New', monospace; margin: 0; padding: 20px;}
+        body { background: #808080; color: #00ffcc; font-family: 'Courier New', monospace; margin: 0; padding: 20px;}
         .header { display: flex; justify-content: space-between; border-bottom: 1px solid #00ffcc; padding-bottom: 10px; margin-bottom: 20px;}
         .modulo-card { background: #111; border: 1px solid #333; padding: 20px; margin-bottom: 15px; border-radius: 4px; }
         .bloqueado { opacity: 0.5; border-color: #ff3366; }
@@ -14,20 +14,20 @@
 </head>
 <body>
     <div class="header">
-        <h2>Operador Conectado</h2>
+        <h2>Operador Conectado (Área de Cursos)</h2>
         <div>
-            Nível: <span id="user-level">0</span> | XP: <span id="user-xp">0</span> 
+            Nível: <span id="user-level">1</span> | XP: <span id="user-xp">0</span> 
             <button class="btn-danger" onclick="logout()" style="margin-left: 15px;">Sair</button>
         </div>
     </div>
 
     <div id="modulos-lista">
-        <p>Carregando arquivos de estudo...</p>
+        <p>Verificando credenciais e carregando módulos...</p>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -42,32 +42,52 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        onAuthStateChanged(auth, async (user) => {
+        auth.onAuthStateChanged(async (user) => {
             if (!user) return window.location.href = "index.html";
             
-            const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-            if (!userDoc.data().acesso_liberado) return window.location.href = "index.html";
+            let userDoc = await getDoc(doc(db, "usuarios", user.uid));
+            
+            // Validação rigorosa de segurança da assinatura
+            if (!userDoc.exists() || userDoc.data().acesso_liberado !== true) {
+                // Dá uma breve tolerância de sincronização com o banco
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                userDoc = await getDoc(doc(db, "usuarios", user.uid));
+                
+                if (!userDoc.exists() || userDoc.data().acesso_liberado !== true) {
+                    alert("Acesso restrito. Sua assinatura não está ativa.");
+                    return window.location.href = "index.html";
+                }
+            }
 
             const userData = userDoc.data();
             document.getElementById('user-level').innerText = userData.level || 1;
             document.getElementById('user-xp').innerText = userData.xp || 0;
 
-            const modulosSnapshot = await getDocs(collection(db, "modulos"));
-            const listaDiv = document.getElementById('modulos-lista');
-            listaDiv.innerHTML = '';
-            
-            modulosSnapshot.forEach((docSnap) => {
-                const mod = docSnap.data();
-                const isUnlocked = userData.xp >= mod.xp_necessario;
+            try {
+                const modulosSnapshot = await getDocs(collection(db, "modulos"));
+                const listaDiv = document.getElementById('modulos-lista');
+                listaDiv.innerHTML = '';
+                
+                if (modulosSnapshot.empty) {
+                    listaDiv.innerHTML = '<p>Nenhum módulo cadastrado ainda.</p>';
+                    return;
+                }
 
-                listaDiv.innerHTML += `
-                    <div class="modulo-card ${isUnlocked ? '' : 'bloqueado'}">
-                        <h3 style="color: #fff;">${mod.titulo} [XP Exigido: ${mod.xp_necessario}]</h3>
-                        <p style="color: #aaa; margin: 10px 0;">${mod.descricao}</p>
-                        ${isUnlocked ? `<a href="${mod.video_url}" target="_blank" class="btn">Acessar Arquivos</a>` : '<p style="color:#ff3366; font-weight:bold;">[ BLOQUEADO - XP INSUFICIENTE ]</p>'}
-                    </div>
-                `;
-            });
+                modulosSnapshot.forEach((docSnap) => {
+                    const mod = docSnap.data();
+                    const isUnlocked = (userData.xp || 0) >= (mod.xp_necessario || 0);
+
+                    listaDiv.innerHTML += `
+                        <div class="modulo-card ${isUnlocked ? '' : 'bloqueado'}">
+                            <h3 style="color: #fff;">${mod.titulo} [XP Exigido: ${mod.xp_necessario || 0}]</h3>
+                            <p style="color: #aaa; margin: 10px 0;">${mod.descricao}</p>
+                            ${isUnlocked ? `<a href="${mod.video_url}" target="_blank" class="btn">Acessar Arquivos</a>` : '<p style="color:#ff3366; font-weight:bold;">[ BLOQUEADO - XP INSUFICIENTE ]</p>'}
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                console.error("Erro ao carregar módulos:", e);
+            }
         });
 
         window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
