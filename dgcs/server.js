@@ -8,31 +8,30 @@ app.use(cors());
 app.use(express.json());
 
 // 1. INICIALIZAÇÃO DO FIREBASE ADMIN
-let db;
 try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
-    db = admin.firestore();
-    console.log("Firebase Admin conectado com sucesso pelo Render!");
+    console.log("Firebase Admin conectado com sucesso");
 } catch (error) {
-    console.error("ERRO: FIREBASE_CREDENTIALS não configurado ou inválido.", error);
+    console.error("Erro ao inicializar o Firebase:", error.message);
 }
 
-// 2. INICIALIZAÇÃO DO MERCADO PAGO
+const db = admin.firestore();
+
+// 2. INICIALIZAÇÃO CORRETA DO MERCADO PAGO (SDK V2)
 const client = new MercadoPagoConfig({ accessToken: process.env.ACCESS_TOKEN_MP });
 
-// 3. ROTA DE PROCESSAMENTO DE PAGAMENTO (COMPATÍVEL COM O BRICK)
+// 3. ROTA DE PROCESSAMENTO DE PAGAMENTO
 app.post('/process_payment', async (req, res) => {
     try {
         const body = req.body;
         
-        // Garantindo que os dados obrigatórios venham preenchidos do Brick
         const paymentData = {
             transaction_amount: Number(body.transaction_amount),
             token: body.token,
-            description: "Produto: Anúncio de Teste",
+            description: "Ativação de Acesso - DGLean",
             installments: Number(body.installments || 1),
             payment_method_id: body.payment_method_id,
             issuer_id: body.issuer_id ? Number(body.issuer_id) : undefined,
@@ -56,35 +55,11 @@ app.post('/process_payment', async (req, res) => {
         });
     } catch (error) {
         console.error("Erro detalhado no pagamento:", error);
-        res.status(500).json({ 
-            error: error.message || 'Erro interno ao processar o pagamento no servidor.' 
+        res.status(400).json({ 
+            error: error.message || 'Erro ao processar o pagamento',
+            details: error.cause || 'Verifique os dados do cartão'
         });
     }
-});
-
-// 4. ROTA DE WEBHOOK
-app.post('/webhook', async (req, res) => {
-    const paymentId = req.query.id || req.body.data?.id;
-    
-    if (paymentId && db) {
-        try {
-            const payment = new Payment(client);
-            const paymentInfo = await payment.get({ id: paymentId });
-            
-            if (paymentInfo.status === 'approved') {
-                const uidDoAluno = paymentInfo.metadata?.firebase_uid;
-                if (uidDoAluno) {
-                    await db.collection('usuarios').doc(uidDoAluno).update({
-                        acesso_liberado: true,
-                        pago: true
-                    });
-                }
-            }
-        } catch (error) {
-            console.error("Erro no Webhook:", error);
-        }
-    }
-    res.status(200).send('OK');
 });
 
 const PORT = process.env.PORT || 3000;
