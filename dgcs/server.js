@@ -23,7 +23,7 @@ const db = admin.firestore();
 // 2. INICIALIZAÇÃO DO MERCADO PAGO (SDK V2)
 const client = new MercadoPagoConfig({ accessToken: process.env.ACCESS_TOKEN_MP });
 
-// 3. ROTA DE PROCESSAMENTO E ATIVAÇÃO AUTOMÁTICA
+// 3. ROTA DE PROCESSAMENTO E ATIVAÇÃO MULTI-COLEÇÃO INTELIGENTE
 app.post('/process_payment', async (req, res) => {
     try {
         const body = req.body;
@@ -48,40 +48,50 @@ app.post('/process_payment', async (req, res) => {
         const payment = new Payment(client);
         const response = await payment.create({ body: paymentData });
 
-        // SE O PAGAMENTO FOR APROVADO, ATIVA O PLANO NO BANCO AUTOMATICAMENTE
+        // SE O PAGAMENTO FOR APROVADO, ATIVA O PLANO EM QUALQUER TABELA DO FIREBASE
         if (response.status === 'approved') {
             const userEmail = body.payer?.email;
             const userId = body.metadata?.user_id || body.user_id;
             
-            try {
-                const usersRef = db.collection('users');
-                
-                if (userId) {
-                    // Atualiza direto pelo ID se o front mandou
-                    await usersRef.doc(userId).set({
-                        plano: 'ativo',
-                        statusPagamento: 'aprovado',
-                        updatedAt: new Date()
-                    }, { merge: true });
-                    console.log(`Plano ativado pelo ID: ${userId}`);
-                } else if (userEmail) {
-                    // Se não tiver o ID, busca e atualiza pelo e-mail
-                    const snapshot = await usersRef.where('email', '==', userEmail).get();
-                    if (!snapshot.empty) {
-                        const batch = db.batch();
-                        snapshot.docs.forEach((doc) => {
-                            batch.update(doc.ref, {
-                                plano: 'ativo',
-                                statusPagamento: 'aprovado',
-                                updatedAt: new Date()
-                            });
-                        });
-                        await batch.commit();
-                        console.log(`Plano ativado pelo e-mail: ${userEmail}`);
+            if (userEmail || userId) {
+                const possibleCollections = ['users', 'usuarios', 'assinaturas', 'clients', 'profiles'];
+                const updateData = {
+                    plano: 'ativo',
+                    status: 'ativo',
+                    statusPagamento: 'aprovado',
+                    updatedAt: new Date()
+                };
+
+                for (const colName of possibleCollections) {
+                    try {
+                        const colRef = db.collection(colName);
+                        
+                        // Tenta atualizar pelo ID direto
+                        if (userId) {
+                            const docRef = colRef.doc(userId);
+                            const docSnap = await docRef.get();
+                            if (docSnap.exists) {
+                                await docRef.set(updateData, { merge: true });
+                                console.log(`Plano ativado na collection '${colName}' via ID: ${userId}`);
+                            }
+                        }
+
+                        // Tenta buscar e atualizar pelo e-mail
+                        if (userEmail) {
+                            const snapshot = await colRef.where('email', '==', userEmail).get();
+                            if (!snapshot.empty) {
+                                const batch = db.batch();
+                                snapshot.docs.forEach((doc) => {
+                                    batch.set(doc.ref, updateData, { merge: true });
+                                });
+                                await batch.commit();
+                                console.log(`Plano ativado na collection '${colName}' via e-mail: ${userEmail}`);
+                            }
+                        }
+                    } catch (collectionError) {
+                        // Ignora se a collection não existir e continua testando as outras
                     }
                 }
-            } catch (dbError) {
-                console.error("Erro ao atualizar o plano automaticamente:", dbError);
             }
         }
 
