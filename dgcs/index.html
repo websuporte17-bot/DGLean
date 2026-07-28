@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DG DEV HIGH SCHOOL | Portal Oficial (Verde)</title>
+    <title>DG DEV HIGH SCHOOL | Portal Oficial (Preto)</title>
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
-        /* FUNDO VERDE PARA PROVAR A ATUALIZAÇÃO */
-        body { background: #006400; color: #ffffff; overflow-x: hidden; }
+        /* FUNDO PRETO DEFINITIVO */
+        body { background: #000000; color: #ffffff; overflow-x: hidden; }
         .container { max-width: 800px; margin: 40px auto; padding: 20px; }
         .box { background: #101820; padding: 30px; border: 1px solid #00ffcc; box-shadow: 0 0 15px rgba(0,255,204,0.2); margin-bottom: 20px; text-align: center; }
         input, .btn { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 4px; outline: none; }
@@ -26,7 +26,7 @@
     <div class="container">
         <!-- TELA DE LOGIN / CADASTRO -->
         <div id="auth-box" class="box">
-            <h2>Terminal DG Malvadão - Acesso (Verde)</h2>
+            <h2>Terminal DG Malvadão - Acesso</h2>
             <br>
             <input type="email" id="email" placeholder="E-mail de Acesso">
             <input type="password" id="senha" placeholder="Chave de Segurança">
@@ -83,15 +83,19 @@
         let paymentBrickController;
 
         onAuthStateChanged(auth, async (user) => {
+            const authBox = document.getElementById('auth-box');
+            const paymentBox = document.getElementById('payment-box');
+            const registerBox = document.getElementById('register-box');
+
             if (user) {
-                document.getElementById('auth-box').classList.add('hidden');
-                document.getElementById('register-box').classList.add('hidden');
+                authBox.classList.add('hidden');
+                registerBox.classList.add('hidden');
                 
                 const docSnap = await getDoc(doc(db, "usuarios", user.uid));
                 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    document.getElementById('payment-box').classList.remove('hidden');
+                    paymentBox.classList.remove('hidden');
                     
                     if (data.acesso_liberado === true) {
                         document.getElementById('form-pagamento-container').classList.add('hidden');
@@ -114,9 +118,10 @@
                     }
                 }
             } else {
-                document.getElementById('auth-box').classList.add('hidden');
-                document.getElementById('payment-box').classList.add('hidden');
-                document.getElementById('register-box').classList.add('hidden');
+                // SE NÃO ESTIVER LOGADO, MOSTRA O LOGIN E ESCONDE O RESTO
+                authBox.classList.remove('hidden');
+                paymentBox.classList.add('hidden');
+                registerBox.classList.add('hidden');
             }
         });
 
@@ -133,7 +138,6 @@
                     onSubmit: ({ formData }) => {
                         return new Promise((resolve, reject) => {
                             formData.transaction_amount = 50.00;
-                            // Envia estritamente os dados do usuário logado atual
                             formData.metadata = { 
                                 firebase_uid: currentUser.uid,
                                 email_cadastro: currentUser.email 
