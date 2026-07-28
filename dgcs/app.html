@@ -2,11 +2,12 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Área Vip | DG DEV HIGH SCHOOL</title>
+    <title>Área Vip | DG DEV HIGH SCHOOL (Azul)</title>
     <style>
-        body { background: #808080; color: #00ffcc; font-family: 'Courier New', monospace; margin: 0; padding: 20px;}
+        /* FUNDO AZUL PARA PROVAR A ATUALIZAÇÃO */
+        body { background: #0047AB; color: #00ffcc; font-family: 'Courier New', monospace; margin: 0; padding: 20px;}
         .header { display: flex; justify-content: space-between; border-bottom: 1px solid #00ffcc; padding-bottom: 10px; margin-bottom: 20px;}
-        .modulo-card { background: #111; border: 1px solid #333; padding: 20px; margin-bottom: 15px; border-radius: 4px; }
+        .modulo-card { background: #101820; border: 1px solid #00ffcc; padding: 20px; margin-bottom: 15px; border-radius: 4px; }
         .bloqueado { opacity: 0.5; border-color: #ff3366; }
         .btn { background: #00ffcc; color: #000; padding: 10px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; text-decoration: none; display: inline-block;}
         .btn-danger { background: #ff3366; color: #fff; border: none; padding: 8px 12px; cursor: pointer; }
@@ -14,7 +15,7 @@
 </head>
 <body>
     <div class="header">
-        <h2>Operador Conectado (Área de Cursos)</h2>
+        <h2>Operador Conectado (Área de Cursos - Azul)</h2>
         <div>
             Nível: <span id="user-level">1</span> | XP: <span id="user-xp">0</span> 
             <button class="btn-danger" onclick="logout()" style="margin-left: 15px;">Sair</button>
@@ -47,10 +48,8 @@
             
             let userDoc = await getDoc(doc(db, "usuarios", user.uid));
             
-            // Validação rigorosa de segurança da assinatura
             if (!userDoc.exists() || userDoc.data().acesso_liberado !== true) {
-                // Dá uma breve tolerância de sincronização com o banco
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 userDoc = await getDoc(doc(db, "usuarios", user.uid));
                 
                 if (!userDoc.exists() || userDoc.data().acesso_liberado !== true) {
