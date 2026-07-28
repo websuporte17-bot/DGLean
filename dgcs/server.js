@@ -8,13 +8,21 @@ app.use(cors());
 app.use(express.json());
 
 try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+    let serviceAccount = process.env.FIREBASE_CREDENTIALS;
+    
+    if (typeof serviceAccount === 'string') {
+        serviceAccount = JSON.parse(serviceAccount);
+        if (serviceAccount.private_key) {
+            serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+        }
+    }
+
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
-    console.log("Firebase Admin conectado com sucesso");
+    console.log("Firebase Admin conectado com sucesso ao projeto proia-fff09");
 } catch (error) {
-    console.error("Erro ao inicializar o Firebase:", error.message);
+    console.error("Erro crítico ao inicializar o Firebase:", error.message);
 }
 
 const db = admin.firestore();
@@ -52,22 +60,18 @@ app.post('/process_payment', async (req, res) => {
             const dataFormatada = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
             
             if (userId) {
-                // FORÇA A GRAVAÇÃO COMPLETA NO UID EXATO DO USUÁRIO LOGADO
                 const userRef = db.collection('usuarios').doc(userId);
                 await userRef.set({
-                    email: userEmail,
-                    nome: "Leandro Mendes Rolim",
+                    email: userEmail || 'nao_informado@email.com',
                     acesso_liberado: true,
                     statusPagamento: 'aprovado',
                     dataAssinatura: dataFormatada,
-                    level: 1,
-                    xp: 0,
                     updatedAt: agora
                 }, { merge: true });
                 
-                console.log(`[FIREBASE SUCESSO] Acesso liberado e forçado para o UID: ${userId}`);
+                console.log(`[FIREBASE SUCESSO] Acesso liberado com sucesso para o UID: ${userId}`);
             } else {
-                console.error("[ERRO CRÍTICO] UID não encontrado no metadata!");
+                console.error("[AVISO] Pagamento aprovado, mas nenhum firebase_uid foi enviado no metadata.");
             }
         }
 
