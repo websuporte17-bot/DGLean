@@ -44,7 +44,7 @@ app.post('/process_payment', async (req, res) => {
         const payment = new Payment(client);
         const response = await payment.create({ body: paymentData });
 
-        // SE O PAGAMENTO FOI APROVADO, A REGRA É CLARA: GARANTE O TRUE NO BANCO A QUALQUER CUSTO
+        // SE O PAGAMENTO FOR APROVADO, FORÇA A GRAVAÇÃO IMEDIATA ANTES DE RESPONDER
         if (response.status === 'approved') {
             const userId = body.metadata?.firebase_uid || body.metadata?.user_id || body.user_id;
             const userEmail = body.payer?.email;
@@ -53,28 +53,27 @@ app.post('/process_payment', async (req, res) => {
             const dataFormatada = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
             
             const dadosLiberacao = {
-                acesso_liberado: true, // FOI APROVADO? ENTÃO É TRUE SEM CHORO
+                acesso_liberado: true,
                 statusPagamento: 'aprovado',
                 dataAssinatura: dataFormatada,
                 updatedAt: agora
             };
 
-            let atualizado = false;
+            let salvoNoBanco = false;
 
-            // Tenta atualizar pelo ID exato do usuário
+            // 1. Tenta salvar diretamente pelo ID do usuário (UID do Firebase Auth)
             if (userId) {
                 try {
-                    const userRef = db.collection('usuarios').doc(userId);
-                    await userRef.set(dadosLiberacao, { merge: true });
-                    atualizado = true;
-                    console.log(`[GARANTIDO] Acesso true gravado via UID: ${userId}`);
-                } catch (err) {
-                    console.error("Erro ao gravar por UID, tentando por e-mail...", err);
+                    await db.collection('usuarios').doc(userId).set(dadosLiberacao, { merge: true });
+                    salvoNoBanco = true;
+                    console.log(`[SERVIDOR] Sucesso ao gravar true no UID: ${userId}`);
+                } catch (e) {
+                    console.error("Erro ao gravar por UID:", e);
                 }
             }
 
-            // Se não atualizou por ID ou se o ID não veio, força pelo e-mail do pagamento
-            if (!atualizado && userEmail) {
+            // 2. Se não salvou por UID, tenta buscar e atualizar por e-mail
+            if (!salvoNoBanco && userEmail) {
                 try {
                     const snapshot = await db.collection('usuarios').where('email', '==', userEmail).get();
                     if (!snapshot.empty) {
@@ -83,29 +82,30 @@ app.post('/process_payment', async (req, res) => {
                             batch.set(doc.ref, dadosLiberacao, { merge: true });
                         });
                         await batch.commit();
-                        atualizado = true;
-                        console.log(`[GARANTIDO] Acesso true gravado via E-mail: ${userEmail}`);
+                        salvoNoBanco = true;
+                        console.log(`[SERVIDOR] Sucesso ao gravar true por E-mail: ${userEmail}`);
                     }
-                } catch (err) {
-                    console.error("Erro ao gravar por e-mail:", err);
+                } catch (e) {
+                    console.error("Erro ao gravar por e-mail:", e);
                 }
             }
 
-            // ÚLTIMA LINHA DE DEFESA: Se por milagre o usuário não existir no Firestore, cria ele com true na hora para não perder a venda
-            if (!atualizado && userEmail) {
+            // 3. Se por algum motivo o usuário não existir na coleção usuarios, cria um documento novo
+            if (!salvoNoBanco && userEmail) {
                 try {
                     await db.collection('usuarios').add({
                         email: userEmail,
                         ...dadosLiberacao
                     });
-                    console.log(`[EMERGÊNCIA] Novo documento criado com acesso true para: ${userEmail}`);
-                } catch (err) {
-                    console.error("Erro crítico na gravação de emergência:", err);
+                    salvoNoBanco = true;
+                    console.log(`[SERVIDOR] Criado novo registro com true para: ${userEmail}`);
+                } catch (e) {
+                    console.error("Erro crítico ao criar documento de emergência:", e);
                 }
             }
         }
 
-        // Retorna o status real para o front-end comemorar e redirecionar
+        // Responde para o front-end apenas após garantir o fluxo
         res.status(200).json({
             status: response.status,
             status_detail: response.status_detail,
