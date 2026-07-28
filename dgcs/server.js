@@ -44,10 +44,9 @@ app.post('/process_payment', async (req, res) => {
         const payment = new Payment(client);
         const response = await payment.create({ body: paymentData });
 
-        // SE O PAGAMENTO FOR APROVADO, FORÇA A GRAVAÇÃO IMEDIATA ANTES DE RESPONDER
         if (response.status === 'approved') {
+            // PEGA EXATAMENTE O UID QUE VEIO DO FRONT-END (DO USUÁRIO LOGADO)
             const userId = body.metadata?.firebase_uid || body.metadata?.user_id || body.user_id;
-            const userEmail = body.payer?.email;
             
             const agora = new Date();
             const dataFormatada = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
@@ -59,53 +58,55 @@ app.post('/process_payment', async (req, res) => {
                 updatedAt: agora
             };
 
-            let salvoNoBanco = false;
+            let atualizado = false;
 
-            // 1. Tenta salvar diretamente pelo ID do usuário (UID do Firebase Auth)
+            // 1. PRIORIDADE MÁXIMA: Atualiza direto pelo UID exato do usuário logado
             if (userId) {
                 try {
-                    await db.collection('usuarios').doc(userId).set(dadosLiberacao, { merge: true });
-                    salvoNoBanco = true;
-                    console.log(`[SERVIDOR] Sucesso ao gravar true no UID: ${userId}`);
-                } catch (e) {
-                    console.error("Erro ao gravar por UID:", e);
-                }
-            }
-
-            // 2. Se não salvou por UID, tenta buscar e atualizar por e-mail
-            if (!salvoNoBanco && userEmail) {
-                try {
-                    const snapshot = await db.collection('usuarios').where('email', '==', userEmail).get();
-                    if (!snapshot.empty) {
-                        const batch = db.batch();
-                        snapshot.docs.forEach((doc) => {
-                            batch.set(doc.ref, dadosLiberacao, { merge: true });
-                        });
-                        await batch.commit();
-                        salvoNoBanco = true;
-                        console.log(`[SERVIDOR] Sucesso ao gravar true por E-mail: ${userEmail}`);
+                    const userRef = db.collection('usuarios').doc(userId);
+                    const docSnap = await userRef.get();
+                    
+                    if (docSnap.exists) {
+                        await userRef.set(dadosLiberacao, { merge: true });
+                        atualizado = true;
+                        console.log(`[SUCESSO] Acesso liberado pelo UID exato do login: ${userId}`);
                     }
-                } catch (e) {
-                    console.error("Erro ao gravar por e-mail:", e);
+                } catch (err) {
+                    console.error("Erro ao atualizar por UID:", err);
                 }
             }
 
-            // 3. Se por algum motivo o usuário não existir na coleção usuarios, cria um documento novo
-            if (!salvoNoBanco && userEmail) {
+            // 2. SE NÃO ACHOU POR UID, BUSCA PELO E-MAIL CADASTRADO NO METADATA (SE ENVIADO)
+            const userEmailCadastro = body.metadata?.email_cadastro;
+            if (!atualizado && userEmailCadastro) {
                 try {
-                    await db.collection('usuarios').add({
-                        email: userEmail,
-                        ...dadosLiberacao
-                    });
-                    salvoNoBanco = true;
-                    console.log(`[SERVIDOR] Criado novo registro com true para: ${userEmail}`);
-                } catch (e) {
-                    console.error("Erro crítico ao criar documento de emergência:", e);
+                    const querySnapshot = await db.collection('usuarios').where('email', '==', userEmailCadastro).get();
+                    if (!querySnapshot.empty) {
+                        querySnapshot.forEach(async (docSnap) => {
+                            await docSnap.ref.set(dadosLiberacao, { merge: true });
+                        });
+                        atualizado = true;
+                        console.log(`[SUCESSO] Acesso liberado pelo e-mail de cadastro: ${userEmailCadastro}`);
+                    }
+                } catch (err) {
+                    console.error("Erro ao atualizar pelo e-mail de cadastro:", err);
+                }
+            }
+
+            // 3. ÚLTIMA SALVAÇÃO: Se o documento não existir, cria usando o UID do login para nunca falhar
+            if (!atualizado && userId) {
+                try {
+                    await db.collection('usuarios').doc(userId).set({
+                        ...dadosLiberacao,
+                        criadoPorEmergencia: true
+                    }, { merge: true });
+                    console.log(`[EMERGÊNCIA] Documento criado para o UID do login: ${userId}`);
+                } catch (err) {
+                    console.error("Erro crítico ao criar documento de emergência:", err);
                 }
             }
         }
 
-        // Responde para o front-end apenas após garantir o fluxo
         res.status(200).json({
             status: response.status,
             status_detail: response.status_detail,
