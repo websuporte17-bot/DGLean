@@ -3,33 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DG DEV HIGH SCHOOL | Portal Oficial</title>
+    <title>DG DEV HIGH SCHOOL | Portal Oficial (Azul)</title>
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
-        body { background: #808080; color: #000000; overflow-x: hidden; }
+        /* FUNDO AZUL PARA PROVAR A ATUALIZAÇÃO */
+        body { background: #0047AB; color: #ffffff; overflow-x: hidden; }
         .container { max-width: 800px; margin: 40px auto; padding: 20px; }
-        .box { background: #f0f0f0; padding: 30px; border: 1px solid #000000; box-shadow: 0 0 15px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        .box { background: #101820; padding: 30px; border: 1px solid #00ffcc; box-shadow: 0 0 15px rgba(0,255,204,0.2); margin-bottom: 20px; text-align: center; }
         input, .btn { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 4px; outline: none; }
-        input { background: #ffffff; border: 1px solid #ccc; color: #000000; }
-        .btn { background: #000000; color: #ffffff; border: 1px solid #000000; cursor: pointer; text-transform: uppercase; font-weight: bold; }
-        .btn:hover { background: #333333; color: #ffffff; }
-        .btn-cursos { background: #000000; color: #ffffff; padding: 15px; font-size: 16px; text-decoration: none; display: block; margin-top: 15px; text-align: center; border: 1px solid #000; }
+        input { background: #1a2634; border: 1px solid #00ffcc; color: #ffffff; }
+        .btn { background: #00ffcc; color: #000000; border: 1px solid #00ffcc; cursor: pointer; text-transform: uppercase; font-weight: bold; }
+        .btn:hover { background: #00cc99; }
+        .btn-cursos { background: #00ffcc; color: #000000; padding: 15px; font-size: 16px; text-decoration: none; display: block; margin-top: 15px; text-align: center; border: 1px solid #00ffcc; font-weight: bold; }
         .hidden { display: none !important; }
-        .alert { color: #d9534f; border: 1px solid #d9534f; padding: 15px; margin-bottom: 15px; background: rgba(217, 83, 79, 0.1); font-weight: bold; }
-        .success-box { color: #28a745; border: 1px solid #28a745; padding: 15px; margin-bottom: 15px; background: rgba(40, 167, 69, 0.1); font-weight: bold; text-align: left; }
+        .alert { color: #ff3366; border: 1px solid #ff3366; padding: 15px; margin-bottom: 15px; background: rgba(255, 51, 102, 0.1); font-weight: bold; }
+        .success-box { color: #00ffcc; border: 1px solid #00ffcc; padding: 15px; margin-bottom: 15px; background: rgba(0, 255, 204, 0.1); font-weight: bold; text-align: left; }
+        .status-msg { background: #ffcc00; color: #000000; border: 1px solid #ff9900; padding: 12px; margin-bottom: 15px; font-weight: bold; border-radius: 4px; }
     </style>
 </head>
 <body>
     <div class="container">
         <!-- TELA DE LOGIN / CADASTRO -->
         <div id="auth-box" class="box">
-            <h2>Terminal DG Malvadão - Acesso</h2>
+            <h2>Terminal DG Malvadão - Acesso (Azul)</h2>
             <br>
             <input type="email" id="email" placeholder="E-mail de Acesso">
             <input type="password" id="senha" placeholder="Chave de Segurança">
             <button class="btn" onclick="login()">Iniciar Sessão</button>
-            <button class="btn" onclick="mostrarCadastro()" style="border-color: #999; color: #333;">Cadastrar Nova Conta</button>
+            <button class="btn" onclick="mostrarCadastro()" style="background: transparent; color: #00ffcc; border-color: #00ffcc;">Cadastrar Nova Conta</button>
         </div>
 
         <!-- TELA DE CADASTRO COMPLETO -->
@@ -43,7 +45,7 @@
             <input type="text" id="reg-telefone" placeholder="Telefone / WhatsApp">
             <input type="text" id="reg-endereco" placeholder="Endereço Completo">
             <button class="btn" onclick="cadastrarCompleto()">Finalizar Cadastro</button>
-            <button class="btn" onclick="voltarLogin()" style="background: transparent; color: #000;">Voltar ao Login</button>
+            <button class="btn" onclick="voltarLogin()" style="background: transparent; color: #fff; border-color: #fff;">Voltar ao Login</button>
         </div>
 
         <!-- TELA DE STATUS / PAGAMENTO -->
@@ -53,7 +55,9 @@
                 <div class="alert">CONTA INATIVA. Taxa de liberação: R$ 50,00.</div>
                 <div id="paymentBrick_container"></div>
             </div>
-            <button class="btn" onclick="logout()" style="margin-top: 20px; border-color: #d9534f; color: #d9534f; background: transparent;">Desconectar</button>
+            <!-- MENSAGEM ESTÁTICA EM CIMA DO BOTÃO DESCONECTAR -->
+            <div id="feedback-processamento" class="hidden"></div>
+            <button class="btn" onclick="logout()" style="margin-top: 10px; border-color: #ff3366; color: #ff3366; background: transparent;">Desconectar</button>
         </div>
     </div>
 
@@ -90,22 +94,20 @@
                     document.getElementById('payment-box').classList.remove('hidden');
                     
                     if (data.acesso_liberado === true) {
-                        // JÁ TEM ASSINATURA PAGA: EXIBE DETALHES E O BOTÃO CURSOS
                         document.getElementById('form-pagamento-container').classList.add('hidden');
                         document.getElementById('status-assinatura').innerHTML = `
                             <div class="success-box">
                                 <h3>STATUS: ASSINATURA ATIVA</h3>
-                                <hr style="margin: 8px 0;">
+                                <hr style="margin: 8px 0; border-color: #00ffcc;">
                                 <p><strong>Nome:</strong> ${data.nome || 'Não informado'}</p>
                                 <p><strong>E-mail:</strong> ${data.email || user.email}</p>
                                 <p><strong>CPF:</strong> ${data.cpf || 'Não informado'}</p>
                                 <p><strong>Data/Hora da Compra:</strong> ${data.dataAssinatura || 'Registrado'}</p>
-                                <p><strong>Nome no Cartão:</strong> ${data.nomeTitularCartao || 'Processado via Mercado Pago'}</p>
+                                <p><strong>Status do Pagamento:</strong> Aprovado com Segurança</p>
                             </div>
                             <a href="app.html" class="btn-cursos">CURSOS</a>
                         `;
                     } else {
-                        // CONTA INATIVA: MOSTRA DADOS E ABRE O CHECKOUT
                         document.getElementById('form-pagamento-container').classList.remove('hidden');
                         document.getElementById('status-assinatura').innerHTML = '';
                         setTimeout(() => renderCheckout(user.uid), 200);
@@ -133,24 +135,48 @@
                             formData.transaction_amount = 50.00;
                             formData.metadata = { firebase_uid: uid }; 
                             
+                            const feedbackEl = document.getElementById('feedback-processamento');
+                            feedbackEl.className = 'status-msg';
+                            feedbackEl.innerText = 'Pagamento aprovado! Processando e gravando status no banco...';
+                            feedbackEl.classList.remove('hidden');
+
                             fetch('https://dglean.onrender.com/process_payment', {
                                 method: 'POST', 
                                 headers: { 'Content-Type': 'application/json' }, 
                                 body: JSON.stringify(formData)
                             })
                             .then(res => res.json())
-                            .then(data => {
+                            .then(async (data) => {
                                 resolve();
                                 if (data.status === 'approved') {
-                                    alert('Pagamento Aprovado! Redirecionando...');
-                                    setTimeout(() => window.location.href = "app.html", 2000); 
+                                    feedbackEl.innerText = 'Status aprovado. Verificando sincronização com o Firebase...';
+                                    
+                                    let confirmado = false;
+                                    for (let i = 0; i < 10; i++) {
+                                        const checkDoc = await getDoc(doc(db, "usuarios", uid));
+                                        if (checkDoc.exists() && checkDoc.data().acesso_liberado === true) {
+                                            confirmado = true;
+                                            break;
+                                        }
+                                        await new Promise(r => setTimeout(r, 1000));
+                                    }
+
+                                    if (confirmado) {
+                                        feedbackEl.innerText = 'Assinatura confirmada! Redirecionando...';
+                                        setTimeout(() => window.location.href = "app.html", 1500);
+                                    } else {
+                                        feedbackEl.className = 'alert';
+                                        feedbackEl.innerText = 'Pagamento aprovado, mas a sincronização demorou. Atualize a página.';
+                                    }
                                 } else {
-                                    alert('Pagamento não aprovado: ' + (data.status_detail || 'Recusado'));
+                                    feedbackEl.classList.add('hidden');
+                                    alert('Pagamento recusado: ' + (data.error || data.status_detail || 'Recusado'));
                                 }
                             })
                             .catch(error => {
                                 reject();
-                                alert("Erro de conexão com a API.");
+                                feedbackEl.classList.add('hidden');
+                                alert("Erro de conexão com a API de pagamento.");
                             });
                         });
                     },
@@ -202,6 +228,7 @@
                     level: 1 
                 });
                 alert("Cadastro realizado com sucesso!");
+                window.location.reload();
             } catch (e) { 
                 alert("Erro ao criar conta: " + e.message); 
             }
