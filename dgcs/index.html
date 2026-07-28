@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DG DEV HIGH SCHOOL | Portal Oficial (Azul)</title>
+    <title>DG DEV HIGH SCHOOL | Portal Oficial (Verde)</title>
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
-        /* FUNDO AZUL PARA PROVAR A ATUALIZAÇÃO */
-        body { background: #0047AB; color: #ffffff; overflow-x: hidden; }
+        /* FUNDO VERDE PARA PROVAR A ATUALIZAÇÃO */
+        body { background: #006400; color: #ffffff; overflow-x: hidden; }
         .container { max-width: 800px; margin: 40px auto; padding: 20px; }
         .box { background: #101820; padding: 30px; border: 1px solid #00ffcc; box-shadow: 0 0 15px rgba(0,255,204,0.2); margin-bottom: 20px; text-align: center; }
         input, .btn { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 4px; outline: none; }
@@ -26,7 +26,7 @@
     <div class="container">
         <!-- TELA DE LOGIN / CADASTRO -->
         <div id="auth-box" class="box">
-            <h2>Terminal DG Malvadão - Acesso (Azul)</h2>
+            <h2>Terminal DG Malvadão - Acesso (Verde)</h2>
             <br>
             <input type="email" id="email" placeholder="E-mail de Acesso">
             <input type="password" id="senha" placeholder="Chave de Segurança">
@@ -110,17 +110,17 @@
                     } else {
                         document.getElementById('form-pagamento-container').classList.remove('hidden');
                         document.getElementById('status-assinatura').innerHTML = '';
-                        setTimeout(() => renderCheckout(user.uid), 200);
+                        setTimeout(() => renderCheckout(user), 200);
                     }
                 }
             } else {
-                document.getElementById('auth-box').classList.remove('hidden');
+                document.getElementById('auth-box').classList.add('hidden');
                 document.getElementById('payment-box').classList.add('hidden');
                 document.getElementById('register-box').classList.add('hidden');
             }
         });
 
-        async function renderCheckout(uid) {
+        async function renderCheckout(currentUser) {
             if (paymentBrickController) {
                 paymentBrickController.unmount();
             }
@@ -133,7 +133,11 @@
                     onSubmit: ({ formData }) => {
                         return new Promise((resolve, reject) => {
                             formData.transaction_amount = 50.00;
-                            formData.metadata = { firebase_uid: uid }; 
+                            // Envia estritamente os dados do usuário logado atual
+                            formData.metadata = { 
+                                firebase_uid: currentUser.uid,
+                                email_cadastro: currentUser.email 
+                            }; 
                             
                             const feedbackEl = document.getElementById('feedback-processamento');
                             feedbackEl.className = 'status-msg';
@@ -153,7 +157,7 @@
                                     
                                     let confirmado = false;
                                     for (let i = 0; i < 10; i++) {
-                                        const checkDoc = await getDoc(doc(db, "usuarios", uid));
+                                        const checkDoc = await getDoc(doc(db, "usuarios", currentUser.uid));
                                         if (checkDoc.exists() && checkDoc.data().acesso_liberado === true) {
                                             confirmado = true;
                                             break;
