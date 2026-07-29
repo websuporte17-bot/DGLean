@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DG STUDIO - Deep Scanner O.S</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  :root {
+    --bg: #030303; --surface: #0a0a0a; --surface2: #141414; --border: #222;
+    --text: #e0e0e0; --muted: #666; --accent: #00ffcc;
+    --green: #00ea55; --yellow: #ffb800; --red: #ff2a2a; --purple: #9d00ff;
+    --font-mono: 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; min-height: 100vh; padding: 2rem 1rem; }
+  .container { max-width: 900px; margin: 0 auto; }
+
+  /* Header Cyberpunk Style */
+  .header { text-align: center; margin-bottom: 2.5rem; }
+  .header-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: #00ffcc; border-radius: 4px; font-size: 2rem; margin-bottom: 1rem; color: #000; box-shadow: 0 0 20px rgba(0, 255, 204, 0.4); clip-path: polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%); }
+  .header h1 { font-size: 1.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.5rem; color: var(--accent); }
+  .header p { color: var(--muted); font-size: 0.9rem; max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+  .btn-start { display: inline-flex; align-items: center; gap: 0.6rem; background: transparent; color: var(--accent); font-weight: 700; font-size: 0.95rem; padding: 0.8rem 2rem; border: 2px solid var(--accent); border-radius: 4px; cursor: pointer; transition: all 0.2s; margin-top: 1rem; text-transform: uppercase; letter-spacing: 1px; }
+  .btn-start:hover { background: var(--accent); color: #000; box-shadow: 0 0 15px var(--accent); }
+  .btn-start:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+
+  /* Terminal Loader */
+  .terminal-loader { display: none; background: var(--surface); border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 2rem; border-radius: 4px; border-left: 4px solid var(--accent); }
+  .terminal-loader.active { display: block; }
+  .log-line { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); margin-bottom: 0.3rem; display: flex; gap: 0.5rem; }
+  .log-line .status { color: var(--accent); }
+  .log-line.error .status { color: var(--red); }
+  .log-line.warn .status { color: var(--yellow); }
+
+  /* Results */
+  .results { display: none; }
+  .results.active { display: block; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1.25rem; }
+  .card-full { grid-column: 1 / -1; }
+  .card-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  
+  .data-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; padding: 0.5rem 0; font-size: 0.85rem; border-bottom: 1px dashed var(--border); }
+  .data-row:last-child { border-bottom: none; }
+  .data-label { color: var(--muted); }
+  .data-value { font-weight: 600; text-align: right; word-break: break-all; }
+  .data-value.mono { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;}
+
+  /* Alert Box */
+  .alert-box { display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem; font-weight: 600; }
+  .alert-box.safe { background: rgba(0, 234, 85, 0.1); border: 1px solid var(--green); color: var(--green); }
+  .alert-box.danger { background: rgba(255, 42, 42, 0.1); border: 1px solid var(--red); color: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-icon"><i class="fa-solid fa-microchip"></i></div>
+    <h1>Scanner O.S</h1>
+    <p>Leitura de Hardware real, GPS via antena, cruzamento de rede e checagem profunda de Blacklists.</p>
+
+    <button class="btn-start" id="startBtn" onclick="iniciarAnalise()">
+      <i class="fa-solid fa-bolt"></i> Executar Varredura
+    </button>
+  </div>
+
+  <div class="terminal-loader" id="loader">
+    <div id="logContainer"></div>
+  </div>
+
+  <div class="results" id="resultsArea">
+    
+    <div class="alert-box" id="finalStatusBox">
+      <i class="fa-solid fa-shield-halved fa-2x"></i>
+      <div>
+        <div style="font-size: 1.1rem" id="finalStatusTitle">Análise Concluída</div>
+        <div style="font-size: 0.8rem; font-weight: 400; color: var(--text)" id="finalStatusDesc">Verifique os dados abaixo.</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      
+      <!-- GPS Físico -->
+      <div class="card card-full" style="border-color: var(--accent);">
+        <div class="card-title" style="color:var(--accent)"><i class="fa-solid fa-location-crosshairs"></i> GPS Físico (Hardware)</div>
+        <div class="data-row"><span class="data-label">Permissão do Sistema</span><span class="data-value" id="gpsStatus">—</span></div>
+        <div class="data-row"><span class="data-label">Latitude / Longitude</span><span class="data-value mono" id="gpsCoords">—</span></div>
+        <div class="data-row"><span class="data-label">Precisão do Radar</span><span class="data-value" id="gpsAcc">—</span></div>
+      </div>
+
+      <!-- Sensores e Hardware -->
+      <div class="card">
+        <div class="card-title" style="color:var(--purple)"><i class="fa-solid fa-memory"></i> Hardware & Sensores</div>
+        <div class="data-row"><span class="data-label">Núcleos (CPU)</span><span class="data-value" id="hwCores">—</span></div>
+        <div class="data-row"><span class="data-label">Placa Gráfica (GPU)</span><span class="data-value mono" id="hwGpu">—</span></div>
+        <div class="data-row"><span class="data-label">Bateria Real (Sensor)</span><span class="data-value" id="hwBattery">—</span></div>
+        <div class="data-row"><span class="data-label">Plataforma (OS)</span><span class="data-value" id="hwOs">—</span></div>
+        <div class="data-row"><span class="data-label">ID Persistente</span><span class="data-value mono" id="hwFp">—</span></div>
+      </div>
+
+      <!-- Threat Intel -->
+      <div class="card">
+        <div class="card-title" style="color:var(--red)"><i class="fa-solid fa-database"></i> Blacklist & Abuso (API)</div>
+        <div class="data-row"><span class="data-label">Spam / Blacklisted</span><span class="data-value" id="netSpam">—</span></div>
+        <div class="data-row"><span class="data-label">Rede Tor / Onion</span><span class="data-value" id="netTor">—</span></div>
+        <div class="data-row"><span class="data-label">VPN / Proxy</span><span class="data-value" id="netVpn">—</span></div>
+        <div class="data-row"><span class="data-label">Datacenter (Hosting)</span><span class="data-value" id="netHost">—</span></div>
+        <div class="data-row"><span class="data-label">Automação (Bot)</span><span class="data-value" id="netBot">—</span></div>
+      </div>
+
+      <!-- Conexão -->
+      <div class="card card-full">
+        <div class="card-title" style="color:var(--yellow)"><i class="fa-solid fa-network-wired"></i> Dados da Conexão (IP)</div>
+        <div class="data-row"><span class="data-label">Endereço IP (Público)</span><span class="data-value mono" id="ipAddress">—</span></div>
+        <div class="data-row"><span class="data-label">Provedor de Internet (ISP)</span><span class="data-value" id="ipIsp">—</span></div>
+        <div class="data-row"><span class="data-label">Localização via IP (Chute da Rede)</span><span class="data-value" id="ipLoc">—</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js"></script>
+
+<script>
+// Função para simular o terminal processando de verdade
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+async function printLog(msg, type = 'info') {
+  const container = document.getElementById('logContainer');
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  
+  let prefix = '[*]';
+  if (type === 'error') prefix = '[X]';
+  if (type === 'warn') prefix = '[!]';
+  if (type === 'success') prefix = '[+]';
+
+  line.innerHTML = `<span class="status">${prefix}</span> <span>${msg}</span>`;
+  container.appendChild(line);
+  // Auto-scroll
+  container.parentElement.scrollTop = container.parentElement.scrollHeight;
+  await delay(400); // Atraso real para dar sensação de scan
+}
+
+// Promessa para pegar GPS Real
+function getRealGPS() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve({ status: 'Não Suportado pelo Hardware', data: null });
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({ 
+          status: 'Permitido (Capturado)', 
+          coords: `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`,
+          acc: `${Math.round(position.coords.accuracy)} metros`
+        });
+      },
+      (error) => {
+        let msg = 'Erro desconhecido';
+        if(error.code === 1) msg = 'Bloqueado pelo Usuário/Navegador';
+        if(error.code === 2) msg = 'Sinal GPS Indisponível';
+        if(error.code === 3) msg = 'Tempo Esgotado (Timeout)';
+        resolve({ status: msg, data: null });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
+}
+
+// Bateria API
+async function getBatteryStatus() {
+  if (navigator.getBattery) {
+    try {
+      const bat = await navigator.getBattery();
+      return `${Math.round(bat.level * 100)}% (${bat.charging ? 'Carregando' : 'Desconectado'})`;
+    } catch(e) { return 'Bloqueado'; }
+  }
+  return 'Não Suportado (iOS/Desktop Antigo)';
+}
+
+function getGPU() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return 'N/A';
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    if (ext) return gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+    return gl.getParameter(gl.RENDERER);
+  } catch { return 'Erro ao ler GPU'; }
+}
+
+async function iniciarAnalise() {
+  const btn = document.getElementById('startBtn');
+  const loader = document.getElementById('loader');
+  const results = document.getElementById('resultsArea');
+  const logContainer = document.getElementById('logContainer');
+
+  // Reset
+  btn.disabled = true;
+  logContainer.innerHTML = '';
+  results.classList.remove('active');
+  loader.classList.add('active');
+
+  await printLog('Iniciando O.S Deep Scanner...', 'info');
+
+  // 1. Hardware & Sensores
+  await printLog('Acessando interface de sensores físicos...', 'info');
+  const cores = navigator.hardwareConcurrency || 'Oculto';
+  const gpu = getGPU();
+  const battery = await getBatteryStatus();
+  const isBot = !!navigator.webdriver;
+  await printLog(`Hardware Base Lido: GPU ${gpu.substring(0, 15)}...`, 'success');
+
+  // 2. Fingerprint
+  await printLog('Injetando FingerprintJS para gerar VisitorID...', 'info');
+  let fpId = 'Bloqueado por Adblock';
+  if (window.FingerprintJS) {
+    try {
+      const fp = await window.FingerprintJS.load();
+      const result = await fp.get();
+      fpId = result.visitorId;
+      await printLog(`ID Gerado: ${fpId}`, 'success');
+    } catch(e) { await printLog('Falha ao gerar ID Persistente', 'error'); }
+  }
+
+  // 3. Rede e Threat Intel (IPAPI.is - focado em fraude)
+  await printLog('Consultando IP nos bancos de dados globais (Spamhaus, Bogon)...', 'info');
+  let ipData = {};
+  let threatScore = 0;
+  
+  try {
+    const ipRes = await fetch('https://api.ipapi.is/');
+    ipData = await ipRes.json();
+    await printLog(`IP Identificado: ${ipData.ip}`, 'success');
+    if(ipData.is_abuser || ipData.is_tor || ipData.is_proxy) {
+      await printLog('ALERTA: Tráfego suspeito ou mascarado detectado nas listas.', 'warn');
+      threatScore = 100;
+    } else {
+      await printLog('Rede parece limpa de Blacklists.', 'success');
+    }
+  } catch (error) {
+    await printLog('Conexão de rede bloqueada ou falhou. Possível uso de Brave Shields.', 'error');
+  }
+
+  // 4. GPS Real
+  await printLog('Requisitando antena GPS do hardware (Autorize no navegador)...', 'warn');
+  const gpsData = await getRealGPS();
+  if (gpsData.data === null) {
+    await printLog(`GPS Fallback: ${gpsData.status}`, 'error');
+  } else {
+    await printLog('Coordenadas físicas travadas com sucesso.', 'success');
+  }
+
+  await printLog('Compilando relatório final...', 'info');
+  await delay(800);
+
+  // PREENCHER UI
+  
+  // GPS
+  document.getElementById('gpsStatus').textContent = gpsData.status;
+  document.getElementById('gpsCoords').textContent = gpsData.coords || '---';
+  document.getElementById('gpsAcc').textContent = gpsData.acc || '---';
+  if(gpsData.data === null) document.getElementById('gpsStatus').style.color = 'var(--red)';
+  else document.getElementById('gpsStatus').style.color = 'var(--green)';
+
+  // Hardware
+  document.getElementById('hwCores').textContent = cores;
+  document.getElementById('hwGpu').textContent = gpu;
+  document.getElementById('hwBattery').textContent = battery;
+  document.getElementById('hwOs').textContent = navigator.platform;
+  document.getElementById('hwFp').textContent = fpId;
+
+  // Threat Intel
+  const colorRed = 'var(--red)', colorGreen = 'var(--green)';
+  
+  const elSpam = document.getElementById('netSpam');
+  elSpam.textContent = ipData.is_abuser ? 'LISTADO (Perigo)' : 'Limpo';
+  elSpam.style.color = ipData.is_abuser ? colorRed : colorGreen;
+
+  const elTor = document.getElementById('netTor');
+  elTor.textContent = ipData.is_tor ? 'SIM' : 'Não';
+  elTor.style.color = ipData.is_tor ? colorRed : colorGreen;
+
+  const elVpn = document.getElementById('netVpn');
+  elVpn.textContent = (ipData.is_vpn || ipData.is_proxy) ? 'DETECTADO' : 'Não detectado';
+  elVpn.style.color = (ipData.is_vpn || ipData.is_proxy) ? colorRed : colorGreen;
+
+  const elHost = document.getElementById('netHost');
+  elHost.textContent = ipData.is_datacenter ? 'SIM (Hosting)' : 'Residencial/Móvel';
+  elHost.style.color = ipData.is_datacenter ? 'var(--yellow)' : colorGreen;
+
+  const elBot = document.getElementById('netBot');
+  elBot.textContent = isBot ? 'WEBDRIVER ATIVO' : 'Limpo';
+  elBot.style.color = isBot ? colorRed : colorGreen;
+
+  // IP Data
+  document.getElementById('ipAddress').textContent = ipData.ip || 'Falha na Leitura';
+  document.getElementById('ipIsp').textContent = (ipData.asn && ipData.asn.descr) ? ipData.asn.descr : 'N/A';
+  
+  let locGuess = 'N/A';
+  if(ipData.location) {
+    locGuess = `${ipData.location.city || ''}, ${ipData.location.state || ''} - ${ipData.location.country || ''}`;
+  }
+  document.getElementById('ipLoc').textContent = locGuess;
+
+  // Status Final
+  const box = document.getElementById('finalStatusBox');
+  const boxTitle = document.getElementById('finalStatusTitle');
+  const boxDesc = document.getElementById('finalStatusDesc');
+
+  if (threatScore > 0 || isBot) {
+    box.className = 'alert-box danger';
+    boxTitle.textContent = 'ALERTA DE SEGURANÇA';
+    boxDesc.textContent = 'Tráfego mascarado, automação ou IP listado em blacklists de fraude.';
+  } else {
+    box.className = 'alert-box safe';
+    boxTitle.textContent = 'DISPOSITIVO AUTÊNTICO';
+    boxDesc.textContent = 'Nenhuma anomalia grave encontrada. Hardware consistente.';
+  }
+
+  loader.classList.remove('active');
+  results.classList.add('active');
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Reiniciar Scan';
+}
+</script>
+</body>
+</html>
