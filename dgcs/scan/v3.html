@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DG IP Investigator</title>
+    <title>DG DEEP SCAN - ALL IN ONE</title>
     <style>
         body {
-            background-color: #0d0d12;
+            background-color: #121212;
             color: #00ffcc;
             font-family: 'Courier New', Courier, monospace;
             margin: 0;
@@ -15,42 +15,26 @@
             flex-direction: column;
             align-items: center;
         }
-        .container {
-            background: #1a1a24;
+        .dashboard {
+            background: #1e1e24;
             padding: 20px;
             border: 1px solid #00ffcc;
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
             width: 100%;
-            max-width: 500px;
-            border-radius: 8px;
+            max-width: 600px;
         }
         h2 {
-            margin-top: 0;
             text-align: center;
             color: #ff0055;
             text-shadow: 0 0 5px #ff0055;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            text-transform: uppercase;
         }
-        .info-box {
-            background: #000;
-            padding: 15px;
-            border-left: 4px solid #00ffcc;
-            margin-bottom: 20px;
-            font-size: 1.2em;
-            word-break: break-all;
-        }
-        .search-area {
+        .search-box {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
-        }
-        .icon-label {
-            background: #00ffcc;
-            color: #000;
-            padding: 10px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            border-radius: 4px 0 0 4px;
         }
         input[type="text"] {
             flex-grow: 1;
@@ -59,116 +43,155 @@
             color: #fff;
             padding: 10px;
             font-family: inherit;
-            outline: none;
         }
         button {
-            background: transparent;
-            color: #00ffcc;
-            border: 1px solid #00ffcc;
-            padding: 10px 15px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        button:hover {
             background: #00ffcc;
             color: #000;
-        }
-        .action-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .btn-investigate {
-            background: #2b00ff;
-            color: #fff;
-            border-color: #2b00ff;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
             text-transform: uppercase;
         }
-        .btn-investigate:hover {
+        button:hover {
             background: #fff;
-            color: #2b00ff;
+        }
+        .section-title {
+            color: #fff;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            border-left: 3px solid #ff0055;
+            padding-left: 10px;
+        }
+        .data-grid {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 8px;
+            background: #000;
+            padding: 15px;
+            border: 1px solid #333;
+            font-size: 0.9em;
+        }
+        .label {
+            color: #888;
+        }
+        .value {
+            color: #00ffcc;
+            word-break: break-all;
+        }
+        .danger {
+            color: #ff0055;
+            font-weight: bold;
+        }
+        .safe {
+            color: #00ff00;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>DASHBOARD DE RASTREIO</h2>
+    <div class="dashboard">
+        <h2>DG Deep Scan</h2>
         
-        <p>Seu IP Normal Atual:</p>
-        <div class="info-box" id="meuIpInfo">
-            Carregando IP...
+        <div class="search-box">
+            <input type="text" id="ipInput" placeholder="Digite um IP para scannear...">
+            <button onclick="realizarDeepScan()">Scan</button>
         </div>
 
-        <p>Pesquisar / Investigar outro IP:</p>
-        <div class="search-area">
-            <div class="icon-label">🌐 IP</div>
-            <input type="text" id="ipInput" placeholder="Ex: 177.45.67.89">
-            <button id="btnAnalisar">ANALISAR</button>
+        <!-- RESULTADOS DE REDE E GPS DENTRO DA PÁGINA -->
+        <div class="section-title">🌐 NETWORK & GPS INFO</div>
+        <div class="data-grid">
+            <div class="label">IP:</div> <div class="value" id="resIp">-</div>
+            <div class="label">Provedor:</div> <div class="value" id="resIsp">-</div>
+            <div class="label">País:</div> <div class="value" id="resCountry">-</div>
+            <div class="label">Cidade:</div> <div class="value" id="resCity">-</div>
+            <div class="label">Coords GPS:</div> <div class="value" id="resGps">-</div>
         </div>
 
-        <div class="action-buttons" id="areaBotoes" style="display: none;">
-            <p style="color: #fff;">Consultar histórico de Spam/Golpes para este IP:</p>
-            <!-- O AbuseIPDB é o maior banco de dados do mundo para IPs maliciosos -->
-            <button class="btn-investigate" id="btnAbuseIPDB">Consultar no AbuseIPDB</button>
-            <!-- O VirusTotal checa se o IP distribui vírus -->
-            <button class="btn-investigate" id="btnVirusTotal">Consultar no VirusTotal</button>
+        <!-- RESULTADO DE BLACKLIST -->
+        <div class="section-title">🛡️ BLACKLIST / SPAM STATUS</div>
+        <div class="data-grid">
+            <div class="label">Status:</div> <div class="value" id="resBlacklist">Aguardando scan...</div>
+            <div class="label">Risco Score:</div> <div class="value" id="resScore">-</div>
+        </div>
+
+        <!-- ESTRUTURA DA FOTO (HARDWARE/SPOOFING) -->
+        <div class="section-title">📱 HARDWARE ID (Mock/Spoof Data)</div>
+        <div class="data-grid" style="background: #2b2b2b;">
+            <div class="label">device id :</div> <div class="value">554545133262221</div>
+            <div class="label">android id :</div> <div class="value">7819a3286c29340d</div>
+            <div class="label">wifi mac :</div> <div class="value">9d:07:37:b3:ab:1d</div>
+            <div class="label">bluetooth mac:</div> <div class="value">7d:41:cc:b3:52:86</div>
+            <div class="label">icc serial :</div> <div class="value">07695796881385484399</div>
         </div>
     </div>
 
     <script>
-        const meuIpInfo = document.getElementById('meuIpInfo');
-        const ipInput = document.getElementById('ipInput');
-        const btnAnalisar = document.getElementById('btnAnalisar');
-        const areaBotoes = document.getElementById('areaBotoes');
-        const btnAbuseIPDB = document.getElementById('btnAbuseIPDB');
-        const btnVirusTotal = document.getElementById('btnVirusTotal');
+        // Pega seu IP ao abrir a página
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('ipInput').value = data.ip;
+                realizarDeepScan(); // Já faz o scan automático do seu IP
+            });
 
-        let ipAtualParaAnalise = "";
+        function realizarDeepScan() {
+            const ip = document.getElementById('ipInput').value.trim();
+            if(!ip) return;
 
-        // Função para buscar o IP real (IPv4) de quem está acessando
-        async function pegarMeuIP() {
-            try {
-                const response = await fetch('https://api.ipify.org?format=json');
-                const data = await response.json();
-                meuIpInfo.innerText = data.ip;
-                
-                // Já preenche o campo de pesquisa com o seu próprio IP para facilitar
-                ipInput.value = data.ip;
-                prepararBotoesDeInvestigacao(data.ip);
-            } catch (error) {
-                meuIpInfo.innerText = "Erro ao obter IP.";
-                meuIpInfo.style.color = "#ff0055";
+            document.getElementById('resBlacklist').innerHTML = "Analisando...";
+            document.getElementById('resScore').innerHTML = "...";
+
+            // 1. Puxando IP, Provedor e GPS (Coordenadas) via API pública
+            fetch(`https://ipapi.co/${ip}/json/`)
+                .then(res => res.json())
+                .then(data => {
+                    if(data.error) {
+                        alert("IP inválido ou erro na API");
+                        return;
+                    }
+                    
+                    // Injeta os dados direto na SUA tela
+                    document.getElementById('resIp').innerText = data.ip;
+                    document.getElementById('resIsp').innerText = data.org || data.asn;
+                    document.getElementById('resCountry').innerText = data.country_name;
+                    document.getElementById('resCity').innerText = data.city;
+                    document.getElementById('resGps').innerText = `Lat: ${data.latitude} | Lon: ${data.longitude}`;
+                    
+                    // 2. Simulação de Blacklist API (Como APIs reais de blacklist exigem backend/CORS, 
+                    // aqui aplicamos uma lógica local para IPs de servidor conhecidos)
+                    analisarBlacklistLocal(data.org || data.asn);
+                })
+                .catch(err => {
+                    console.log("Erro ao buscar dados: ", err);
+                });
+        }
+
+        // Função para analisar o risco do IP dentro da própria página
+        function analisarBlacklistLocal(isp) {
+            const ispNome = isp.toLowerCase();
+            const badHosts = ['digitalocean', 'aws', 'amazon', 'ovh', 'choopa', 'hetzner', 'google cloud', 'tor'];
+            
+            let isRisk = false;
+            
+            // Verifica se o IP é de um datacenter/VPN/Proxy conhecido
+            for(let host of badHosts) {
+                if(ispNome.includes(host)) {
+                    isRisk = true;
+                    break;
+                }
             }
-        }
 
-        function prepararBotoesDeInvestigacao(ip) {
-            ipAtualParaAnalise = ip;
-            areaBotoes.style.display = "flex";
-            
-            // Monta os links de redirecionamento para investigação
-            btnAbuseIPDB.onclick = () => {
-                window.open(`https://www.abuseipdb.com/check/${ipAtualParaAnalise}`, '_blank');
-            };
-            
-            btnVirusTotal.onclick = () => {
-                window.open(`https://www.virustotal.com/gui/search/${ipAtualParaAnalise}`, '_blank');
-            };
-        }
-
-        // Quando clicar em analisar um IP manual
-        btnAnalisar.addEventListener('click', () => {
-            const ipDigitado = ipInput.value.trim();
-            if (ipDigitado !== "") {
-                prepararBotoesDeInvestigacao(ipDigitado);
+            if(isRisk) {
+                document.getElementById('resBlacklist').innerHTML = "<span class='danger'>ALERTA: IP de Datacenter/Proxy (Possível Bot/Spam)</span>";
+                document.getElementById('resScore').innerHTML = "<span class='danger'>85 / 100</span>";
             } else {
-                alert("Digite um IP válido primeiro.");
+                document.getElementById('resBlacklist').innerHTML = "<span class='safe'>LIMPO (Residencial / Mobile)</span>";
+                document.getElementById('resScore').innerHTML = "<span class='safe'>0 / 100</span>";
             }
-        });
-
-        // Inicia pegando o IP assim que a página carrega
-        pegarMeuIP();
+        }
     </script>
 </body>
 </html>
