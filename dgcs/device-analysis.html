@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análise de Segurança de Dispositivo</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --font-mono: 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  .header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, #1f6feb, #388bfd);
+    border-radius: 16px;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 0 32px rgba(56, 139, 253, 0.3);
+  }
+  .header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 0.5rem;
+  }
+  .header p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* Check list */
+  .checklist {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.5rem auto;
+    max-width: 580px;
+    text-align: left;
+  }
+  .checklist h3 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+  .check-item i { color: var(--accent); margin-top: 2px; flex-shrink: 0; }
+  .check-item strong { color: var(--text); }
+
+  /* Button */
+  .btn-start {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--accent);
+    color: #0d1117;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.5rem;
+  }
+  .btn-start:hover { background: #79c0ff; transform: translateY(-1px); }
+  .btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Loading */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 3rem;
+  }
+  .loading.active { display: block; }
+  .loading-spinner {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 1rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-steps {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  .loading-steps span {
+    display: block;
+    opacity: 0;
+    animation: fadeIn 0.4s forwards;
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* Results */
+  .results { display: none; }
+  .results.active { display: block; }
+
+  /* Risk Panel */
+  .risk-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .risk-header {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+  .risk-main {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .risk-score-circle {
+    position: relative;
+    width: 120px; height: 120px;
+    flex-shrink: 0;
+  }
+  .risk-score-circle svg { transform: rotate(-90deg); }
+  .risk-score-circle .circle-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+  .risk-score-circle .circle-fill {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-dasharray: 283;
+    stroke-dashoffset: 283;
+    transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1), stroke 0.5s;
+  }
+  .risk-label {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .risk-pct {
+    font-size: 1.7rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .risk-word { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+
+  .risk-details { flex: 1; min-width: 200px; }
+  .risk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+  }
+  .risk-badge.safe { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+  .risk-badge.warn { background: rgba(210,153,34,.15); color: var(--yellow); border: 1px solid rgba(210,153,34,.3); }
+  .risk-badge.danger { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.3); }
+
+  .risk-reasons { list-style: none; }
+  .risk-reasons li {
+    font-size: 0.82rem;
+    color: var(--muted);
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+  .risk-reasons li:last-child { border-bottom: none; }
+  .risk-reasons li i { flex-shrink: 0; margin-top: 2px; }
+
+  /* Grid de cards */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  .card-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .card-title i { font-size: 0.9rem; }
+
+  .data-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+  }
+  .data-row:last-child { border-bottom: none; }
+  .data-label { color: var(--muted); white-space: nowrap; }
+  .data-value { font-weight: 600; text-align: right; word-break: break-all; }
+  .data-value.mono { font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent); }
+  .data-value.ok { color: var(--green); }
+  .data-value.warn { color: var(--yellow); }
+  .data-value.bad { color: var(--red); }
+
+  /* Vetores de detecção */
+  .vectors-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .vector-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.83rem;
+  }
+  .vector-item:last-child { border-bottom: none; }
+  .vector-name { display: flex; align-items: center; gap: 0.6rem; color: var(--muted); }
+  .vector-result {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.75rem; font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+  }
+  .vector-result.pass { background: rgba(63,185,80,.15); color: var(--green); }
+  .vector-result.fail { background: rgba(248,81,73,.15); color: var(--red); }
+  .vector-result.warn { background: rgba(210,153,34,.15); color: var(--yellow); }
+  .vector-result.info { background: rgba(88,166,255,.15); color: var(--accent); }
+
+  .terminal-block {
+    background: #010409;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: #8b949e;
+    margin-top: 1rem;
+    line-height: 1.8;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .terminal-block .t-ok { color: var(--green); }
+  .terminal-block .t-warn { color: var(--yellow); }
+  .terminal-block .t-bad { color: var(--red); }
+  .terminal-block .t-info { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-icon"><i class="fa-solid fa-shield-halved"></i></div>
+    <h1>Análise de Segurança de Dispositivo</h1>
+    <p>Varredura completa de fingerprint, rede, anomalias de hardware e vetores de fraude em tempo real.</p>
+
+    <div class="checklist">
+      <h3>O que é verificado</h3>
+      <div class="check-item"><i class="fa-solid fa-circle-dot fa-xs"></i><span><strong>IP & ISP:</strong> Endereço real, provedor, ASN e geolocalização via ipapi.co</span></div>
+      <div class="check-item"><i class="fa-solid fa-circle-dot fa-xs"></i><span><strong>Fingerprint:</strong> ID único persistente via FingerprintJS (canvas, WebGL, fontes, áudio)</span></div>
+      <div class="check-item"><i class="fa-solid fa-circle-dot fa-xs"></i><span><strong>Bot/Automação:</strong> WebDriver, plugins de automação, inconsistências de runtime</span></div>
+      <div class="check-item"><i class="fa-solid fa-circle-dot fa-xs"></i><span><strong>Spoofing de OS/Hardware:</strong> Cross-check entre UA, platform e renderer WebGL real</span></div>
+      <div class="check-item"><i class="fa-solid fa-circle-dot fa-xs"></i><span><strong>VPN/Proxy/Datacenter:</strong> Classificação do ASN e tipo de provedor</span></div>
+    </div>
+
+    <button class="btn-start" id="startBtn" onclick="iniciarAnalise()">
+      <i class="fa-solid fa-radar"></i>Iniciar Varredura
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loadingBox">
+    <div class="loading-spinner"></div>
+    <div class="loading-steps" id="loadingSteps"></div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="resultsArea">
+
+    <!-- Risk -->
+    <div class="risk-panel">
+      <div class="risk-header"><i class="fa-solid fa-gauge-high" style="margin-right:.4rem"></i>Score de Risco</div>
+      <div class="risk-main">
+        <div class="risk-score-circle">
+          <svg width="120" height="120" viewBox="0 0 100 100">
+            <circle class="circle-bg" cx="50" cy="50" r="45"/>
+            <circle class="circle-fill" id="circleArc" cx="50" cy="50" r="45"/>
+          </svg>
+          <div class="risk-label">
+            <div class="risk-pct" id="riskPct">—</div>
+            <div class="risk-word" id="riskWord">risco</div>
+          </div>
+        </div>
+        <div class="risk-details">
+          <div class="risk-badge safe" id="riskBadge"><i class="fa-solid fa-circle-check"></i>Calculando...</div>
+          <ul class="risk-reasons" id="riskReasons"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vetores de Detecção -->
+    <div class="vectors-card">
+      <div class="card-title"><i class="fa-solid fa-list-check"></i>Vetores de Detecção</div>
+      <div id="vectorsContainer"></div>
+      <div class="terminal-block" id="terminalLog"></div>
+    </div>
+
+    <!-- Grid de dados -->
+    <div class="grid">
+      <!-- IP -->
+      <div class="card">
+        <div class="card-title" style="color:#58a6ff"><i class="fa-solid fa-network-wired"></i>Rede & IP</div>
+        <div class="data-row"><span class="data-label">Endereço IP</span><span class="data-value mono" id="dIp">—</span></div>
+        <div class="data-row"><span class="data-label">Provedor (ISP)</span><span class="data-value" id="dIsp">—</span></div>
+        <div class="data-row"><span class="data-label">ASN</span><span class="data-value mono" id="dAsn">—</span></div>
+        <div class="data-row"><span class="data-label">Localização</span><span class="data-value" id="dLoc">—</span></div>
+        <div class="data-row"><span class="data-label">Tipo de Rede</span><span class="data-value" id="dNetType">—</span></div>
+        <div class="data-row"><span class="data-label">Timezone (IP)</span><span class="data-value" id="dTz">—</span></div>
+      </div>
+
+      <!-- Fingerprint -->
+      <div class="card">
+        <div class="card-title" style="color:#bc8cff"><i class="fa-solid fa-microchip"></i>Device Fingerprint</div>
+        <div class="data-row"><span class="data-label">Visitor ID</span><span class="data-value mono" id="dFpId">—</span></div>
+        <div class="data-row"><span class="data-label">Plataforma real</span><span class="data-value" id="dPlatform">—</span></div>
+        <div class="data-row"><span class="data-label">CPU Cores</span><span class="data-value" id="dCores">—</span></div>
+        <div class="data-row"><span class="data-label">GPU Renderer</span><span class="data-value" id="dGpu">—</span></div>
+        <div class="data-row"><span class="data-label">Resolução</span><span class="data-value" id="dScreen">—</span></div>
+        <div class="data-row"><span class="data-label">Timezone (Browser)</span><span class="data-value" id="dBrowserTz">—</span></div>
+      </div>
+    </div>
+
+    <!-- Spoofing details -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title" style="color:#f85149"><i class="fa-solid fa-mask"></i>Análise de Spoofing / Inconsistências</div>
+      <div class="data-row"><span class="data-label">User-Agent (UA)</span><span class="data-value mono" id="dUa" style="font-size:0.7rem;max-width:300px">—</span></div>
+      <div class="data-row"><span class="data-label">OS declarado (UA)</span><span class="data-value" id="dUaOs">—</span></div>
+      <div class="data-row"><span class="data-label">OS real (navigator.platform)</span><span class="data-value" id="dRealOs">—</span></div>
+      <div class="data-row"><span class="data-label">Timezone: IP vs Browser</span><span class="data-value" id="dTzMatch">—</span></div>
+      <div class="data-row"><span class="data-label">Memória RAM (declarada)</span><span class="data-value" id="dRam">—</span></div>
+      <div class="data-row"><span class="data-label">Idioma do navegador</span><span class="data-value" id="dLang">—</span></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://openfpcdn.io/fingerprintjs/v4"></script>
+<script>
+
+// ── Utilitários ──────────────────────────────────────────────────────────────
+
+function log(msg, type = '') {
+  const el = document.getElementById('terminalLog');
+  const span = document.createElement('span');
+  span.className = type ? `t-${type}` : '';
+  span.textContent = `> ${msg}\n`;
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+
+let stepDelay = 0;
+function addStep(msg) {
+  const el = document.getElementById('loadingSteps');
+  const span = document.createElement('span');
+  span.textContent = msg;
+  span.style.animationDelay = (stepDelay) + 's';
+  stepDelay += 0.5;
+  el.appendChild(span);
+}
+
+// ── WebGL: extrai GPU renderer real ─────────────────────────────────────────
+function getWebGLRenderer() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return { vendor: 'N/A', renderer: 'N/A' };
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    if (ext) {
+      return {
+        vendor: gl.getParameter(ext.UNMASKED_VENDOR_WEBGL),
+        renderer: gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)
+      };
+    }
+    return { vendor: gl.getParameter(gl.VENDOR), renderer: gl.getParameter(gl.RENDERER) };
+  } catch { return { vendor: 'N/A', renderer: 'N/A' }; }
+}
+
+// ── Detecta OS pelo User-Agent ───────────────────────────────────────────────
+function detectOsFromUA(ua) {
+  ua = ua.toLowerCase();
+  if (ua.includes('windows nt')) return 'Windows';
+  if (ua.includes('mac os x') || ua.includes('macos')) return 'macOS';
+  if (ua.includes('android')) return 'Android';
+  if (ua.includes('iphone') || ua.includes('ipad')) return 'iOS';
+  if (ua.includes('linux')) return 'Linux';
+  return 'Desconhecido';
+}
+
+// ── Detecta OS real pela plataforma ─────────────────────────────────────────
+function detectRealOsFromPlatform(p) {
+  p = p.toLowerCase();
+  if (p.startsWith('win')) return 'Windows';
+  if (p.startsWith('mac')) return 'macOS';
+  if (p.includes('iphone') || p.includes('ipad')) return 'iOS';
+  if (p.includes('linux') || p.includes('android')) return 'Linux/Android';
+  return p || 'Desconhecido';
+}
+
+// ── Classifica tipo de rede pelo ISP/ORG ────────────────────────────────────
+function classifyNetworkType(org = '') {
+  const o = org.toLowerCase();
+  const datacenters = ['amazon', 'aws', 'google', 'microsoft', 'azure', 'digitalocean', 'linode', 'vultr', 'ovh', 'hetzner', 'choopa', 'leaseweb', 'fastly', 'cloudflare', 'akamai', 'zenlayer', 'm247'];
+  const vpns = ['vpn', 'nordvpn', 'expressvpn', 'surfshark', 'protonvpn', 'mullvad', 'pia', 'private internet', 'torguard', 'cyberghost', 'hidemyass', 'ipvanish'];
+  const tor = ['tor project', 'torservers', 'emerald onion'];
+
+  if (tor.some(t => o.includes(t))) return { label: 'Tor Exit Node', css: 'bad', icon: 'fa-circle-radiation' };
+  if (vpns.some(v => o.includes(v))) return { label: 'VPN Comercial', css: 'warn', icon: 'fa-lock' };
+  if (datacenters.some(d => o.includes(d))) return { label: 'Datacenter / Cloud', css: 'warn', icon: 'fa-server' };
+  return { label: 'Residencial / Móvel', css: 'ok', icon: 'fa-house-signal' };
+}
+
+// ── Engine de risco ──────────────────────────────────────────────────────────
+function analyzeRisk(ipData, fpResult, webgl) {
+  let score = 0;
+  let reasons = [];
+  let vectors = [];
+
+  const ua = navigator.userAgent;
+  const platform = navigator.platform || '';
+  const uaOs = detectOsFromUA(ua);
+  const realOs = detectRealOsFromPlatform(platform);
+
+  // 1. WebDriver / Bot
+  const isBot = !!navigator.webdriver;
+  vectors.push({ name: 'Driver de Automação (WebDriver)', icon: 'fa-robot', result: isBot ? 'fail' : 'pass', label: isBot ? 'DETECTADO' : 'Limpo' });
+  if (isBot) { score += 60; reasons.push({ t: 'danger', msg: 'WebDriver detectado — navegador controlado por automação (Selenium/Puppeteer/Playwright).' }); log('WEBDRIVER detectado no runtime do navegador', 'bad'); }
+  else { log('WebDriver: não detectado', 'ok'); }
+
+  // 2. Chrome runtime fake
+  const fakeChrome = ua.toLowerCase().includes('chrome') && (!window.chrome || !window.chrome.runtime);
+  vectors.push({ name: 'Chrome Runtime Fake', icon: 'fa-bug', result: fakeChrome ? 'fail' : 'pass', label: fakeChrome ? 'ANÔMALO' : 'Limpo' });
+  if (fakeChrome) { score += 20; reasons.push({ t: 'warn', msg: 'UA declara Chrome mas objeto window.chrome ausente — possível spoofing de User-Agent.' }); log('window.chrome ausente em suposto Chrome UA', 'warn'); }
+  else { log('Chrome runtime: consistente', 'ok'); }
+
+  // 3. Spoofing de OS
+  const osMatch = uaOs === realOs || (uaOs === 'Linux' && realOs === 'Linux/Android') || (uaOs === 'Android' && realOs === 'Linux/Android');
+  vectors.push({ name: 'Consistência OS (UA vs Platform)', icon: 'fa-fingerprint', result: osMatch ? 'pass' : 'fail', label: osMatch ? 'Consistente' : 'DIVERGENTE' });
+  if (!osMatch && uaOs !== 'Desconhecido' && realOs !== 'Desconhecido') {
+    score += 35;
+    reasons.push({ t: 'warn', msg: `Spoofing de OS: UA declara "${uaOs}" mas navigator.platform indica "${realOs}".` });
+    log(`OS divergente: UA="${uaOs}" / platform="${realOs}"`, 'warn');
+  } else { log(`OS: UA="${uaOs}" / platform="${realOs}" — consistente`, 'ok'); }
+
+  // 4. GPU suspeita (VMs costumam usar llvmpipe, swiftshader, mesa)
+  const gpuRenderer = webgl.renderer.toLowerCase();
+  const fakeGpu = ['llvmpipe', 'swiftshader', 'mesa', 'vmware', 'virtualbox', 'softpipe', 'swr'].some(g => gpuRenderer.includes(g));
+  vectors.push({ name: 'GPU Real vs Virtualizada', icon: 'fa-display', result: fakeGpu ? 'fail' : 'pass', label: fakeGpu ? 'VM/Emulada' : 'Hardware Real' });
+  if (fakeGpu) { score += 40; reasons.push({ t: 'danger', msg: `GPU virtual detectada: "${webgl.renderer}" — indica ambiente virtualizado ou headless.` }); log(`GPU: "${webgl.renderer}" — virtual/software renderer`, 'bad'); }
+  else { log(`GPU: "${webgl.renderer}" — hardware real`, 'ok'); }
+
+  // 5. Tipo de rede (IP)
+  const netType = classifyNetworkType(ipData.org || '');
+  vectors.push({ name: 'Tipo de Rede (ISP)', icon: netType.icon, result: netType.css === 'ok' ? 'pass' : netType.css === 'warn' ? 'warn' : 'fail', label: netType.label });
+  if (netType.css === 'bad') { score += 50; reasons.push({ t: 'danger', msg: `Conexão via Tor Exit Node detectada. Altíssimo risco de anonimização.` }); log('Tor Exit Node detectado no ASN/ISP', 'bad'); }
+  else if (netType.css === 'warn') { score += 25; reasons.push({ t: 'warn', msg: `Conexão via ${netType.label} (${ipData.org}). Usuários reais usam provedores residenciais.` }); log(`Rede suspeita: ${netType.label}`, 'warn'); }
+  else { log(`Tipo de rede: ${netType.label}`, 'ok'); }
+
+  // 6. Timezone mismatch
+  const ipTz = ipData.timezone || '';
+  const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  const tzMatch = !ipTz || !browserTz || ipTz === browserTz;
+  vectors.push({ name: 'Timezone IP vs Navegador', icon: 'fa-clock', result: tzMatch ? 'pass' : 'warn', label: tzMatch ? 'Coincide' : 'DIVERGE' });
+  if (!tzMatch) { score += 20; reasons.push({ t: 'warn', msg: `Timezone divergente: IP aponta "${ipTz}" mas navegador está em "${browserTz}". Possível VPN ou emulador.` }); log(`Timezone: IP="${ipTz}" vs Browser="${browserTz}" — divergem`, 'warn'); }
+  else { log(`Timezone: IP="${ipTz}" / Browser="${browserTz}" — OK`, 'ok'); }
+
+  // 7. Do Not Track
+  const dnt = navigator.doNotTrack === '1' || window.doNotTrack === '1';
+  vectors.push({ name: 'Do Not Track (DNT)', icon: 'fa-eye-slash', result: dnt ? 'info' : 'pass', label: dnt ? 'Ativo' : 'Inativo' });
+  if (dnt) { score += 5; log('DNT ativo — usuário oculta rastreio', 'info'); }
+  else { log('DNT: inativo', 'ok'); }
+
+  // 8. Memória suspeita (bots geralmente têm 2GB ou menos)
+  const ram = navigator.deviceMemory;
+  if (ram !== undefined) {
+    const lowRam = ram <= 2;
+    vectors.push({ name: 'Memória RAM declarada', icon: 'fa-memory', result: lowRam ? 'warn' : 'pass', label: ram + ' GB' });
+    if (lowRam) { score += 10; log(`RAM declarada: ${ram}GB — suspeito para desktop`, 'warn'); }
+    else { log(`RAM declarada: ${ram}GB`, 'ok'); }
+  }
+
+  score = Math.min(100, score);
+  return { score, reasons, vectors };
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+async function iniciarAnalise() {
+  const btn = document.getElementById('startBtn');
+  const loading = document.getElementById('loadingBox');
+  const results = document.getElementById('resultsArea');
+  const steps = document.getElementById('loadingSteps');
+  const terminal = document.getElementById('terminalLog');
+
+  btn.disabled = true;
+  steps.innerHTML = '';
+  terminal.innerHTML = '';
+  stepDelay = 0;
+  loading.classList.add('active');
+  results.classList.remove('active');
+
+  addStep('Inicializando FingerprintJS...');
+  addStep('Consultando ipapi.co...');
+  addStep('Extraindo WebGL e hardware...');
+  addStep('Calculando vetores de risco...');
+
+  try {
+    // Paraleliza fingerprint + IP
+    const fpAgent = await window.FingerprintJS.load();
+
+    const [fpResult, ipData] = await Promise.all([
+      fpAgent.get(),
+      fetch('https://ipapi.co/json/').then(r => r.json()).catch(() => ({}))
+    ]);
+
+    const webgl = getWebGLRenderer();
+    const risk = analyzeRisk(ipData, fpResult, webgl);
+
+    renderResults(ipData, fpResult, webgl, risk);
+
+  } catch (err) {
+    console.error(err);
+    alert('Erro na análise. Verifique se um adblocker está bloqueando os scripts.');
+  } finally {
+    loading.classList.remove('active');
+    results.classList.add('active');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i>Refazer';
+  }
+}
+
+function renderResults(ip, fp, webgl, risk) {
+
+  // ── IP ──
+  document.getElementById('dIp').textContent = ip.ip || 'N/A';
+  document.getElementById('dIsp').textContent = ip.org || 'N/A';
+  document.getElementById('dAsn').textContent = ip.asn || (ip.org ? ip.org.split(' ')[0] : 'N/A');
+  document.getElementById('dLoc').textContent = [ip.city, ip.region, ip.country_name].filter(Boolean).join(', ') || 'N/A';
+  const netType = classifyNetworkType(ip.org || '');
+  const netEl = document.getElementById('dNetType');
+  netEl.textContent = netType.label;
+  netEl.className = 'data-value ' + netType.css;
+  document.getElementById('dTz').textContent = ip.timezone || 'N/A';
+
+  // ── Fingerprint ──
+  document.getElementById('dFpId').textContent = fp.visitorId || 'Bloqueado';
+  document.getElementById('dPlatform').textContent = navigator.platform || 'N/A';
+  document.getElementById('dCores').textContent = (navigator.hardwareConcurrency || 'N/A') + ' cores';
+  document.getElementById('dGpu').textContent = webgl.renderer || 'N/A';
+  document.getElementById('dScreen').textContent = `${screen.width}×${screen.height} (DPR ${window.devicePixelRatio || 1})`;
+  document.getElementById('dBrowserTz').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || 'N/A';
+
+  // ── Spoofing ──
+  const ua = navigator.userAgent;
+  document.getElementById('dUa').textContent = ua;
+  document.getElementById('dUaOs').textContent = detectOsFromUA(ua);
+  document.getElementById('dRealOs').textContent = detectRealOsFromPlatform(navigator.platform || '');
+  
+  const ipTz = ip.timezone || '';
+  const brTz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  const tzOk = !ipTz || !brTz || ipTz === brTz;
+  const tzEl = document.getElementById('dTzMatch');
+  tzEl.textContent = tzOk ? '✓ Coincide' : `✗ IP="${ipTz}" / Browser="${brTz}"`;
+  tzEl.className = 'data-value ' + (tzOk ? 'ok' : 'warn');
+
+  const ram = navigator.deviceMemory;
+  document.getElementById('dRam').textContent = ram !== undefined ? ram + ' GB' : 'Não divulgado';
+  document.getElementById('dLang').textContent = navigator.language || navigator.languages?.join(', ') || 'N/A';
+
+  // ── Vetores ──
+  const vc = document.getElementById('vectorsContainer');
+  vc.innerHTML = '';
+  risk.vectors.forEach(v => {
+    const div = document.createElement('div');
+    div.className = 'vector-item';
+    div.innerHTML = `
+      <span class="vector-name"><i class="fa-solid ${v.icon} fa-sm"></i>${v.name}</span>
+      <span class="vector-result ${v.result}"><i class="fa-solid ${v.result === 'pass' ? 'fa-check' : v.result === 'fail' ? 'fa-xmark' : v.result === 'warn' ? 'fa-triangle-exclamation' : 'fa-info'} fa-xs"></i>${v.label}</span>
+    `;
+    vc.appendChild(div);
+  });
+
+  // ── Score / Risco ──
+  const pct = document.getElementById('riskPct');
+  const word = document.getElementById('riskWord');
+  const badge = document.getElementById('riskBadge');
+  const reasonsEl = document.getElementById('riskReasons');
+  const arc = document.getElementById('circleArc');
+
+  pct.textContent = risk.score + '%';
+
+  // Animate arc
+  const circumference = 2 * Math.PI * 45; // ≈ 283
+  const offset = circumference - (risk.score / 100) * circumference;
+  setTimeout(() => {
+    arc.style.strokeDashoffset = offset;
+    if (risk.score < 20) { arc.style.stroke = '#3fb950'; }
+    else if (risk.score < 55) { arc.style.stroke = '#d29922'; }
+    else { arc.style.stroke = '#f85149'; }
+  }, 100);
+
+  if (risk.score < 20) {
+    word.textContent = 'BAIXO';
+    badge.className = 'risk-badge safe';
+    badge.innerHTML = '<i class="fa-solid fa-circle-check"></i>Dispositivo parece autêntico e seguro.';
+  } else if (risk.score < 55) {
+    word.textContent = 'MÉDIO';
+    badge.className = 'risk-badge warn';
+    badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>Navegação suspeita ou anonimizada.';
+  } else {
+    word.textContent = 'ALTO';
+    badge.className = 'risk-badge danger';
+    badge.innerHTML = '<i class="fa-solid fa-skull-crossbones"></i>Alto risco de bot, VM ou spoofing!';
+  }
+
+  reasonsEl.innerHTML = '';
+  risk.reasons.forEach(r => {
+    const li = document.createElement('li');
+    const colors = { danger: '#f85149', warn: '#d29922', ok: '#3fb950' };
+    li.innerHTML = `<i class="fa-solid fa-caret-right" style="color:${colors[r.t] || '#8b949e'}"></i>${r.msg}`;
+    reasonsEl.appendChild(li);
+  });
+}
+</script>
+</body>
+</html>
