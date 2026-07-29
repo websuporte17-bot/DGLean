@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análise de Segurança - Deep Check</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  :root {
+    --bg: #050505;
+    --surface: #111;
+    --surface2: #1a1a1a;
+    --border: #333;
+    --text: #e0e0e0;
+    --muted: #777;
+    --accent: #00ffcc;
+    --green: #00cc44;
+    --yellow: #ffcc00;
+    --red: #ff3333;
+    --purple: #aa00ff;
+    --font-mono: 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 2.5rem; }
+  .header-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, #004d40, #00ffcc);
+    border-radius: 16px; font-size: 1.8rem; margin-bottom: 1rem;
+    box-shadow: 0 0 32px rgba(0, 255, 204, 0.2); color: #000;
+  }
+  .header h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .header p { color: var(--muted); font-size: 0.9rem; max-width: 500px; margin: 0 auto; line-height: 1.6; }
+
+  /* Check list */
+  .checklist {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem auto;
+    max-width: 580px; text-align: left;
+  }
+  .checklist h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 0.75rem; }
+  .check-item { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.4rem; }
+  .check-item i { color: var(--accent); margin-top: 2px; flex-shrink: 0; }
+  .check-item strong { color: var(--text); }
+
+  /* Button */
+  .btn-start {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    background: var(--accent); color: #000; font-weight: 700; font-size: 0.95rem;
+    padding: 0.8rem 2rem; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s; margin-top: 0.5rem;
+  }
+  .btn-start:hover { box-shadow: 0 0 15px var(--accent); transform: translateY(-1px); }
+  .btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* Loading */
+  .loading { display: none; text-align: center; padding: 3rem; }
+  .loading.active { display: block; }
+  .loading-spinner {
+    width: 48px; height: 48px; border: 3px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-steps { font-size: 0.85rem; color: var(--accent); font-family: var(--font-mono); }
+  .loading-steps span { display: block; opacity: 0; animation: fadeIn 0.4s forwards; }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* Results */
+  .results { display: none; }
+  .results.active { display: block; }
+
+  /* Risk Panel */
+  .risk-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .risk-header { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 1rem; }
+  .risk-main { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+  .risk-score-circle { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+  .risk-score-circle svg { transform: rotate(-90deg); }
+  .risk-score-circle .circle-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+  .risk-score-circle .circle-fill { fill: none; stroke-width: 8; stroke-linecap: round; stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1), stroke 0.5s; }
+  .risk-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+  .risk-pct { font-size: 1.7rem; font-weight: 800; line-height: 1; }
+  .risk-word { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+
+  .risk-details { flex: 1; min-width: 200px; }
+  .risk-badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.75rem; }
+  .risk-badge.safe { background: rgba(0, 204, 68, 0.15); color: var(--green); border: 1px solid rgba(0, 204, 68, 0.3); }
+  .risk-badge.warn { background: rgba(255, 204, 0, 0.15); color: var(--yellow); border: 1px solid rgba(255, 204, 0, 0.3); }
+  .risk-badge.danger { background: rgba(255, 51, 51, 0.15); color: var(--red); border: 1px solid rgba(255, 51, 51, 0.3); }
+
+  .risk-reasons { list-style: none; }
+  .risk-reasons li { font-size: 0.82rem; color: var(--muted); padding: 0.3rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 0.4rem; }
+  .risk-reasons li:last-child { border-bottom: none; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+  .card-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+  .data-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+  .data-row:last-child { border-bottom: none; }
+  .data-label { color: var(--muted); white-space: nowrap; }
+  .data-value { font-weight: 600; text-align: right; word-break: break-all; }
+  .data-value.mono { font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent); }
+
+  .terminal-block { background: #000; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; font-family: var(--font-mono); font-size: 0.75rem; color: #555; margin-top: 1rem; line-height: 1.8; max-height: 160px; overflow-y: auto; }
+  .terminal-block .t-ok { color: var(--green); }
+  .terminal-block .t-warn { color: var(--yellow); }
+  .terminal-block .t-bad { color: var(--red); }
+  .terminal-block .t-info { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-icon"><i class="fa-solid fa-radar"></i></div>
+    <h1>Security Deep Check</h1>
+    <p>Inspeção agressiva via API de segurança, extração de WebGL, detecção de WebRTC Leaks e flags de proxy/VPN.</p>
+
+    <button class="btn-start" id="startBtn" onclick="iniciarAnalise()">
+      <i class="fa-solid fa-bolt"></i>Executar Scanner
+    </button>
+  </div>
+
+  <div class="loading" id="loadingBox">
+    <div class="loading-spinner"></div>
+    <div class="loading-steps" id="loadingSteps"></div>
+  </div>
+
+  <div class="results" id="resultsArea">
+    <div class="risk-panel">
+      <div class="risk-header"><i class="fa-solid fa-gauge-high" style="margin-right:.4rem"></i>Nível de Ameaça Detectado</div>
+      <div class="risk-main">
+        <div class="risk-score-circle">
+          <svg width="120" height="120" viewBox="0 0 100 100">
+            <circle class="circle-bg" cx="50" cy="50" r="45"/>
+            <circle class="circle-fill" id="circleArc" cx="50" cy="50" r="45"/>
+          </svg>
+          <div class="risk-label">
+            <div class="risk-pct" id="riskPct">—</div>
+            <div class="risk-word" id="riskWord">risco</div>
+          </div>
+        </div>
+        <div class="risk-details">
+          <div class="risk-badge safe" id="riskBadge">Calculando...</div>
+          <ul class="risk-reasons" id="riskReasons"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-title" style="color:var(--accent)"><i class="fa-solid fa-globe"></i>Inspeção de Rede (API IPWhois)</div>
+        <div class="data-row"><span class="data-label">IP Público (Máscara)</span><span class="data-value mono" id="dIp">—</span></div>
+        <div class="data-row"><span class="data-label">IP Local (WebRTC Leak)</span><span class="data-value mono" id="dLeak">—</span></div>
+        <div class="data-row"><span class="data-label">Provedor (ISP)</span><span class="data-value" id="dIsp">—</span></div>
+        <div class="data-row"><span class="data-label">ASN / Org</span><span class="data-value mono" id="dAsn">—</span></div>
+        <div class="data-row"><span class="data-label">Localização</span><span class="data-value" id="dLoc">—</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="color:var(--red)"><i class="fa-solid fa-shield-virus"></i>Flags de Segurança de IP</div>
+        <div class="data-row"><span class="data-label">VPN Detectada</span><span class="data-value" id="fVpn">—</span></div>
+        <div class="data-row"><span class="data-label">Proxy Ativo</span><span class="data-value" id="fProxy">—</span></div>
+        <div class="data-row"><span class="data-label">Rede Tor</span><span class="data-value" id="fTor">—</span></div>
+        <div class="data-row"><span class="data-label">Datacenter / Hosting</span><span class="data-value" id="fHosting">—</span></div>
+        <div class="data-row"><span class="data-label">Status do IP</span><span class="data-value" id="fStatus">—</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title" style="color:var(--purple)"><i class="fa-solid fa-microchip"></i>Hardware & Spoofing</div>
+      <div class="data-row"><span class="data-label">Visitor ID (FingerprintJS)</span><span class="data-value mono" id="dFpId">—</span></div>
+      <div class="data-row"><span class="data-label">Browser (UA)</span><span class="data-value" style="font-size:0.7rem;max-width:300px" id="dUa">—</span></div>
+      <div class="data-row"><span class="data-label">Inconsistência de OS</span><span class="data-value" id="dOsCheck">—</span></div>
+      <div class="data-row"><span class="data-label">Hardware Real (GPU WebGL)</span><span class="data-value" id="dGpu">—</span></div>
+    </div>
+
+    <div class="terminal-block" id="terminalLog"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js"></script>
+
+<script>
+function log(msg, type = '') {
+  const el = document.getElementById('terminalLog');
+  const span = document.createElement('span');
+  span.className = type ? `t-${type}` : '';
+  span.textContent = `[DEEP-SCAN] ${msg}\n`;
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+
+let stepDelay = 0;
+function addStep(msg) {
+  const el = document.getElementById('loadingSteps');
+  const span = document.createElement('span');
+  span.textContent = msg;
+  span.style.animationDelay = (stepDelay) + 's';
+  stepDelay += 0.5;
+  el.appendChild(span);
+}
+
+// Tenta forçar o vazamento do IP local via WebRTC (bloqueado em alguns navegadores novos)
+function getWebRTCLeak() {
+    return new Promise(resolve => {
+        const rtc = new RTCPeerConnection({iceServers:[]});
+        rtc.createDataChannel('');
+        rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
+        let leaked = false;
+        rtc.onicecandidate = (ice) => {
+            if (!ice || !ice.candidate || !ice.candidate.candidate) return;
+            const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
+            const match = ipRegex.exec(ice.candidate.candidate);
+            if (match) {
+                leaked = true;
+                resolve(match[1]);
+                rtc.close();
+            }
+        };
+        setTimeout(() => { if(!leaked) resolve('Bloqueado / N/A'); }, 2000);
+    });
+}
+
+function getWebGLRenderer() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return { renderer: 'N/A' };
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    if (ext) return { renderer: gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) };
+    return { renderer: gl.getParameter(gl.RENDERER) };
+  } catch { return { renderer: 'N/A' }; }
+}
+
+async function iniciarAnalise() {
+  const btn = document.getElementById('startBtn');
+  const loading = document.getElementById('loadingBox');
+  const results = document.getElementById('resultsArea');
+  const terminal = document.getElementById('terminalLog');
+
+  btn.disabled = true; document.getElementById('loadingSteps').innerHTML = ''; terminal.innerHTML = ''; stepDelay = 0;
+  loading.classList.add('active'); results.classList.remove('active');
+
+  addStep('Buscando vazamento de WebRTC...');
+  const localIp = await getWebRTCLeak();
+  log(`WebRTC Leak: ${localIp}`, localIp !== 'Bloqueado / N/A' ? 'warn' : 'ok');
+
+  addStep('Consultando API de Segurança IPWhois...');
+  let ipData = { security: {} };
+  try {
+    // Essa API retorna flags reais de segurança, não só geolocalização.
+    const geo = await fetch('https://ipwho.is/').then(r => r.json());
+    if(geo.success) {
+      ipData = geo;
+      log(`API Conectada. IP Mestre: ${geo.ip}`, 'ok');
+    } else {
+      log('Falha na API IPWhois', 'bad');
+    }
+  } catch (e) { log('API Bloqueada pelo Client', 'bad'); }
+
+  addStep('Processando Fingerprint local...');
+  let fpVisitorId = 'Bloqueado';
+  if (window.FingerprintJS) {
+    try {
+      const fp = await window.FingerprintJS.load();
+      const result = await fp.get();
+      fpVisitorId = result.visitorId;
+    } catch(e) {}
+  }
+
+  const webgl = getWebGLRenderer();
+  
+  // Lógica de Risco Baseada nos Fatos da API e Hardware
+  let score = 0;
+  let reasons = [];
+
+  // Checagem pesada do IP
+  if(ipData.security) {
+      if(ipData.security.vpn) { score += 50; reasons.push({t: 'danger', msg: 'Conexão VPN detectada diretamente pela API.'}); log('FLAG: VPN identificada.', 'bad'); }
+      if(ipData.security.proxy) { score += 50; reasons.push({t: 'danger', msg: 'Uso de Proxy Detectado.'}); log('FLAG: Proxy ativo.', 'bad'); }
+      if(ipData.security.tor) { score += 80; reasons.push({t: 'danger', msg: 'Tráfego originado da rede TOR.'}); log('FLAG: TOR Exit node.', 'bad'); }
+      if(ipData.security.hosting) { score += 40; reasons.push({t: 'warn', msg: 'IP pertence a um Datacenter/Hosting, padrão atípico para usuários reais.'}); log('FLAG: IP de Datacenter.', 'warn'); }
+  }
+
+  // Checagem de Bot/Automação
+  if (navigator.webdriver) { score += 60; reasons.push({t: 'danger', msg: 'WebDriver (Automação de Browser) ativo.'}); }
+  
+  // OS Spoofing Simples
+  const ua = navigator.userAgent.toLowerCase();
+  const plat = (navigator.platform || '').toLowerCase();
+  let osMismatch = false;
+  if(ua.includes('windows') && !plat.includes('win')) osMismatch = true;
+  if(ua.includes('android') && !plat.includes('linux')) osMismatch = true;
+  if(osMismatch) { score += 30; reasons.push({t: 'warn', msg: 'Inconsistência grave: User-Agent difere da Plataforma do Sistema.'}); log('SPOOF: UA e Plataforma divergem.', 'warn'); }
+
+  if(score === 0) { reasons.push({t: 'ok', msg: 'Nenhuma anomalia grave de tráfego detectada. Ambiente aparenta ser residencial e legítimo.'}); }
+  
+  score = Math.min(100, score);
+
+  // Renderizar Dados
+  document.getElementById('dIp').textContent = ipData.ip || 'N/A';
+  document.getElementById('dLeak').textContent = localIp;
+  document.getElementById('dIsp').textContent = (ipData.connection && ipData.connection.isp) ? ipData.connection.isp : 'N/A';
+  document.getElementById('dAsn').textContent = (ipData.connection && ipData.connection.asn) ? `AS${ipData.connection.asn} - ${ipData.connection.org}` : 'N/A';
+  document.getElementById('dLoc').textContent = ipData.city ? `${ipData.city}, ${ipData.region} - ${ipData.country}` : 'N/A';
+  
+  const sec = ipData.security || {};
+  
+  const vpnEl = document.getElementById('fVpn'); vpnEl.textContent = sec.vpn ? "SIM (ALERTA)" : "Não"; vpnEl.style.color = sec.vpn ? "var(--red)" : "var(--green)";
+  const proxyEl = document.getElementById('fProxy'); proxyEl.textContent = sec.proxy ? "SIM (ALERTA)" : "Não"; proxyEl.style.color = sec.proxy ? "var(--red)" : "var(--green)";
+  const torEl = document.getElementById('fTor'); torEl.textContent = sec.tor ? "SIM (PERIGO)" : "Não"; torEl.style.color = sec.tor ? "var(--red)" : "var(--green)";
+  const hostEl = document.getElementById('fHosting'); hostEl.textContent = sec.hosting ? "SIM (Datacenter)" : "Não"; hostEl.style.color = sec.hosting ? "var(--yellow)" : "var(--green)";
+  
+  document.getElementById('fStatus').textContent = score >= 50 ? "Tráfego Mascarado" : "Conexão Limpa";
+  document.getElementById('fStatus').style.color = score >= 50 ? "var(--red)" : "var(--green)";
+
+  document.getElementById('dFpId').textContent = fpVisitorId;
+  document.getElementById('dUa').textContent = navigator.userAgent;
+  document.getElementById('dOsCheck').textContent = osMismatch ? "FALHA (Spoofing possível)" : "OK (Consistente)";
+  document.getElementById('dOsCheck').style.color = osMismatch ? "var(--red)" : "var(--green)";
+  document.getElementById('dGpu').textContent = webgl.renderer;
+
+  // Atualizar Score Visual
+  const pct = document.getElementById('riskPct');
+  const word = document.getElementById('riskWord');
+  const badge = document.getElementById('riskBadge');
+  const reasonsEl = document.getElementById('riskReasons');
+  const arc = document.getElementById('circleArc');
+
+  pct.textContent = score + '%';
+  const offset = 283 - (score / 100) * 283;
+  setTimeout(() => {
+    arc.style.strokeDashoffset = offset;
+    if (score < 20) { arc.style.stroke = 'var(--green)'; }
+    else if (score < 55) { arc.style.stroke = 'var(--yellow)'; }
+    else { arc.style.stroke = 'var(--red)'; }
+  }, 100);
+
+  if (score < 20) {
+    word.textContent = 'LIMPO';
+    badge.className = 'risk-badge safe';
+    badge.innerHTML = '<i class="fa-solid fa-check"></i>Tráfego Autêntico';
+  } else if (score < 55) {
+    word.textContent = 'MÉDIO';
+    badge.className = 'risk-badge warn';
+    badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>Anomalia Detectada';
+  } else {
+    word.textContent = 'ALTO';
+    badge.className = 'risk-badge danger';
+    badge.innerHTML = '<i class="fa-solid fa-skull"></i>IP Mascarado / Bot';
+  }
+
+  reasonsEl.innerHTML = '';
+  reasons.forEach(r => {
+    const li = document.createElement('li');
+    const colors = { danger: 'var(--red)', warn: 'var(--yellow)', ok: 'var(--green)' };
+    li.innerHTML = `<i class="fa-solid fa-caret-right" style="color:${colors[r.t]}"></i><span style="color:${colors[r.t]}">${r.msg}</span>`;
+    reasonsEl.appendChild(li);
+  });
+
+  loading.classList.remove('active');
+  results.classList.add('active');
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i>Rodar Novamente';
+}
+</script>
+</body>
+</html>
