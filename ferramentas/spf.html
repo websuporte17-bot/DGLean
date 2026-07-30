@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DG| FingerPR🔍</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px;
+        }
+        
+        h1 {
+            color: #00ffcc; 
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
+
+        .painel-controles {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 40px;
+        }
+
+        select, button {
+            padding: 14px;
+            background-color: #1a1a1a;
+            color: #00ffcc;
+            border: 1px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #00ffcc;
+        }
+
+        button:hover, button:active {
+            background-color: #00ffcc;
+            color: #121212;
+            border-color: #00ffcc;
+        }
+
+        /* Formato de Lista Vertical */
+        .lista-informacoes {
+            display: flex;
+            flex-direction: column;
+            gap: 10px; /* Espaço reduzido para parecer mais uma lista do que blocos separados */
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .item-info {
+            background-color: transparent;
+            padding: 15px 0;
+            border-bottom: 1px solid #333; /* Linha divisória típica de listas */
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .item-info:last-child {
+            border-bottom: none;
+        }
+
+        .item-info:hover, .item-info:active {
+            background-color: #1a1a1a;
+            padding-left: 10px; /* Pequeno efeito de movimento ao passar o dedo/mouse */
+            border-radius: 6px;
+            border-bottom-color: transparent;
+        }
+
+        .label-info {
+            font-size: 13px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .valor-info {
+            font-size: 18px;
+            color: #fff;
+            word-break: break-all;
+            font-weight: 500;
+        }
+
+        /* Aviso de cópia na tela (Toast) */
+        .alerta-copia {
+            position: fixed;
+            bottom: 40px;
+            background: #00ffcc;
+            color: #121212;
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 15px;
+            display: none;
+            box-shadow: 0px 4px 15px rgba(0, 255, 204, 0.4);
+            z-index: 1000;
+            animation: fadeInOut 2s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(20px); }
+            15% { opacity: 1; transform: translateY(0); }
+            85% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(20px); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>DG| FingerPR🔍</h1>
+
+    <div class="painel-controles">
+        <select id="seletorModelo" onchange="gerarIdentidade()">
+            <option value="padrao">Modelo Padrão (Básico)</option>
+            <option value="avancado">Modelo Avançado (Completo)</option>
+        </select>
+        <button onclick="gerarIdentidade()">Gerar Nova Identidade</button>
+        <button onclick="copiarTudo()">Copiar Tudo</button>
+    </div>
+
+    <div class="lista-informacoes" id="containerInfo">
+        <!-- As informações aparecem aqui em formato de lista -->
+    </div>
+
+    <div class="alerta-copia" id="alertaCopia">Copiado com sucesso!</div>
+
+    <script>
+        // Bancos de dados fictícios
+        const nomesFake = ["Marcos Vinícius", "Roberto Almeida", "Fernando Costa", "Juliana Mendes", "Lucas Silva", "Ana Carolina", "Pedro Henrique"];
+        const cpfsFake = ["123.456.789-10", "987.654.321-20", "111.222.333-40", "555.444.888-99", "444.777.999-12"];
+        const idadesFake = ["22", "27", "34", "41", "19", "29", "50"];
+        const profissoesFake = ["Designer", "Mecânico", "Desenvolvedor", "Engenheiro", "Vendedor", "Médico", "Advogado"];
+
+        let textoCompletoAtual = "";
+
+        function gerarIdentidade() {
+            const modeloEscolhido = document.getElementById("seletorModelo").value;
+            
+            // Sorteia dados aleatórios
+            const nome = nomesFake[Math.floor(Math.random() * nomesFake.length)];
+            const cpf = cpfsFake[Math.floor(Math.random() * cpfsFake.length)];
+            const idade = idadesFake[Math.floor(Math.random() * idadesFake.length)];
+            const profissao = profissoesFake[Math.floor(Math.random() * profissoesFake.length)];
+
+            // Define quais dados vão aparecer
+            let dadosGerados = [];
+            
+            if (modeloEscolhido === "padrao") {
+                dadosGerados = [
+                    { label: "Nome Completo", value: nome },
+                    { label: "CPF", value: cpf }
+                ];
+            } else if (modeloEscolhido === "avancado") {
+                dadosGerados = [
+                    { label: "Nome Completo", value: nome },
+                    { label: "CPF", value: cpf },
+                    { label: "Idade", value: idade },
+                    { label: "Profissão", value: profissao }
+                ];
+            }
+
+            const container = document.getElementById("containerInfo");
+            container.innerHTML = ""; // Limpa a lista antiga
+
+            // Prepara o texto formatado para o botão "Copiar Tudo"
+            textoCompletoAtual = dadosGerados.map(d => `${d.label}: ${d.value}`).join("\n");
+
+            // Cria as informações na tela em formato de lista
+            dadosGerados.forEach(dado => {
+                const divCaixa = document.createElement("div");
+                divCaixa.className = "item-info";
+                
+                // Evento de clique para copiar só esse item
+                divCaixa.onclick = () => copiarTexto(dado.value, `${dado.label} copiado!`);
+
+                const divLabel = document.createElement("div");
+                divLabel.className = "label-info";
+                divLabel.innerText = dado.label;
+
+                const divValor = document.createElement("div");
+                divValor.className = "valor-info";
+                divValor.innerText = dado.value;
+
+                divCaixa.appendChild(divLabel);
+                divCaixa.appendChild(divValor);
+                container.appendChild(divCaixa);
+            });
+        }
+
+        function copiarTexto(texto, mensagem) {
+            navigator.clipboard.writeText(texto).then(() => {
+                mostrarAlerta(mensagem);
+            }).catch(err => {
+                console.error("Erro ao copiar:", err);
+            });
+        }
+
+        function copiarTudo() {
+            if (textoCompletoAtual === "") return;
+            
+            navigator.clipboard.writeText(textoCompletoAtual).then(() => {
+                mostrarAlerta("Todas as informações copiadas!");
+            });
+        }
+
+        function mostrarAlerta(mensagem) {
+            const alerta = document.getElementById("alertaCopia");
+            alerta.innerText = mensagem;
+            alerta.style.display = "block";
+            
+            // Oculta o alerta depois de 2 segundos de forma suave
+            setTimeout(() => {
+                alerta.style.display = "none";
+            }, 2000);
+        }
+
+        // Gera a primeira identidade automaticamente quando abrir a página
+        window.onload = gerarIdentidade;
+    </script>
+</body>
+</html>
