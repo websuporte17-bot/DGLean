@@ -815,11 +815,10 @@ function renderizarCards(lista) {
     lista.forEach(item => {
         if (!item.numero_cartao) return;
 
-        // ===== VALIDADE CORRIGIDA =====
+        // VALIDADE CORRIGIDA
         let mes = item.mes_validade || item.mes || item.exp_month || item.validade_mes || "--";
         let ano = item.ano_validade || item.ano || item.exp_year || item.validade_ano || "----";
 
-        // Se veio junta (03/29 ou 03/2029)
         if ((!item.mes_validade && !item.ano_validade) && item.validade) {
             const partes = String(item.validade).replace(/\s/g, "").split(/[\/\-]/);
             if (partes.length === 2) {
