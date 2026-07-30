@@ -57,7 +57,6 @@ body {
     border-top: none; border-left: none;
 }
 
-/* ========== TELA DE LOGIN ========== */
 #tela-login {
     position: relative;
     z-index: 10;
@@ -180,15 +179,9 @@ body {
     border-radius: 8px;
     background: rgba(0,0,0,0.6);
 }
-.input-group:nth-child(1) .input-neon-frame {
-    border-color: rgba(0,255,255,0.4);
-}
-.input-group:nth-child(2) .input-neon-frame {
-    border-color: rgba(255,0,255,0.4);
-}
-.input-group:nth-child(3) .input-neon-frame {
-    border-color: rgba(255,0,255,0.4);
-}
+.input-group:nth-child(1) .input-neon-frame { border-color: rgba(0,255,255,0.4); }
+.input-group:nth-child(2) .input-neon-frame,
+.input-group:nth-child(3) .input-neon-frame { border-color: rgba(255,0,255,0.4); }
 .input-group:focus-within:nth-child(1) .input-neon-frame {
     border-color: #00ffff;
     box-shadow: 0 0 15px rgba(0,255,255,0.4);
@@ -267,7 +260,6 @@ body {
     text-decoration: underline;
 }
 
-/* ========== APP PRINCIPAL ========== */
 #app {
     display: none;
     position: relative;
@@ -340,25 +332,13 @@ body {
     letter-spacing: 1px;
     transition: 0.2s;
 }
-.btn-pull {
-    border-color: #ffaa00;
-    color: #ffaa00;
-}
+.btn-pull { border-color: #ffaa00; color: #ffaa00; }
 .btn-pull:hover { background: #ffaa00; color: #000; }
-.btn-import {
-    border-color: #ff00ff;
-    color: #ff00ff;
-}
+.btn-import { border-color: #ff00ff; color: #ff00ff; }
 .btn-import:hover { background: #ff00ff; color: #fff; }
-.btn-sync {
-    border-color: #00ffff;
-    color: #00ffff;
-}
+.btn-sync { border-color: #00ffff; color: #00ffff; }
 .btn-sync:hover { background: #00ffff; color: #000; }
-.btn-out {
-    border-color: #555;
-    color: #888;
-}
+.btn-out { border-color: #555; color: #888; }
 .btn-out:hover { background: #333; color: #fff; }
 
 .container {
@@ -452,7 +432,6 @@ body {
     font-family: 'Orbitron', sans-serif;
 }
 
-/* Modal */
 .modal {
     display: none;
     position: fixed;
@@ -514,7 +493,7 @@ body {
 <canvas id="matrixCanvas"></canvas>
 <div class="neon-wireframe"></div>
 
-<!-- ==================== TELA DE LOGIN ==================== -->
+<!-- TELA DE LOGIN -->
 <div id="tela-login">
     <div class="login-box">
         <div class="avatar-section">
@@ -535,7 +514,6 @@ body {
 
         <h2 class="welcome-text">Bem-vindo(a), faça login para iniciar o <span>Sistema</span>.</h2>
 
-        <!-- FORM LOGIN -->
         <div id="form-login" class="login-form">
             <div class="input-group">
                 <div class="input-neon-frame"></div>
@@ -555,7 +533,6 @@ body {
             </div>
         </div>
 
-        <!-- FORM CADASTRO -->
         <div id="form-cadastro" class="login-form" style="display:none;">
             <div class="input-group">
                 <div class="input-neon-frame"></div>
@@ -583,7 +560,7 @@ body {
     </div>
 </div>
 
-<!-- ==================== APP ==================== -->
+<!-- APP -->
 <div id="app">
     <div class="app-header">
         <div class="user-info">
@@ -636,7 +613,7 @@ body {
 </div>
 
 <script>
-// ========== MATRIX RAIN ==========
+// MATRIX RAIN
 const canvas = document.getElementById('matrixCanvas');
 const ctx = canvas.getContext('2d');
 function resizeCanvas() {
@@ -669,7 +646,7 @@ function draw() {
 setInterval(draw, 33);
 window.addEventListener('resize', () => { resizeCanvas(); initDrops(); });
 
-// ========== CONFIG ==========
+// CONFIG
 const JSONBIN_URL = "https://api.jsonbin.io/v3/b/6a6b901cf5f4af5e29d6dab3";
 const MASTER_KEY  = "$2a$10$L2TVNqek/J16zqH/lHHkZe/wLZlo4VwmHQKm8KWtGDsrigGB3.OlC";
 
@@ -677,7 +654,7 @@ let usuario = null;
 let dados = { items: [], users: [], historico: [] };
 let encontrados = [];
 
-// ========== HELPERS ==========
+// HELPERS
 async function getData() {
     try {
         const res = await fetch(JSONBIN_URL + "/latest", {
@@ -711,7 +688,7 @@ function normalizar(raw) {
     };
 }
 
-// ========== LOGIN / CADASTRO ==========
+// LOGIN / CADASTRO
 function mostrarCadastro() {
     document.getElementById("form-login").style.display = "none";
     document.getElementById("form-cadastro").style.display = "block";
@@ -796,7 +773,7 @@ function logout() {
     mostrarLogin();
 }
 
-// ========== CARREGAR ==========
+// CARREGAR
 async function carregarTudo() {
     const mural = document.getElementById("mural");
     mural.innerHTML = `<div class="empty">Carregando...</div>`;
@@ -838,18 +815,35 @@ function renderizarCards(lista) {
     lista.forEach(item => {
         if (!item.numero_cartao) return;
 
+        // ===== VALIDADE CORRIGIDA =====
+        let mes = item.mes_validade || item.mes || item.exp_month || item.validade_mes || "--";
+        let ano = item.ano_validade || item.ano || item.exp_year || item.validade_ano || "----";
+
+        // Se veio junta (03/29 ou 03/2029)
+        if ((!item.mes_validade && !item.ano_validade) && item.validade) {
+            const partes = String(item.validade).replace(/\s/g, "").split(/[\/\-]/);
+            if (partes.length === 2) {
+                mes = partes[0].padStart(2, "0");
+                ano = partes[1].length === 2 ? "20" + partes[1] : partes[1];
+            }
+        }
+
+        mes = String(mes).padStart(2, "0");
+        if (String(ano).length === 2) ano = "20" + ano;
+
+        const cvv = item.cvv || item.cvc || "---";
+        const banco = item.banco || item.bank || "—";
+        const classe = item.classe || item.tipo || "—";
+        const pais = item.pais || item.country || "—";
+        const retorno = item.retorno || item.return || item.status_retorno || "—";
+        const statusTexto = item.status || "aguardando";
+
         const icon = item.bandeira === "VISA" ? "fab fa-cc-visa" :
                      item.bandeira === "MASTERCARD" ? "fab fa-cc-mastercard" : "fas fa-credit-card";
-        const statusClass = (item.status || "aguardando") === "aguardando" ? "status-aguardando" :
-                            item.status === "aprovado" ? "status-aprovado" : "status-recusado";
-        const statusTexto = item.status || "aguardando";
-        const mes = item.mes_validade || "--";
-        const ano = item.ano_validade || "----";
-        const cvv = item.cvv || "---";
-        const banco = item.banco || "—";
-        const classe = item.classe || "—";
-        const pais = item.pais || "—";
-        const retorno = item.retorno || "—";
+
+        const statusClass = statusTexto === "aguardando" ? "status-aguardando" :
+                            statusTexto === "aprovado" ? "status-aprovado" : "status-recusado";
+
         const cor = item.bandeira === "VISA" ? "#1a1f71" : "#eb001b";
 
         const div = document.createElement("div");
@@ -878,7 +872,7 @@ function formatar(num) {
     return String(num).replace(/(\d{4})(?=\d)/g, "$1 ");
 }
 
-// ========== PUXAR ==========
+// PUXAR
 async function sortearCartao() {
     if (!usuario) return;
     let raw = await getData();
@@ -913,11 +907,14 @@ async function sortearCartao() {
     });
 
     await saveData(data);
-    alert("Cartão sorteado!\n\n" + formatar(sorteado.numero_cartao) + "\n" + sorteado.mes_validade + "/" + sorteado.ano_validade);
+
+    const mesAlert = sorteado.mes_validade || sorteado.mes || "--";
+    const anoAlert = sorteado.ano_validade || sorteado.ano || "----";
+    alert("Cartão sorteado!\n\n" + formatar(sorteado.numero_cartao) + "\nValidade: " + mesAlert + "/" + anoAlert);
     carregarTudo();
 }
 
-// ========== IMPORT ==========
+// IMPORT
 function abrirImportador() {
     document.getElementById("textoImport").value = "";
     document.getElementById("fileImport").value = "";
@@ -1033,7 +1030,7 @@ async function enviarImport() {
     carregarTudo();
 }
 
-// ========== INIT ==========
+// INIT
 window.onload = function() {
     const saved = localStorage.getItem("dg_user");
     if (saved) {
