@@ -1,247 +1,757 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DG| FingerPR🔍</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0c0f; --surface: #13171c; --surface2: #1c2128;
+            --border: #2a303a; --text: #edf0f5; --muted: #8b95a8;
+            --purple: #b893f4; --purple-dark: #7a53b0; --teal: #6cd4c6;
+            --blue: #4a90e2; --blue-dark: #357abd;
+            --shadow: 0 12px 48px rgba(0,0,0,0.7); --radius: 16px;
+            --radius-sm: 12px; --font: 'Inter', system-ui, -apple-system, sans-serif;
         }
-
-        body {
-            background-color: #121212;
-            color: #e0e0e0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 30px 20px;
+        body { font-family: var(--font); background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+        
+        .screen { display: none; height: 100vh; overflow-y: auto; padding-bottom: 40px; scroll-behavior: smooth; }
+        .screen.active { display: flex; flex-direction: column; }
+        
+        header {
+            position: sticky; top: 0; z-index: 50;
+            background: rgba(10,12,15,0.85); backdrop-filter: blur(14px);
+            padding: 16px 24px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 12px; flex-shrink: 0;
         }
         
-        h1 {
-            color: #00ffcc; 
-            margin-bottom: 30px;
-            text-align: center;
-            font-size: 28px;
-            letter-spacing: 1px;
+        header h1 {
+            font-size: 20px; font-weight: 700;
+            background: linear-gradient(135deg, var(--purple), var(--teal));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
-
-        .painel-controles {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            width: 100%;
-            max-width: 400px;
-            margin-bottom: 40px;
+        .mode-11 header h1 {
+            background: linear-gradient(135deg, var(--blue), var(--teal));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
-
-        select, button {
-            padding: 14px;
-            background-color: #1a1a1a;
-            color: #00ffcc;
-            border: 1px solid #333;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: all 0.2s ease;
-            width: 100%;
+        header .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        
+        main { flex: 1; padding: 24px 20px; max-width: 720px; margin: 0 auto; width: 100%; }
+        
+        /* Seletor de Modo */
+        .mode-selector {
+            display: flex; background: var(--surface); border-radius: var(--radius-sm); padding: 4px;
+            margin-bottom: 24px; border: 1px solid var(--border);
         }
-
-        select:focus {
-            outline: none;
-            border-color: #00ffcc;
+        .mode-btn {
+            flex: 1; padding: 12px; background: transparent; border: none;
+            color: var(--muted); font-size: 14px; font-weight: 600; border-radius: 8px;
+            cursor: pointer; transition: all 0.2s; font-family: var(--font);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
+        .mode-btn.active[data-mode="7.1"] { background: var(--purple-dark); color: #fff; box-shadow: 0 4px 12px rgba(183,148,244,0.3); }
+        .mode-btn.active[data-mode="11.0"] { background: var(--blue-dark); color: #fff; box-shadow: 0 4px 12px rgba(74,144,226,0.3); }
 
-        button:hover, button:active {
-            background-color: #00ffcc;
-            color: #121212;
-            border-color: #00ffcc;
+        .field-group { margin-bottom: 22px; }
+        .field-group label { display: block; font-size: 13px; font-weight: 500; color: var(--purple); margin-bottom: 6px; letter-spacing: 0.3px; transition: color 0.3s; }
+        .mode-11 .field-group label { color: var(--blue); }
+        .field-group select {
+            width: 100%; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); color: var(--text); font-size: 15px;
+            font-family: var(--font); outline: none; transition: border 0.25s, box-shadow 0.25s;
+            appearance: none; cursor: pointer;
         }
-
-        /* Formato de Lista Vertical */
-        .lista-informacoes {
-            display: flex;
-            flex-direction: column;
-            gap: 10px; /* Espaço reduzido para parecer mais uma lista do que blocos separados */
-            width: 100%;
-            max-width: 400px;
+        .field-group select:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(183,148,244,0.15); }
+        .mode-11 .field-group select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(74,144,226,0.15); }
+        
+        .fab-generate {
+            width: 100%; padding: 18px 24px; background: linear-gradient(135deg, var(--purple), var(--purple-dark));
+            color: #0a0c0f; border: none; border-radius: var(--radius); font-size: 16px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            box-shadow: 0 8px 32px rgba(183,148,244,0.25); cursor: pointer;
+            transition: all 0.3s; letter-spacing: 0.5px; margin-top: 10px;
         }
+        .mode-11 .fab-generate { background: linear-gradient(135deg, var(--blue), var(--blue-dark)); box-shadow: 0 8px 32px rgba(74,144,226,0.25); }
+        .fab-generate:hover { filter: brightness(1.1); }
+        .fab-generate:active { transform: scale(0.98); }
 
-        .item-info {
-            background-color: transparent;
-            padding: 15px 0;
-            border-bottom: 1px solid #333; /* Linha divisória típica de listas */
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+        /* Estilos da Lista de Resultados (Um embaixo do outro) */
+        .section-title {
+            font-size: 13px; font-weight: 700; color: var(--purple); margin: 24px 0 8px 8px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .mode-11 .section-title { color: var(--blue); }
+        .section-title:first-child { margin-top: 0; }
+
+        .result-grid { display: flex; flex-direction: column; gap: 8px; }
+        .result-item { 
+            position: relative; display: flex; flex-direction: column; justify-content: center;
+            padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); cursor: pointer; transition: background 0.2s, border-color 0.2s; 
+        }
+        .result-item:hover { background: var(--surface2); border-color: var(--purple-dark); }
+        .mode-11 .result-item:hover { border-color: var(--blue-dark); }
+        
+        .result-item .label { font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 4px; }
+        .result-item .value { 
+            font-size: 15px; font-weight: 500; font-family: 'Monaco','Menlo','Cascadia Code',monospace; 
+            color: var(--text); word-break: break-all; padding-right: 24px;
+        }
+        .result-item .copy-icon { 
+            position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+            font-size: 18px; color: var(--muted); opacity: 0.3; transition: opacity 0.2s; 
+        }
+        .result-item:hover .copy-icon { opacity: 1; color: var(--purple); }
+        .mode-11 .result-item:hover .copy-icon { color: var(--blue); }
+
+        /* Botões de Ação na Tela de Resultado */
+        .action-buttons {
+            display: flex; flex-direction: column; gap: 12px; margin-top: 32px;
+        }
+        .action-btn {
+            width: 100%; padding: 16px; border: none; border-radius: var(--radius-sm);
+            font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
             transition: all 0.2s;
         }
+        .btn-copy { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+        .btn-copy:hover { background: #252b36; }
+        
+        .btn-new { background: var(--purple-dark); color: #fff; }
+        .mode-11 .btn-new { background: var(--blue-dark); }
+        .btn-new:hover { filter: brightness(1.1); }
 
-        .item-info:last-child {
-            border-bottom: none;
+        .btn-back { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+        .btn-back:hover { background: var(--surface); color: var(--text); }
+
+        .toast { 
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(20px); 
+            background: var(--surface2); color: var(--text); padding: 12px 24px; border-radius: 50px; 
+            font-size: 14px; font-weight: 500; box-shadow: var(--shadow); opacity: 0; pointer-events: none; 
+            transition: opacity 0.3s, transform 0.3s; z-index: 100; border: 1px solid var(--border); 
         }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(10,12,15,0.2); border-top-color: #0a0c0f; border-radius: 50%; animation: spin 0.7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
 
-        .item-info:hover, .item-info:active {
-            background-color: #1a1a1a;
-            padding-left: 10px; /* Pequeno efeito de movimento ao passar o dedo/mouse */
-            border-radius: 6px;
-            border-bottom-color: transparent;
-        }
-
-        .label-info {
-            font-size: 13px;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .valor-info {
-            font-size: 18px;
-            color: #fff;
-            word-break: break-all;
-            font-weight: 500;
-        }
-
-        /* Aviso de cópia na tela (Toast) */
-        .alerta-copia {
-            position: fixed;
-            bottom: 40px;
-            background: #00ffcc;
-            color: #121212;
-            padding: 14px 28px;
-            border-radius: 30px;
-            font-weight: bold;
-            font-size: 15px;
-            display: none;
-            box-shadow: 0px 4px 15px rgba(0, 255, 204, 0.4);
-            z-index: 1000;
-            animation: fadeInOut 2s ease-in-out;
-        }
-
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(20px); }
-            15% { opacity: 1; transform: translateY(0); }
-            85% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(20px); }
+        @media (max-width: 480px) {
+            main { padding: 16px; }
+            header h1 { font-size: 18px; }
         }
     </style>
 </head>
-<body>
+<body class="mode-7.1">
 
-    <h1>DG| FingerPR🔍</h1>
+    <!-- TELA PRINCIPAL (SETUP) -->
+    <div id="screen-setup" class="screen active">
+        <header>
+            <span class="material-icons-round" id="headerIcon" style="color:var(--purple);font-size:28px;">fingerprint</span>
+            <div>
+                <h1>DG| FingerPR🔍</h1>
+                <div class="sub" id="headerSub">Sandbox Nougat 7.1</div>
+            </div>
+        </header>
+        <main>
+            <!-- Seletor de Modo -->
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="7.1">
+                    <span class="material-icons-round" style="font-size: 18px;">history</span>
+                    Android 7.1
+                </button>
+                <button class="mode-btn" data-mode="11.0">
+                    <span class="material-icons-round" style="font-size: 18px;">smartphone</span>
+                    Android 11
+                </button>
+            </div>
 
-    <div class="painel-controles">
-        <select id="seletorModelo" onchange="gerarIdentidade()">
-            <option value="padrao">Modelo Padrão (Básico)</option>
-            <option value="avancado">Modelo Avançado (Completo)</option>
-        </select>
-        <button onclick="gerarIdentidade()">Gerar Nova Identidade</button>
-        <button onclick="copiarTudo()">Copiar Tudo</button>
+            <div class="field-group">
+                <label>1. Operadora</label>
+                <select id="carrier">
+                    <option value="VIVO">VIVO</option>
+                    <option value="CLARO">CLARO</option>
+                    <option value="TIM">TIM</option>
+                    <option value="OI">OI</option>
+                    <option value="NEXTEL">NEXTEL</option>
+                </select>
+            </div>
+            
+            <div class="field-group">
+                <label>2. Fabricante</label>
+                <select id="manufacturer"></select>
+            </div>
+            
+            <div class="field-group">
+                <label>3. Modelo</label>
+                <select id="modelSelect">
+                    <option value="any">Qualquer modelo compatível</option>
+                </select>
+            </div>
+
+            <button class="fab-generate" id="btnForge">
+                <span class="material-icons-round">sync_alt</span>
+                <span id="btnText">GERAR IDENTIDADE NOUGAT</span>
+            </button>
+        </main>
     </div>
 
-    <div class="lista-informacoes" id="containerInfo">
-        <!-- As informações aparecem aqui em formato de lista -->
+    <!-- TELA DE RESULTADO -->
+    <div id="screen-result" class="screen">
+        <header>
+            <span class="material-icons-round" style="color:var(--text);font-size:24px;">task_alt</span>
+            <div>
+                <h1>DG| FingerPR🔍</h1>
+                <div class="sub">Toque nos campos para copiar</div>
+            </div>
+        </header>
+        
+        <main>
+            <!-- O conteúdo da lista será injetado aqui -->
+            <div id="resultContent"></div>
+
+            <!-- Botões de Ação Embaixo da Lista -->
+            <div class="action-buttons">
+                <button class="action-btn btn-copy" id="btnCopyAll">
+                    <span class="material-icons-round">content_copy</span>
+                    COPIAR TUDO
+                </button>
+                
+                <button class="action-btn btn-new" id="btnRegenerate">
+                    <span class="material-icons-round">refresh</span>
+                    GERAR NOVA IDENTIDADE
+                </button>
+                
+                <button class="action-btn btn-back" id="btnBack">
+                    <span class="material-icons-round">manage_search</span>
+                    ESCOLHER OUTRO MODELO
+                </button>
+            </div>
+        </main>
     </div>
 
-    <div class="alerta-copia" id="alertaCopia">Copiado com sucesso!</div>
+    <!-- Feedback Flutuante -->
+    <div class="toast" id="toast">Copiado!</div>
 
     <script>
-        // Bancos de dados fictícios
-        const nomesFake = ["Marcos Vinícius", "Roberto Almeida", "Fernando Costa", "Juliana Mendes", "Lucas Silva", "Ana Carolina", "Pedro Henrique"];
-        const cpfsFake = ["123.456.789-10", "987.654.321-20", "111.222.333-40", "555.444.888-99", "444.777.999-12"];
-        const idadesFake = ["22", "27", "34", "41", "19", "29", "50"];
-        const profissoesFake = ["Designer", "Mecânico", "Desenvolvedor", "Engenheiro", "Vendedor", "Médico", "Advogado"];
+        // ============================================================
+        //  BANCO DE DADOS (Separado por versão do Android)
+        // ============================================================
+        
+        let currentMode = "7.1"; 
 
-        let textoCompletoAtual = "";
+        const deviceDB = {
+            "7.1": {
+                Samsung: [
+                    { name: 'Galaxy Note 8',        model: 'SM-N950F', product: 'greatlte',     device: 'greatlte',     board: 'universal8895', baseband: 'N950FXX' },
+                    { name: 'Galaxy J2 Pro (2018)', model: 'SM-J250F', product: 'j2y18lte',     device: 'j2y18lte',     board: 'msm8937',       baseband: 'J250FXX' },
+                    { name: 'Galaxy J7 Prime 2',    model: 'SM-G611F', product: 'on7xreflte',   device: 'on7xreflte',   board: 'universal7870', baseband: 'G611FXX' },
+                    { name: 'Galaxy C8',            model: 'SM-C7100', product: 'j7toplte',     device: 'j7toplte',     board: 'mt6757',        baseband: 'C7100ZZ' },
+                    { name: 'Galaxy C7 Pro',        model: 'SM-C7010', product: 'c7prolte',     device: 'c7prolte',     board: 'msm8953',       baseband: 'C7010ZZ' },
+                    { name: 'Galaxy Tab Active 2',  model: 'SM-T395',  product: 'gtactive2lte', device: 'gtactive2lte', board: 'universal7870', baseband: 'T395XX' },
+                ],
+                Motorola: [
+                    { name: 'Moto Z2 Play',         model: 'XT1710-09', product: 'albus',   device: 'albus',   board: 'msm8953' },
+                    { name: 'Moto Z2 Force',        model: 'XT1789-05', product: 'nash',    device: 'nash',    board: 'msm8998' },
+                    { name: 'Moto X4',              model: 'XT1900-1',  product: 'payton',  device: 'payton',  board: 'sdm660' },
+                    { name: 'Moto G5S',             model: 'XT1792',    product: 'montana', device: 'montana', board: 'msm8937' },
+                    { name: 'Moto G5S Plus',        model: 'XT1802',    product: 'sanders', device: 'sanders', board: 'msm8953' },
+                    { name: 'Moto E4',              model: 'XT1763',    product: 'woods',   device: 'woods',   board: 'mt6737m' },
+                    { name: 'Moto E4 Plus',         model: 'XT1773',    product: 'owens',   device: 'owens',   board: 'mt6737m' },
+                ],
+                Xiaomi: [
+                    { name: 'Xiaomi Mi 6',          model: 'MI 6',         product: 'sagit',         device: 'sagit',         board: 'msm8998' },
+                    { name: 'Xiaomi Mi Max 2',      model: 'MI MAX 2',     product: 'oxygen',        device: 'oxygen',        board: 'msm8953' },
+                    { name: 'Xiaomi Mi 5X',         model: 'MI 5X',        product: 'tiffany',       device: 'tiffany',       board: 'msm8953' },
+                    { name: 'Xiaomi Mi A1',         model: 'Mi A1',        product: 'tissot_sprout', device: 'tissot_sprout', board: 'msm8953' },
+                    { name: 'Xiaomi Mi Mix 2',      model: 'Mi MIX 2',     product: 'chiron',        device: 'chiron',        board: 'msm8998' },
+                    { name: 'Xiaomi Mi Note 3',     model: 'Mi Note 3',    product: 'jason',         device: 'jason',         board: 'sdm660' },
+                    { name: 'Redmi 5A',             model: 'Redmi 5A',     product: 'riva',          device: 'riva',          board: 'msm8917' },
+                    { name: 'Redmi 5',              model: 'Redmi 5',      product: 'rosy',          device: 'rosy',          board: 'msm8953' },
+                    { name: 'Redmi 5 Plus',         model: 'Redmi 5 Plus', product: 'vince',         device: 'vince',         board: 'msm8953' },
+                    { name: 'Redmi Y1',             model: 'Redmi Y1',     product: 'ugg',           device: 'ugg',           board: 'msm8940' },
+                ],
+            },
+            "11.0": {
+                Samsung: [
+                    { name: 'Galaxy S20',           model: 'SM-G980F', product: 'x1s',       device: 'x1s',       board: 'exynos990',   baseband: 'G980FXX' },
+                    { name: 'Galaxy S21',           model: 'SM-G991B', product: 'o1s',       device: 'o1s',       board: 'exynos2100',  baseband: 'G991BXX' },
+                    { name: 'Galaxy Note 20',       model: 'SM-N980F', product: 'c1s',       device: 'c1s',       board: 'exynos990',   baseband: 'N980FXX' },
+                    { name: 'Galaxy A51',           model: 'SM-A515F', product: 'a51',       device: 'a51',       board: 'exynos9611',  baseband: 'A515FXX' },
+                    { name: 'Galaxy A71',           model: 'SM-A715F', product: 'a71',       device: 'a71',       board: 'sm6150',      baseband: 'A715FXX' },
+                ],
+                Motorola: [
+                    { name: 'Moto G9 Play',         model: 'XT2083-1', product: 'guamp',     device: 'guamp',     board: 'sm6115' },
+                    { name: 'Moto G Power (2021)',  model: 'XT2117-4', product: 'boron',     device: 'boron',     board: 'sm6115' },
+                    { name: 'Moto Edge 20',         model: 'XT2143-1', product: 'berlin',    device: 'berlin',    board: 'sm7325' },
+                    { name: 'Moto G100',            model: 'XT2125-4', product: 'nio',       device: 'nio',       board: 'sm8250' },
+                ],
+                Xiaomi: [
+                    { name: 'Poco X3 Pro',          model: 'M2102J20SG', product: 'vayu',      device: 'vayu',      board: 'sm8150' },
+                    { name: 'Poco F3',              model: 'M2012K11AG', product: 'alioth',    device: 'alioth',    board: 'sm8250' },
+                    { name: 'Redmi Note 10',        model: 'M2101K7AG',  product: 'rosemary',  device: 'rosemary',  board: 'sm6150' },
+                    { name: 'Redmi Note 10 Pro',    model: 'M2101K6G',   product: 'sweet',     device: 'sweet',     board: 'sm7150' },
+                    { name: 'Xiaomi Mi 11',         model: 'M2011K2G',   product: 'venus',     device: 'venus',     board: 'sm8350' },
+                ],
+                Google: [
+                    { name: 'Pixel 5',              model: 'Pixel 5',    product: 'redfin',    device: 'redfin',    board: 'sm7250' },
+                    { name: 'Pixel 4a',             model: 'Pixel 4a',   product: 'sunfish',   device: 'sunfish',   board: 'sm7150' },
+                    { name: 'Pixel 3',              model: 'Pixel 3',    product: 'blueline',  device: 'blueline',  board: 'sdm845' },
+                ]
+            }
+        };
 
-        function gerarIdentidade() {
-            const modeloEscolhido = document.getElementById("seletorModelo").value;
+        // ============================================================
+        //  HELPERS & RANDOMIZERS
+        // ============================================================
+        let xorshiftState0 = 0xCAFEBABE ^ Date.now();
+        let xorshiftState1 = 0xDEADBEEF ^ (Date.now() >>> 32);
+        
+        function xorshift128() {
+            let s1 = xorshiftState0;
+            let s0 = xorshiftState1;
+            xorshiftState0 = s0;
+            s1 ^= s1 << 23;
+            s1 ^= s1 >> 17;
+            s1 ^= s0 ^ (s0 >> 26);
+            xorshiftState1 = s1;
+            return (s0 + s1) >>> 0;
+        }
+        
+        function randomInt(min, max) { return min + (xorshift128() % (max - min + 1)); }
+        function randomItem(arr) { return arr[xorshift128() % arr.length]; }
+        
+        function weightedRandom(items, weights) {
+            const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+            let random = xorshift128() % totalWeight;
+            for (let i = 0; i < items.length; i++) {
+                if (random < weights[i]) return items[i];
+                random -= weights[i];
+            }
+            return items[0];
+        }
+        
+        function randomString(len, chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') {
+            let r = '';
+            for (let i = 0; i < len; i++) r += chars.charAt(xorshift128() % chars.length);
+            return r;
+        }
+        
+        function randomHex(len) { 
+            const hex = '0123456789abcdef';
+            let result = '';
+            for (let i = 0; i < len; i++) result += hex.charAt(xorshift128() % 16);
+            return result;
+        }
+
+        function randomMac() {
+            const ouiMap = {
+                Samsung: [['ec:9b:f3', 40], ['8c:85:90', 30], ['50:01:bb', 20], ['ac:5a:14', 10]],
+                Xiaomi: [['ac:e0:10', 30], ['00:ec:0a', 25], ['f8:a2:d6', 25], ['34:12:98', 20]],
+                Motorola: [['14:17:be', 40], ['a4:08:ea', 35], ['30:fd:65', 25]],
+                Google: [['dc:a6:32', 35], ['bc:d0:74', 30], ['3c:28:6d', 20]],
+            };
+            const manufacturer = document.getElementById('manufacturer').value;
+            const ouis = ouiMap[manufacturer] || [['00:0c:29', 100]];
+            let totalWeight = 0;
+            ouis.forEach(o => totalWeight += o[1]);
+            let random = xorshift128() % totalWeight;
+            let selectedOui = ouis[0][0];
+            for (const [oui, weight] of ouis) {
+                if (random < weight) { selectedOui = oui; break; }
+                random -= weight;
+            }
+            let tail = '';
+            for (let i = 0; i < 3; i++) tail += ':' + randomHex(2);
+            return `${selectedOui}${tail}`;
+        }
+
+        function randomIP() {
+            const rand = xorshift128() % 100;
+            if (rand < 80) return `192.168.1.${randomInt(2, 254)}`;
+            else if (rand < 92) return `10.${randomInt(0, 255)}.${randomInt(0, 255)}.${randomInt(2, 254)}`;
+            else return `172.${randomInt(16, 31)}.${randomInt(0, 255)}.${randomInt(2, 254)}`;
+        }
+
+        function generateSerial() { 
+            const manufacturer = document.getElementById('manufacturer').value;
+            if (manufacturer === 'Samsung') {
+                return `R${randomString(1, 'ABCDEFGHJKLMNPQRSTUVWXYZ')}${randomInt(1,9)}T` + randomString(6, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
+            }
+            if (manufacturer === 'Motorola') return `ZY22${randomHex(6)}${randomInt(1000, 9999)}`.toUpperCase();
+            if (manufacturer === 'Google') return `0B${randomString(2, '0123456789')}${randomString(10, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')}`;
+            return randomHex(13); // Xiaomi
+        }
+
+        function generateAndroidId() { return randomHex(16); }
+
+        function generateIMEI(manufacturer) {
+            const tacs = {
+                "7.1": {
+                    Samsung: ['35827305', '35520808', '35722308'],
+                    Motorola: ['35848005', '35630308', '35588308'],
+                    Xiaomi: ['86106905', '86475603', '86337003'],
+                },
+                "11.0": {
+                    Samsung: ['35234511', '35541211', '35798310'],
+                    Motorola: ['35123911', '35439210', '35930211'],
+                    Xiaomi: ['86123405', '86543204', '86901205'],
+                    Google: ['35841910', '35842010']
+                }
+            };
+
+            let tacList = tacs[currentMode][manufacturer] || ['35800000'];
+            let body = randomItem(tacList) + String(randomInt(0, 99)).padStart(2, '0') + String(randomInt(1000, 9999)).padStart(4, '0');
             
-            // Sorteia dados aleatórios
-            const nome = nomesFake[Math.floor(Math.random() * nomesFake.length)];
-            const cpf = cpfsFake[Math.floor(Math.random() * cpfsFake.length)];
-            const idade = idadesFake[Math.floor(Math.random() * idadesFake.length)];
-            const profissao = profissoesFake[Math.floor(Math.random() * profissoesFake.length)];
+            let sum = 0;
+            for (let i = 0; i < 14; i++) {
+                let digit = parseInt(body.charAt(i));
+                if ((i % 2) === 0) { digit *= 2; if (digit > 9) digit -= 9; }
+                sum += digit;
+            }
+            return body + ((10 - (sum % 10)) % 10);
+        }
 
-            // Define quais dados vão aparecer
-            let dadosGerados = [];
+        function getBuildAndFingerprint(modelData, manufacturer) {
+            let buildNumber = '', fingerprint = '', baseband = '', securityPatch = '';
+            const androidVer = currentMode === "7.1" ? "7.1.1" : "11";
             
-            if (modeloEscolhido === "padrao") {
-                dadosGerados = [
-                    { label: "Nome Completo", value: nome },
-                    { label: "CPF", value: cpf }
-                ];
-            } else if (modeloEscolhido === "avancado") {
-                dadosGerados = [
-                    { label: "Nome Completo", value: nome },
-                    { label: "CPF", value: cpf },
-                    { label: "Idade", value: idade },
-                    { label: "Profissão", value: profissao }
-                ];
+            if (currentMode === "7.1") {
+                securityPatch = `${randomItem([2017, 2018])}-${String(randomInt(1,12)).padStart(2,'0')}-${String(randomItem([1, 5])).padStart(2,'0')}`;
+                if (manufacturer === 'Samsung') {
+                    const shortBuild = `U1B${randomString(3,'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')}`;
+                    buildNumber = `NMF26X.${modelData.baseband}${shortBuild}`;
+                    fingerprint = `samsung/${modelData.product}/${modelData.device}:${androidVer}/NMF26X/${modelData.baseband}${shortBuild}:user/release-keys`;
+                    baseband = `${modelData.model.replace(/\D/g,'')}XX${shortBuild}`;
+                } else if (manufacturer === 'Motorola') {
+                    buildNumber = `NPSS26.118-${randomInt(10, 40)}-${randomInt(1, 15)}`;
+                    fingerprint = `motorola/${modelData.product}/${modelData.device}:${androidVer}/${buildNumber}/${randomInt(1,20)}:user/release-keys`;
+                    baseband = `${modelData.board.replace('msm', 'M').replace('sdm', 'M')}_26.${randomInt(10,30)}.${randomInt(10,25)}R`;
+                } else {
+                    buildNumber = `NMF26X`;
+                    const miuiVersion = `V9.${randomInt(2,6)}.${randomInt(1,5)}.0.N${randomItem(['CA','MB','MH'])}MIEK`;
+                    fingerprint = `Xiaomi/${modelData.product}/${modelData.device}:${androidVer}/NMF26X/${miuiVersion}:user/release-keys`;
+                    baseband = `AT3.1.c4-00109-${modelData.board.replace('msm', '')}_GEN_PACK-1`;
+                }
+            } else {
+                securityPatch = `${randomItem([2020, 2021, 2022])}-${String(randomInt(1,12)).padStart(2,'0')}-${String(randomItem([1, 5])).padStart(2,'0')}`;
+                if (manufacturer === 'Samsung') {
+                    const shortBuild = `XXU${randomInt(1,5)}C${randomString(2,'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')}`;
+                    buildNumber = `RP1A.200720.012.${modelData.baseband}${shortBuild}`;
+                    fingerprint = `samsung/${modelData.product}/${modelData.device}:${androidVer}/RP1A.200720.012/${modelData.baseband}${shortBuild}:user/release-keys`;
+                    baseband = `${modelData.model.replace(/\D/g,'')}XXU${randomInt(1,5)}C${randomString(2,'A-Z0-9')}`;
+                } else if (manufacturer === 'Motorola') {
+                    buildNumber = `RRQ31.Q3-68-${randomInt(10, 50)}`;
+                    fingerprint = `motorola/${modelData.product}/${modelData.device}:${androidVer}/${buildNumber}/${randomInt(1,9)}:user/release-keys`;
+                    baseband = `${modelData.board.replace('sm', 'M')}_11.${randomInt(30,70)}.${randomInt(10,25)}R`;
+                } else if (manufacturer === 'Xiaomi') {
+                    buildNumber = `RKQ1.200826.002`;
+                    const miuiVersion = `V12.${randomInt(0,5)}.${randomInt(1,9)}.0.R${randomItem(['JB','KF','KG'])}MIXM`;
+                    fingerprint = `Xiaomi/${modelData.product}/${modelData.device}:${androidVer}/${buildNumber}/${miuiVersion}:user/release-keys`;
+                    baseband = `4.3.c5-00123-${modelData.board.replace('sm', '')}_GEN_PACK-1`;
+                } else {
+                    buildNumber = `RQ3A.211001.001`;
+                    fingerprint = `google/${modelData.product}/${modelData.device}:${androidVer}/${buildNumber}/7641976:user/release-keys`;
+                    baseband = `g7150-00047-210901-B-7696615`;
+                }
+            }
+            return { buildNumber, fingerprint, securityPatch, baseband };
+        }
+
+        function generateSSID(carrier) {
+            const patterns = {
+                VIVO:   [{prefix: 'Vivo', suffix: ['', '_CASA', '_FAMILIA'], weights: [50,30,20]}],
+                CLARO:  [{prefix: 'Claro', suffix: ['', '_RESIDENCIAL', '_EMPRESARIAL'], weights: [45,30,25]}],
+                TIM:    [{prefix: 'TIM', suffix: ['', '_LIVE', '_FIBRA'], weights: [50,30,20]}],
+                OI:     [{prefix: 'Oi', suffix: ['', '_FIBRA', '_WIFI'], weights: [50,30,20]}],
+                NEXTEL: [{prefix: 'Nextel', suffix: ['', '_WiFi'], weights: [70,30]}],
+            };
+            const p = patterns[carrier] || [{prefix: carrier, suffix: [''], weights: [100]}];
+            let finalSSID = p[0].prefix + p[0].suffix[xorshift128() % p[0].suffix.length];
+            if (xorshift128() % 100 < 40) finalSSID += `_${randomInt(1, 999)}`;
+            if (currentMode === "11.0" && xorshift128() % 100 < 60) finalSSID += '_5G';
+            return finalSSID;
+        }
+
+        function generateCarrierCode(carrier) {
+            const plmnData = {
+                VIVO:   [{code:'72404',name:'Vivo'},{code:'72400',name:'Vivo'}],
+                CLARO:  [{code:'72405',name:'Claro'},{code:'72406',name:'Claro'}],
+                TIM:    [{code:'72410',name:'TIM'},{code:'72411',name:'TIM'}],
+                OI:     [{code:'72415',name:'Oi'},{code:'72416',name:'Oi Móvel'}],
+                NEXTEL: [{code:'72423',name:'Nextel'},{code:'72439',name:'Nextel'}],
+            };
+            const opts = plmnData[carrier] || [{code:'72499',name:carrier}];
+            return `${opts[0].code} ${opts[0].name}`;
+        }
+
+        function generateData() {
+            const carrier      = document.getElementById('carrier').value;
+            const manufacturer = document.getElementById('manufacturer').value;
+            const modelCode    = document.getElementById('modelSelect').value;
+            
+            const list = deviceDB[currentMode][manufacturer] || [];
+            let modelData = list.find(m => m.model === modelCode) || randomItem(list);
+            if (!modelData) throw new Error('Nenhum modelo compatível encontrado.');
+            
+            xorshiftState0 = 0xCAFEBABE ^ Date.now() ^ (Math.random() * 0xFFFFFFFF);
+            xorshiftState1 = 0xDEADBEEF ^ (Date.now() >>> 32) ^ (Math.random() * 0xFFFFFFFF);
+            
+            const sysData = getBuildAndFingerprint(modelData, manufacturer);
+            
+            let phoneType = weightedRandom(['GSM/LTE', 'GSM/UMTS'], [70, 30]);
+            let networkType = weightedRandom(['LTE', 'LTE-A', 'HSPA+'], [50, 30, 20]);
+            
+            if (currentMode === "11.0") {
+                phoneType = weightedRandom(['GSM/LTE', 'GSM/5G NR'], [60, 40]);
+                networkType = weightedRandom(['LTE-A', '5G NR NSA', 'LTE'], [50, 30, 20]);
+            }
+            
+            let kernelVersion = currentMode === "7.1" 
+                ? `${randomItem(['3.18','4.4'])}.${randomInt(10, 140)}-g${randomHex(7)}`
+                : `${randomItem(['4.14','4.19', '5.4'])}.${randomInt(100, 250)}-g${randomHex(10)}`;
+            
+            let totalMem = randomItem(currentMode === "11.0" ? [6, 8, 12] : [3, 4, 6]);
+            let totalSto = randomItem(currentMode === "11.0" ? [128, 256] : [32, 64, 128]);
+            
+            let mockMd5 = ''; for(let i=0; i<32; i++) mockMd5 += '0123456789abcdef'.charAt(xorshift128() % 16);
+            
+            return {
+                model: modelData.model, brand: manufacturer, product: modelData.product, device: modelData.device, 
+                board: modelData.board, manufacturer: manufacturer,
+                serial: generateSerial(), androidId: generateAndroidId(), 
+                imei: generateIMEI(manufacturer), svn: String(randomInt(currentMode === "11.0" ? 10 : 0, 20)).padStart(2, '0'),
+                baseband: sysData.baseband, sim: 'Inserido', carrier: generateCarrierCode(carrier),
+                networkType, signal: `-72 dBm`, networkStatus: 'Registrado',
+                ssid: generateSSID(carrier), bssid: randomMac(), ip: randomIP(), mac: randomMac(),
+                androidVersion: currentMode === "7.1" ? "7.1.1" : "11", apiLevel: currentMode === "7.1" ? 25 : 30, 
+                phoneType, buildNumber: sysData.buildNumber, securityPatch: sysData.securityPatch, 
+                fingerprint: sysData.fingerprint, kernelVersion,
+                bootloader: manufacturer === 'Samsung' ? sysData.buildNumber.split('.').pop() : `0x${randomHex(4).toUpperCase()}`, 
+                radioVersion: sysData.baseband.split('_')[0] || sysData.baseband,
+                gpsLocation: { latitude: (-23.5505 + (Math.random()-0.5)).toFixed(6), longitude: (-46.6333 + (Math.random()-0.5)).toFixed(6) },
+                cellTower: { mcc: 724, mnc: 4, cid: randomInt(1,1000000), lac: randomInt(1,10000) },
+                batteryLevel: `${randomInt(15, 98)}%`, screenResolution: `${randomItem([1080, 1440])}x${randomItem([1920, 2400, 3200])}`, 
+                totalMemory: `${totalMem} GB`, deviceHash: mockMd5
+            };
+        }
+
+        // ============================================================
+        //  RENDERIZAÇÃO
+        // ============================================================
+        function renderResult(data) {
+            const container = document.getElementById('resultContent');
+
+            const sections = {
+                'Identificação e Aparelho': [
+                    {label:'Model', key:'model'},
+                    {label:'Brand / Manufacturer', key:'brand'},
+                    {label:'Product Name', key:'product'},
+                    {label:'Device Name', key:'device'},
+                    {label:'Hardware (Board)', key:'board'},
+                    {label:'Número Serial', key:'serial'},
+                    {label:'Android ID', key:'androidId'},
+                    {label:'Device Hash', key:'deviceHash'}
+                ],
+                'Telefonia e Operadora': [
+                    {label:'Phone Type', key:'phoneType'},
+                    {label:'IMEI', key:'imeiDisplay'},
+                    {label:'Mobile Carrier', key:'carrier'},
+                    {label:'Network Type', key:'networkType'},
+                    {label:'Signal Strength', key:'signal'},
+                ],
+                'Rede WiFi e IP': [
+                    {label:'SSID WiFi', key:'ssid'},
+                    {label:'BSSID WiFi', key:'bssid'},
+                    {label:'Endereço IP NIC', key:'ip'},
+                    {label:'Endereço MAC NIC', key:'mac'},
+                ],
+                'Software e Sistema': [
+                    {label:'Android Version', key:'androidVersion'},
+                    {label:'API Level', key:'apiLevel'},
+                    {label:'Build Number', key:'buildNumber'},
+                    {label:'Security Patch', key:'securityPatch'},
+                    {label:'Fingerprint', key:'fingerprint'},
+                    {label:'Baseband / Radio', key:'baseband'},
+                    {label:'Kernel Version', key:'kernelVersion'},
+                    {label:'Bootloader', key:'bootloader'},
+                ],
+                'Sensores e Extras': [
+                    {label:'GPS Latitude', key:'gpsLocation.latitude'},
+                    {label:'GPS Longitude', key:'gpsLocation.longitude'},
+                    {label:'MCC / MNC', key:'cellMccMnc'},
+                    {label:'Nível Bateria', key:'batteryLevel'},
+                    {label:'Resolução Tela', key:'screenResolution'},
+                    {label:'Memória Total', key:'totalMemory'},
+                ]
+            };
+
+            let html = '';
+            
+            for (const [sectionName, fields] of Object.entries(sections)) {
+                html += `<div class="section-title">${sectionName}</div>`;
+                html += `<div class="result-grid">`;
+                
+                fields.forEach(f => {
+                    let v;
+                    if (f.key === 'imeiDisplay') v = `${data.imei} ${data.svn}`;
+                    else if (f.key === 'cellMccMnc') v = `${data.cellTower.mcc} / ${data.cellTower.mnc}`;
+                    else if (f.key.includes('.')) {
+                        const keys = f.key.split('.');
+                        v = keys.reduce((obj, key) => obj && obj[key], data) ?? '—';
+                    } else v = data[f.key] ?? '—';
+                    
+                    html += `
+                    <div class="result-item" data-value="${v}" onclick="copyValue(this)">
+                        <span class="label">${f.label}</span>
+                        <span class="value">${v}</span>
+                        <span class="copy-icon material-icons-round">content_copy</span>
+                    </div>`;
+                });
+                
+                html += `</div>`;
             }
 
-            const container = document.getElementById("containerInfo");
-            container.innerHTML = ""; // Limpa a lista antiga
+            container.innerHTML = html;
+        }
 
-            // Prepara o texto formatado para o botão "Copiar Tudo"
-            textoCompletoAtual = dadosGerados.map(d => `${d.label}: ${d.value}`).join("\n");
+        // ============================================================
+        //  CONTROLES DE INTERFACE
+        // ============================================================
+        
+        function populateManufacturers() {
+            const mfgSelect = document.getElementById('manufacturer');
+            mfgSelect.innerHTML = '';
+            Object.keys(deviceDB[currentMode]).forEach(mfg => {
+                const opt = document.createElement('option');
+                opt.value = mfg;
+                opt.textContent = mfg === 'Xiaomi' ? (currentMode === '11.0' ? 'Xiaomi / POCO / Redmi' : 'Xiaomi / Redmi') : mfg;
+                mfgSelect.appendChild(opt);
+            });
+            populateModels();
+        }
 
-            // Cria as informações na tela em formato de lista
-            dadosGerados.forEach(dado => {
-                const divCaixa = document.createElement("div");
-                divCaixa.className = "item-info";
+        function populateModels() {
+            const mfg = document.getElementById('manufacturer').value;
+            const sel = document.getElementById('modelSelect');
+            sel.innerHTML = '<option value="any">Qualquer modelo compatível</option>';
+            if (deviceDB[currentMode][mfg]) {
+                deviceDB[currentMode][mfg].forEach(d => {
+                    const o = document.createElement('option');
+                    o.value = d.model;
+                    o.textContent = d.name;
+                    sel.appendChild(o);
+                });
+            }
+        }
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
                 
-                // Evento de clique para copiar só esse item
-                divCaixa.onclick = () => copiarTexto(dado.value, `${dado.label} copiado!`);
-
-                const divLabel = document.createElement("div");
-                divLabel.className = "label-info";
-                divLabel.innerText = dado.label;
-
-                const divValor = document.createElement("div");
-                divValor.className = "valor-info";
-                divValor.innerText = dado.value;
-
-                divCaixa.appendChild(divLabel);
-                divCaixa.appendChild(divValor);
-                container.appendChild(divCaixa);
+                currentMode = this.dataset.mode;
+                document.body.className = `mode-${currentMode.replace('.', '')}`;
+                
+                const btnText = document.getElementById('btnText');
+                const headerSub = document.getElementById('headerSub');
+                const headerIcon = document.getElementById('headerIcon');
+                
+                if (currentMode === "7.1") {
+                    btnText.textContent = "GERAR IDENTIDADE NOUGAT";
+                    headerSub.textContent = "Sandbox Nougat 7.1";
+                    headerIcon.style.color = "var(--purple)";
+                } else {
+                    btnText.textContent = "GERAR IDENTIDADE ANDROID 11";
+                    headerSub.textContent = "Sandbox Red Velvet Cake 11.0";
+                    headerIcon.style.color = "var(--blue)";
+                }
+                populateManufacturers();
             });
+        });
+
+        function copyValue(el) {
+            const v = el.dataset.value;
+            if (!v) return;
+            navigator.clipboard.writeText(v).catch(() => {
+                const t = document.createElement('textarea');
+                t.value = v; document.body.appendChild(t); t.select();
+                document.execCommand('copy'); document.body.removeChild(t);
+            }).finally(() => showToast('Copiado: ' + v));
         }
 
-        function copiarTexto(texto, mensagem) {
-            navigator.clipboard.writeText(texto).then(() => {
-                mostrarAlerta(mensagem);
-            }).catch(err => {
-                console.error("Erro ao copiar:", err);
+        function copyAllData() {
+            let text = '';
+            document.querySelectorAll('.result-item').forEach(el => {
+                const lbl = el.querySelector('.label')?.textContent || '';
+                const val = el.dataset.value || '';
+                if (lbl && val) text += `${lbl.toUpperCase()}: ${val}\n`;
             });
+            if (!text) return;
+            navigator.clipboard.writeText(text).catch(() => {
+                const t = document.createElement('textarea');
+                t.value = text; document.body.appendChild(t); t.select();
+                document.execCommand('copy'); document.body.removeChild(t);
+            }).finally(() => showToast('Todos os dados copiados!'));
         }
 
-        function copiarTudo() {
-            if (textoCompletoAtual === "") return;
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            window.scrollTo(0, 0); // Volta ao topo da tela
+        }
+
+        function doGenerate() {
+            const data = generateData();
+            if (data) {
+                renderResult(data);
+                showScreen('screen-result');
+                showToast(`Identidade gerada com sucesso!`);
+            }
+        }
+
+        document.getElementById('manufacturer').addEventListener('change', populateModels);
+
+        document.getElementById('btnForge').addEventListener('click', function () {
+            const btn = this;
+            const originalText = document.getElementById('btnText').textContent;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> <span>Gerando...</span>';
             
-            navigator.clipboard.writeText(textoCompletoAtual).then(() => {
-                mostrarAlerta("Todas as informações copiadas!");
-            });
-        }
-
-        function mostrarAlerta(mensagem) {
-            const alerta = document.getElementById("alertaCopia");
-            alerta.innerText = mensagem;
-            alerta.style.display = "block";
-            
-            // Oculta o alerta depois de 2 segundos de forma suave
             setTimeout(() => {
-                alerta.style.display = "none";
-            }, 2000);
-        }
+                try { doGenerate(); } 
+                catch (error) { showToast('Erro: ' + error.message); } 
+                finally {
+                    btn.disabled = false;
+                    btn.innerHTML = `<span class="material-icons-round">sync_alt</span> <span id="btnText">${originalText}</span>`;
+                }
+            }, 700);
+        });
 
-        // Gera a primeira identidade automaticamente quando abrir a página
-        window.onload = gerarIdentidade;
+        // Botões da tela de resultado
+        document.getElementById('btnCopyAll').addEventListener('click', copyAllData);
+        document.getElementById('btnRegenerate').addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(doGenerate, 300);
+        });
+        document.getElementById('btnBack').addEventListener('click', () => showScreen('screen-setup'));
+
+        // Inicialização
+        populateManufacturers();
     </script>
 </body>
 </html>
