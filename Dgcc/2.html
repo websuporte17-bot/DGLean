@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebDroid Auto-Bot PRO v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f111a;
+            --accent: #ff4757;
+            --accent-dark: #ff6b81;
+            --text: #fff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif; color: var(--text);
+            display: flex; align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden;
+            background: url('https://images.unsplash.com/photo-1511919884226-fd3cad34687c?q=80&w=2560&auto=format&fit=crop') center/cover no-repeat;
+        }
+        .bg-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75); z-index: 1;
+        }
+
+        /* EFEITO DE TOQUE */
+        .touch-ripple {
+            position: absolute; width: 30px; height: 30px;
+            background: rgba(255, 255, 255, 0.8); border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0); pointer-events: none;
+            animation: rippleAnim 0.4s ease-out; z-index: 99999; box-shadow: 0 0 15px #fff;
+        }
+        @keyframes rippleAnim { to { transform: translate(-50%, -50%) scale(3); opacity: 0; } }
+
+        /* TELA DE SETUP */
+        #setup-screen {
+            background: rgba(15, 17, 26, 0.9); backdrop-filter: blur(20px);
+            padding: 40px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1);
+            width: 100%; max-width: 500px; text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8); z-index: 10; position: relative;
+        }
+        #setup-screen h1 { font-size: 26px; margin-bottom: 5px; color: #fff; text-shadow: 0 2px 10px rgba(255, 71, 87, 0.5); }
+        .form-group { text-align: left; margin-bottom: 20px; margin-top: 20px; }
+        .form-group label { display: block; font-size: 11px; color: #a4b0be; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;}
+        
+        input[type="text"], textarea {
+            width: 100%; padding: 14px; border-radius: 12px;
+            background: rgba(0,0,0,0.6); border: 1px solid #2f3542;
+            color: #2ed573; font-size: 13px; outline: none; font-family: monospace;
+        }
+        textarea { height: 90px; resize: none; }
+        input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+
+        #btn-record {
+            width: 100%; padding: 16px; border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            border: none; color: #fff; font-weight: 800; font-size: 16px;
+            cursor: pointer; transition: transform 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        #btn-record:hover { transform: scale(1.02); box-shadow: 0 10px 20px rgba(255, 71, 87, 0.4); }
+
+        /* CELULAR FÍSICO */
+        #phone-wrapper {
+            display: none; width: 375px; height: 812px; background: #111; border-radius: 50px;
+            padding: 12px; box-shadow: 0 0 0 4px #222, 0 0 0 5px #111, 0 30px 60px rgba(0,0,0,0.9);
+            position: relative; z-index: 10;
+        }
+        .notch {
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            width: 120px; height: 30px; background: #111; border-radius: 0 0 16px 16px; z-index: 100;
+        }
+        #screen {
+            width: 100%; height: 100%; background: #000; border-radius: 38px;
+            overflow: hidden; position: relative; display: flex; flex-direction: column;
+        }
+        #status-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 24px; color: #fff; font-size: 13px; font-weight: 600;
+            z-index: 90; background: rgba(0,0,0,0.8);
+        }
+        .status-icons { display: flex; gap: 6px; align-items: center;}
+        
+        #browser-app { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #fff; display: flex; flex-direction: column; z-index: 80; }
+        #browser-top { background: #f1f3f4; padding: 40px 10px 10px 10px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #ddd; }
+        .browser-btn { background: none; border: none; font-size: 24px; color: #5f6368; cursor: pointer; }
+        #url-bar { flex: 1; display: flex; align-items: center; background: #fff; border-radius: 20px; padding: 8px 15px; border: 1px solid #dfe1e5; }
+        #url-input { border: none; outline: none; width: 100%; font-size: 14px; color: #202124; }
+        #browser-frame { flex: 1; border: none; width: 100%; background: #fff; }
+
+        #nav-bar { height: 40px; background: #000; display: flex; justify-content: space-around; align-items: center; color: #fff; padding: 0 40px; z-index: 90; }
+        .nav-btn { font-size: 20px; cursor: pointer; opacity: 0.7; }
+
+        /* OVERLAYS E MODAIS */
+        #recording-indicator {
+            position: absolute; top: 50px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,0,0,0.9); color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; display: none; z-index: 999; animation: blink 1s infinite alternate; pointer-events: none;
+        }
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.4; } }
+
+        #btn-stop-record {
+            position: fixed; top: 20px; right: 20px; background: #ff4757; color: white; border: none; padding: 15px 25px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; display: none; z-index: 999; box-shadow: 0 5px 15px rgba(255,0,0,0.5);
+        }
+
+        /* MODAL DE REVISÃO E EXCLUSÃO DE COMANDOS */
+        #review-modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 90%; max-width: 800px; height: 80vh; background: #1e272e;
+            border-radius: 20px; z-index: 10000; padding: 20px; color: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.9); border: 1px solid #3c4043;
+            flex-direction: column;
+        }
+        #review-list { flex: 1; overflow-y: auto; margin: 20px 0; background: #000; border-radius: 10px; padding: 10px; }
+        .log-item { background: #2f3640; padding: 10px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--accent); }
+        .log-info { font-size: 12px; font-family: monospace; color: #00d2d3; flex: 1; word-break: break-all; }
+        .log-info span { color: #fff; font-weight: bold; color: #feca57; }
+        .btn-delete { background: #ff4757; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 10px; }
+        .btn-export { background: #2ed573; width: 100%; padding: 15px; border: none; color: #000; font-weight: bold; font-size: 16px; border-radius: 12px; cursor: pointer; }
+        
+        #loading-overlay {
+            display: none; position: absolute; top:0; left:0; width: 100%; height: 100%; background: #fff; z-index: 85; align-items: center; justify-content: center; color: #000; font-weight: bold; flex-direction: column; gap: 10px;
+        }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+    <div class="bg-overlay"></div>
+    <button id="btn-stop-record"><span class="material-icons-round" style="vertical-align: middle;">stop_circle</span> Parar e Revisar Gravação</button>
+
+    <!-- TELA DE SETUP (AUTOMAÇÃO) -->
+    <div id="setup-screen">
+        <span class="material-icons-round" style="font-size: 48px; color: var(--accent);">api</span>
+        <h1>WebDroid Studio v2</h1>
+        
+        <div class="form-group">
+            <label>URL ALVO (Inicia a Gravação Diretamente)</label>
+            <input type="text" id="target-url" placeholder="Ex: https://lulu.com/checkout/...">
+        </div>
+
+        <div style="display: flex; align-items: center; margin: 5px 0;">
+            <hr style="flex:1; border:0; border-top: 1px solid rgba(255,255,255,0.1);"><span style="padding: 0 10px; font-size: 11px; color: #747d8c;">OU</span><hr style="flex:1; border:0; border-top: 1px solid rgba(255,255,255,0.1);">
+        </div>
+
+        <div class="form-group">
+            <label>URL do Script ou JSON (Auto-Play da Automação)</label>
+            <textarea id="script-input" placeholder="Cole o JSON com o script gerado aqui..."></textarea>
+        </div>
+
+        <button id="btn-record"><span class="material-icons-round">fiber_manual_record</span> GRAVAR MANUALMENTE</button>
+    </div>
+
+    <!-- MODAL DE REVISÃO E EXCLUSÃO (Abre ao parar de gravar) -->
+    <div id="review-modal">
+        <h2><span class="material-icons-round" style="vertical-align: bottom;">format_list_bulleted</span> Revisar Script</h2>
+        <p style="font-size: 13px; color: #a4b0be;">Revise os cliques. Exclua o que tocou errado. Os XPaths estão calculados.</p>
+        <div id="review-list"></div>
+        <button class="btn-export" id="btn-export-txt">DOWNLOAD SCRIPT (JSON/TXT)</button>
+    </div>
+
+    <!-- CELULAR FÍSICO EMULADO -->
+    <div id="phone-wrapper">
+        <div class="notch"></div>
+        <div id="recording-indicator">REC 00:00</div>
+        
+        <div id="screen">
+            <div id="status-bar">
+                <span id="clock">12:00</span>
+                <div class="status-icons">
+                    <span class="material-icons-round" style="font-size:14px">wifi</span>
+                    <span class="material-icons-round" style="font-size:14px">battery_full</span>
+                </div>
+            </div>
+
+            <!-- Aplicativo Navegador -->
+            <div id="browser-app">
+                <div id="browser-top">
+                    <button class="browser-btn" id="browser-home"><span class="material-icons-round">home</span></button>
+                    <div id="url-bar">
+                        <span class="material-icons-round" style="font-size: 16px; color:#9aa0a6; margin-right:5px;">lock</span>
+                        <input type="text" id="url-input" placeholder="Digite uma URL..." value="google.com">
+                    </div>
+                    <button class="browser-btn" id="browser-go"><span class="material-icons-round">arrow_forward</span></button>
+                </div>
+                <div id="loading-overlay">
+                    <div class="spinner"></div>
+                    Bypassing Iframe via Proxy...
+                </div>
+                <iframe id="browser-frame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+            </div>
+        </div>
+        <div id="nav-bar">
+            <span class="material-icons-round nav-btn">arrow_back_ios</span>
+            <span class="material-icons-round nav-btn">radio_button_unchecked</span>
+            <span class="material-icons-round nav-btn">crop_square</span>
+        </div>
+    </div>
+
+    <script>
+        // --- SISTEMA DE AUDIO E CLIQUE ---
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+        function playTouchSound() {
+            if(!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            osc.start(); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1); osc.stop(audioCtx.currentTime + 0.1);
+        }
+        window.addEventListener('mousedown', (e) => {
+            // Ignora o efeito de toque se clicar na tela de revisão (pra não poluir)
+            if(document.getElementById('review-modal').style.display === 'flex') return;
+            triggerVisualTouch(e.clientX, e.clientY);
+        });
+
+        function triggerVisualTouch(x, y) {
+            initAudio(); playTouchSound();
+            const ripple = document.createElement('div');
+            ripple.className = 'touch-ripple'; ripple.style.left = x + 'px'; ripple.style.top = y + 'px';
+            document.body.appendChild(ripple); setTimeout(() => ripple.remove(), 400);
+        }
+
+        // --- SCRIPT VIRUS INJETADO NO IFRAME (Gera XPath e CSS Path) ---
+        const injectedRecorderScript = `
+            <script>
+                // Função para gerar o XPATH absoluto
+                function getXPath(el) {
+                    if (el.id !== '') return 'id("' + el.id + '")';
+                    if (el === document.body) return el.tagName;
+                    let ix = 0; let siblings = el.parentNode.childNodes;
+                    for (let i = 0; i < siblings.length; i++) {
+                        let sibling = siblings[i];
+                        if (sibling === el) return getXPath(el.parentNode) + '/' + el.tagName + '[' + (ix + 1) + ']';
+                        if (sibling.nodeType === 1 && sibling.tagName === el.tagName) ix++;
+                    }
+                }
+                
+                // Função para gerar o CSS Selector exato
+                function getCssPath(el) {
+                    if (!(el instanceof Element)) return;
+                    let path = [];
+                    while (el.nodeType === Node.ELEMENT_NODE) {
+                        let selector = el.nodeName.toLowerCase();
+                        if (el.id) { selector += '#' + el.id; path.unshift(selector); break; }
+                        else {
+                            let sib = el, nth = 1;
+                            while (sib = sib.previousElementSibling) { if (sib.nodeName.toLowerCase() == selector) nth++; }
+                            if (nth != 1) selector += ":nth-of-type("+nth+")";
+                        }
+                        path.unshift(selector);
+                        el = el.parentNode;
+                    }
+                    return path.join(" > ");
+                }
+
+                // Interceptar Clicks
+                document.addEventListener('click', (e) => {
+                    const el = e.target;
+                    // Se for link, evita que saia do proxy e envia pro pai carregar o novo proxy
+                    if(el.tagName === 'A' || el.closest('A')) {
+                        e.preventDefault();
+                        const href = el.href || el.closest('A').href;
+                        if(href && !href.startsWith('javascript')) {
+                            window.parent.postMessage({ type: 'navigate_proxy', url: href }, '*');
+                        }
+                    }
+
+                    window.parent.postMessage({
+                        type: 'macro_event', action: 'click',
+                        x: e.clientX, y: e.clientY,
+                        xpath: getXPath(el), cssPath: getCssPath(el),
+                        tag: el.tagName, value: el.value || el.innerText.substring(0,20),
+                        html: el.outerHTML
+                    }, '*');
+                }, true);
+
+                // Interceptar Inputs de Texto
+                document.addEventListener('change', (e) => {
+                    const el = e.target;
+                    window.parent.postMessage({
+                        type: 'macro_event', action: 'input',
+                        xpath: getXPath(el), cssPath: getCssPath(el),
+                        value: el.value, tag: el.tagName, html: el.outerHTML
+                    }, '*');
+                }, true);
+            <\/script>
+        `;
+
+        // --- SISTEMA DE VARIÁVEIS ---
+        let isRecording = false;
+        let scriptEvents = [];
+        let lastActionTime = 0;
+        let recordInterval;
+        let recordSeconds = 0;
+
+        const setupScreen = document.getElementById('setup-screen');
+        const phoneWrapper = document.getElementById('phone-wrapper');
+        const browserFrame = document.getElementById('browser-frame');
+        const urlInput = document.getElementById('url-input');
+        const btnStop = document.getElementById('btn-stop-record');
+        const recIndicator = document.getElementById('recording-indicator');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const reviewModal = document.getElementById('review-modal');
+        const reviewList = document.getElementById('review-list');
+
+        // Atualizar Relógio
+        setInterval(() => {
+            const now = new Date(); document.getElementById('clock').innerText = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        }, 1000);
+
+        // --- PROXY CORS (CONTORNO DE IFRAME BLOCK) ---
+        function loadProxiedUrl(targetUrl) {
+            let finalUrl = targetUrl.startsWith('http') ? targetUrl : 'https://' + targetUrl;
+            urlInput.value = finalUrl;
+            loadingOverlay.style.display = 'flex';
+            
+            // Usando API AllOrigins para contornar CORS e X-Frame-Options
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(finalUrl)}`;
+
+            fetch(proxyUrl)
+                .then(response => {
+                    if (response.ok) return response.json();
+                    throw new Error('Erro na rede');
+                })
+                .then(data => {
+                    let html = data.contents;
+                    // Adiciona a tag <base> para consertar imagens e CSS com caminhos relativos
+                    html = html.replace('<head>', \`<head><base href="\${finalUrl}">\`);
+                    // Injeta nosso script de rastreamento de xpath
+                    html = html.replace('</body>', injectedRecorderScript + '</body>');
+                    
+                    browserFrame.srcdoc = html;
+                    loadingOverlay.style.display = 'none';
+
+                    if(isRecording){
+                        const now = Date.now();
+                        scriptEvents.push({ 
+                            action: 'navigate', 
+                            url: finalUrl, 
+                            delay_seconds: lastActionTime === 0 ? 0 : parseFloat(((now - lastActionTime)/1000).toFixed(3)) 
+                        });
+                        lastActionTime = now;
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro no Proxy:', error);
+                    loadingOverlay.style.display = 'none';
+                    browserFrame.srcdoc = `<h2>Erro ao carregar via Proxy CORS.</h2><p>O site pode estar bloqueando a raspagem de dados.</p>`;
+                });
+        }
+
+
+        // --- SISTEMA DE GRAVAÇÃO ---
+        function startRecording(initialUrl = 'google.com') {
+            initAudio(); isRecording = true; scriptEvents = []; lastActionTime = 0; recordSeconds = 0;
+            
+            setupScreen.style.display = 'none'; phoneWrapper.style.display = 'block';
+            btnStop.style.display = 'block'; recIndicator.style.display = 'block';
+
+            recordInterval = setInterval(() => {
+                recordSeconds++;
+                const mins = Math.floor(recordSeconds / 60).toString().padStart(2, '0');
+                const secs = (recordSeconds % 60).toString().padStart(2, '0');
+                recIndicator.innerText = `REC ${mins}:${secs}`;
+            }, 1000);
+
+            loadProxiedUrl(initialUrl);
+        }
+
+        // --- SISTEMA DE REVISÃO E EXCLUSÃO ---
+        function stopAndReview() {
+            isRecording = false; clearInterval(recordInterval);
+            recIndicator.style.display = 'none'; btnStop.style.display = 'none';
+            phoneWrapper.style.display = 'none';
+            
+            reviewModal.style.display = 'flex';
+            renderReviewList();
+        }
+
+        function renderReviewList() {
+            reviewList.innerHTML = '';
+            scriptEvents.forEach((evt, index) => {
+                const item = document.createElement('div');
+                item.className = 'log-item';
+                
+                let text = `<span>[${evt.action.toUpperCase()}]</span> `;
+                if(evt.action === 'navigate') text += `URL: ${evt.url}`;
+                if(evt.action === 'click') text += `Tag: ${evt.tag} | XPath: ${evt.xpath}`;
+                if(evt.action === 'input') text += `Digitou: "${evt.value}" | XPath: ${evt.xpath}`;
+
+                text += `<br><span style="color:#a4b0be">Tempo de espera: ${evt.delay_seconds}s</span>`;
+
+                item.innerHTML = `
+                    <div class="log-info">${text}</div>
+                    <button class="btn-delete" onclick="removeEvent(${index})">EXCLUIR</button>
+                `;
+                reviewList.appendChild(item);
+            });
+        }
+
+        window.removeEvent = function(index) {
+            scriptEvents.splice(index, 1); // Remove da Array
+            renderReviewList(); // Atualiza a tela
+        }
+
+        // Exportação Final
+        document.getElementById('btn-export-txt').addEventListener('click', () => {
+            const scriptData = JSON.stringify(scriptEvents, null, 2);
+            const blobData = new Blob([scriptData], { type: 'text/plain' });
+            const url = URL.createObjectURL(blobData);
+            
+            const a = document.createElement('a'); a.href = url; a.download = `automacao_${Date.now()}.txt`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+            alert("Pronto! Arquivo com Xpaths salvo.");
+            window.location.reload();
+        });
+
+
+        // Escutar eventos do iframe
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'navigate_proxy') {
+                loadProxiedUrl(event.data.url);
+            }
+            if (isRecording && event.data && event.data.type === 'macro_event') {
+                const now = Date.now();
+                const deltaSeconds = lastActionTime === 0 ? 0 : parseFloat(((now - lastActionTime) / 1000).toFixed(3));
+                lastActionTime = now;
+
+                const step = { action: event.data.action, delay_seconds: deltaSeconds, ...event.data };
+                delete step.type;
+
+                scriptEvents.push(step);
+                console.log("Comando Registrado:", step);
+            }
+        });
+
+        // --- TRIGGERS INICIAIS ---
+        
+        // 1. Se colar a URL ALVO
+        const targetInput = document.getElementById('target-url');
+        targetInput.addEventListener('input', () => {
+            const val = targetInput.value.trim();
+            if(val.length > 5 && val.includes('.')) {
+                alert(`Iniciando Gravação no site: ${val}`);
+                startRecording(val);
+            }
+        });
+
+        // 2. Se colar o SCRIPT PRONTO (Auto-play simulado)
+        const scriptInput = document.getElementById('script-input');
+        scriptInput.addEventListener('input', () => {
+            const val = scriptInput.value.trim();
+            if (val.startsWith('[') || val.startsWith('{')) {
+                alert("Script JSON detectado! Iniciando automação sem gravação...");
+                setupScreen.style.display = 'none'; phoneWrapper.style.display = 'block';
+                // Lógica de replay entraria aqui
+            }
+        });
+
+        document.getElementById('btn-record').addEventListener('click', () => startRecording('google.com'));
+        btnStop.addEventListener('click', stopAndReview);
+
+        document.getElementById('browser-home').addEventListener('click', () => loadProxiedUrl('google.com'));
+        document.getElementById('browser-go').addEventListener('click', () => loadProxiedUrl(urlInput.value));
+        urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') loadProxiedUrl(urlInput.value); });
+
+    </script>
+</body>
+</html>
