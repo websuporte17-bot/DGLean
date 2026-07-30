@@ -6,7 +6,7 @@
 <title>DG STUDIO - FAST HARD LEGENDARY</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
@@ -38,453 +38,175 @@ body {
     box-shadow: 0 0 15px rgba(0,255,255,0.1), inset 0 0 15px rgba(0,255,255,0.1);
     z-index: 1;
 }
-.neon-wireframe::before,
-.neon-wireframe::after {
-    content: '';
-    position: absolute;
-    width: 40px; height: 40px;
-    border: 2px solid;
+.neon-wireframe::before, .neon-wireframe::after {
+    content: ''; position: absolute; width: 40px; height: 40px; border: 2px solid;
     border-color: rgba(255,0,255,0.4) rgba(0,255,255,0.4);
 }
-.neon-wireframe::before {
-    top: -10px; left: -10px;
-    border-top-left-radius: 10px;
-    border-bottom: none; border-right: none;
-}
-.neon-wireframe::after {
-    bottom: -10px; right: -10px;
-    border-bottom-right-radius: 10px;
-    border-top: none; border-left: none;
-}
+.neon-wireframe::before { top: -10px; left: -10px; border-top-left-radius: 10px; border-bottom: none; border-right: none; }
+.neon-wireframe::after { bottom: -10px; right: -10px; border-bottom-right-radius: 10px; border-top: none; border-left: none; }
 
 #tela-login {
-    position: relative;
-    z-index: 10;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
+    position: relative; z-index: 10; height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px;
 }
 
 .login-box {
-    background-color: rgba(5,5,15,0.85);
-    border: 1px solid rgba(0,255,255,0.2);
-    padding: 40px 30px;
-    border-radius: 15px;
-    box-shadow: 0 0 40px rgba(0,0,0,1), 0 0 15px rgba(0,255,255,0.1) inset;
-    width: 90%;
-    max-width: 400px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    backdrop-filter: blur(8px);
+    background-color: rgba(5,5,15,0.85); border: 1px solid rgba(0,255,255,0.2); padding: 40px 30px;
+    border-radius: 15px; box-shadow: 0 0 40px rgba(0,0,0,1), 0 0 15px rgba(0,255,255,0.1) inset;
+    width: 90%; max-width: 400px; display: flex; flex-direction: column; align-items: center; backdrop-filter: blur(8px);
 }
 
-.avatar-section {
-    position: relative;
-    width: 150px; height: 150px;
-    margin-bottom: 25px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.text-ring-svg {
-    position: absolute;
-    width: 100%; height: 100%;
-    animation: rotateText 15s linear infinite;
-}
+.avatar-section { position: relative; width: 150px; height: 150px; margin-bottom: 25px; display: flex; justify-content: center; align-items: center; }
+.text-ring-svg { position: absolute; width: 100%; height: 100%; animation: rotateText 15s linear infinite; }
 .text-ring-path { fill: none; }
-.text-ring-content {
-    fill: #00ffff;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 8.5px;
-    font-weight: 700;
-    letter-spacing: 2px;
-}
-@keyframes rotateText {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
+.text-ring-content { fill: #00ffff; font-family: 'Orbitron', sans-serif; font-size: 8.5px; font-weight: 700; letter-spacing: 2px; }
+@keyframes rotateText { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 .avatar-image {
-    width: 90px; height: 90px;
-    border-radius: 50%;
-    border: 2px solid #00ffff;
-    background-color: #1a1a3a;
+    width: 90px; height: 90px; border-radius: 50%; border: 2px solid #00ffff; background-color: #1a1a3a;
     background-image: url('https://upload.wikimedia.org/wikipedia/en/c/c6/NeoTheMatrix.jpg');
-    background-size: cover;
-    background-position: top center;
-    box-shadow: 0 0 20px rgba(0,255,255,0.5);
-    z-index: 2;
+    background-size: cover; background-position: top center; box-shadow: 0 0 20px rgba(0,255,255,0.5); z-index: 2;
 }
 
 .neon-ring-blue {
-    position: absolute;
-    width: 110px; height: 110px;
-    border: 2px dashed rgba(0,255,255,0.6);
-    border-radius: 50%;
-    z-index: 1;
-    animation: rotateReverse 20s linear infinite;
+    position: absolute; width: 110px; height: 110px; border: 2px dashed rgba(0,255,255,0.6);
+    border-radius: 50%; z-index: 1; animation: rotateReverse 20s linear infinite;
 }
-@keyframes rotateReverse {
-    from { transform: rotate(360deg); }
-    to { transform: rotate(0deg); }
-}
+@keyframes rotateReverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
 
 .neon-ring-magenta {
-    position: absolute;
-    width: 125px; height: 125px;
-    border: 1px solid rgba(255,0,255,0.6);
-    border-radius: 50%;
-    z-index: 0;
-    animation: ringPulse 2s ease-in-out infinite alternate;
+    position: absolute; width: 125px; height: 125px; border: 1px solid rgba(255,0,255,0.6);
+    border-radius: 50%; z-index: 0; animation: ringPulse 2s ease-in-out infinite alternate;
 }
-@keyframes ringPulse {
-    0% { transform: scale(0.95); opacity: 0.5; }
-    100% { transform: scale(1.02); opacity: 1; }
-}
+@keyframes ringPulse { 0% { transform: scale(0.95); opacity: 0.5; } 100% { transform: scale(1.02); opacity: 1; } }
 
-.welcome-text {
-    color: #00ffff;
-    font-size: 0.9rem;
-    text-align: center;
-    margin-bottom: 25px;
-    font-family: 'Orbitron', sans-serif;
-    text-shadow: 0 0 8px rgba(0,255,255,0.4);
-    line-height: 1.5;
-    letter-spacing: 1px;
-}
-.welcome-text span {
-    font-weight: 700;
-    text-shadow: 0 0 10px rgba(0,255,255,0.8);
-}
+.welcome-text { color: #00ffff; font-size: 0.9rem; text-align: center; margin-bottom: 25px; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 8px rgba(0,255,255,0.4); line-height: 1.5; letter-spacing: 1px; }
+.welcome-text span { font-weight: 700; text-shadow: 0 0 10px rgba(0,255,255,0.8); }
 
 .login-form { width: 100%; }
-
-.input-group {
-    position: relative;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    padding: 0 15px;
-}
-
-.input-neon-frame {
-    position: absolute;
-    inset: 0;
-    border: 1px solid;
-    pointer-events: none;
-    border-radius: 8px;
-    background: rgba(0,0,0,0.6);
-}
+.input-group { position: relative; margin-bottom: 20px; display: flex; align-items: center; padding: 0 15px; }
+.input-neon-frame { position: absolute; inset: 0; border: 1px solid; pointer-events: none; border-radius: 8px; background: rgba(0,0,0,0.6); }
 .input-group:nth-child(1) .input-neon-frame { border-color: rgba(0,255,255,0.4); }
-.input-group:nth-child(2) .input-neon-frame,
-.input-group:nth-child(3) .input-neon-frame { border-color: rgba(255,0,255,0.4); }
-.input-group:focus-within:nth-child(1) .input-neon-frame {
-    border-color: #00ffff;
-    box-shadow: 0 0 15px rgba(0,255,255,0.4);
-}
-.input-group:focus-within:nth-child(2) .input-neon-frame,
-.input-group:focus-within:nth-child(3) .input-neon-frame {
-    border-color: #ff00ff;
-    box-shadow: 0 0 15px rgba(255,0,255,0.4);
-}
+.input-group:nth-child(2) .input-neon-frame, .input-group:nth-child(3) .input-neon-frame { border-color: rgba(255,0,255,0.4); }
+.input-group:focus-within:nth-child(1) .input-neon-frame { border-color: #00ffff; box-shadow: 0 0 15px rgba(0,255,255,0.4); }
+.input-group:focus-within:nth-child(2) .input-neon-frame, .input-group:focus-within:nth-child(3) .input-neon-frame { border-color: #ff00ff; box-shadow: 0 0 15px rgba(255,0,255,0.4); }
 
-.neon-icon {
-    font-size: 1.1rem;
-    margin-right: 10px;
-    z-index: 2;
-}
+.neon-icon { font-size: 1.1rem; margin-right: 10px; z-index: 2; }
 .input-group:nth-child(1) .neon-icon { color: #00ffff; }
-.input-group:nth-child(2) .neon-icon,
-.input-group:nth-child(3) .neon-icon { color: #ff00ff; }
-
-.input-cursor {
-    color: rgba(255,255,255,0.4);
-    font-size: 1.2rem;
-    margin-right: 8px;
-    z-index: 2;
-    animation: blink 1s step-end infinite;
-}
+.input-group:nth-child(2) .neon-icon, .input-group:nth-child(3) .neon-icon { color: #ff00ff; }
+.input-cursor { color: rgba(255,255,255,0.4); font-size: 1.2rem; margin-right: 8px; z-index: 2; animation: blink 1s step-end infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
-.login-input {
-    flex: 1;
-    height: 50px;
-    background: transparent;
-    border: none;
-    color: #fff;
-    font-size: 1rem;
-    font-family: 'Orbitron', sans-serif;
-    letter-spacing: 1px;
-    z-index: 2;
-}
-.login-input::placeholder {
-    color: rgba(255,255,255,0.3);
-    font-family: 'Inter', sans-serif;
-}
+.login-input { flex: 1; height: 50px; background: transparent; border: none; color: #fff; font-size: 1rem; font-family: 'Orbitron', sans-serif; letter-spacing: 1px; z-index: 2; }
+.login-input::placeholder { color: rgba(255,255,255,0.3); font-family: 'Inter', sans-serif; }
 
 .click-here-btn {
-    width: 100%;
-    height: 55px;
-    margin-top: 10px;
-    background: linear-gradient(45deg, #091c3d, #1e3c72);
-    border: 1px solid #00ffff;
-    color: #fff;
-    font-size: 1.05rem;
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 700;
-    letter-spacing: 2px;
-    border-radius: 8px;
-    cursor: pointer;
-    text-transform: uppercase;
-    box-shadow: 0 0 15px rgba(0,255,255,0.3);
-    transition: 0.3s;
+    width: 100%; height: 55px; margin-top: 10px; background: linear-gradient(45deg, #091c3d, #1e3c72);
+    border: 1px solid #00ffff; color: #fff; font-size: 1.05rem; font-family: 'Orbitron', sans-serif; font-weight: 700;
+    letter-spacing: 2px; border-radius: 8px; cursor: pointer; text-transform: uppercase; box-shadow: 0 0 15px rgba(0,255,255,0.3); transition: 0.3s;
 }
-.click-here-btn:hover {
-    box-shadow: 0 0 25px rgba(0,255,255,0.6);
-    transform: translateY(-2px);
-}
+.click-here-btn:hover { box-shadow: 0 0 25px rgba(0,255,255,0.6); transform: translateY(-2px); }
 
-.switch-form {
-    margin-top: 18px;
-    text-align: center;
-    font-size: 0.85rem;
-    color: rgba(255,255,255,0.5);
-}
-.switch-form span {
-    color: #00ffff;
-    cursor: pointer;
-    text-decoration: underline;
-}
+.switch-form { margin-top: 18px; text-align: center; font-size: 0.85rem; color: rgba(255,255,255,0.5); }
+.switch-form span { color: #00ffff; cursor: pointer; text-decoration: underline; }
 
-#app {
-    display: none;
-    position: relative;
-    z-index: 10;
-    height: 100vh;
-    overflow-y: auto;
-    background: transparent;
-}
+#app { display: none; position: relative; z-index: 10; height: 100vh; overflow-y: auto; background: transparent; }
 
 .app-header {
-    background: rgba(5,5,15,0.9);
-    border-bottom: 1px solid rgba(0,255,255,0.2);
-    padding: 14px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    backdrop-filter: blur(10px);
+    background: rgba(5,5,15,0.9); border-bottom: 1px solid rgba(0,255,255,0.2); padding: 14px 20px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; backdrop-filter: blur(10px);
 }
 
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.user-info img {
-    width: 48px; height: 48px;
-    border-radius: 50%;
-    border: 2px solid #00ffff;
-    object-fit: cover;
-}
-.user-info .name {
-    color: #00ffff;
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 600;
-    font-size: 1rem;
-}
-.user-info .meta {
-    font-size: 0.8rem;
-    color: #aaa;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 3px;
-}
-.lvl-badge {
-    background: #00ffff;
-    color: #000;
-    padding: 2px 9px;
-    border-radius: 12px;
-    font-weight: 700;
-    font-size: 0.75rem;
-}
+.user-info { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 5px; border-radius: 8px; transition: 0.3s; }
+.user-info:hover { background: rgba(0,255,255,0.1); }
+.user-info img { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #00ffff; object-fit: cover; }
+.user-info .name { color: #00ffff; font-family: 'Orbitron', sans-serif; font-weight: 600; font-size: 1rem; }
+.user-info .meta { font-size: 0.8rem; color: #aaa; display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.lvl-badge { background: #00ffff; color: #000; padding: 2px 9px; border-radius: 12px; font-weight: 700; font-size: 0.75rem; }
 
-.actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .actions button {
-    background: transparent;
-    border: 1px solid;
-    padding: 9px 14px;
-    border-radius: 6px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    letter-spacing: 1px;
-    transition: 0.2s;
+    background: transparent; border: 1px solid; padding: 9px 14px; border-radius: 6px; font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem; font-weight: 600; cursor: pointer; letter-spacing: 1px; transition: 0.2s;
 }
-.btn-pull { border-color: #ffaa00; color: #ffaa00; }
-.btn-pull:hover { background: #ffaa00; color: #000; }
-.btn-import { border-color: #ff00ff; color: #ff00ff; }
-.btn-import:hover { background: #ff00ff; color: #fff; }
-.btn-sync { border-color: #00ffff; color: #00ffff; }
-.btn-sync:hover { background: #00ffff; color: #000; }
-.btn-out { border-color: #555; color: #888; }
-.btn-out:hover { background: #333; color: #fff; }
+.btn-pull { border-color: #ffaa00; color: #ffaa00; } .btn-pull:hover { background: #ffaa00; color: #000; }
+.btn-import { border-color: #ff00ff; color: #ff00ff; } .btn-import:hover { background: #ff00ff; color: #fff; }
+.btn-sync { border-color: #00ffff; color: #00ffff; } .btn-sync:hover { background: #00ffff; color: #000; }
+.btn-out { border-color: #555; color: #888; } .btn-out:hover { background: #333; color: #fff; }
 
-.container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 20px;
-}
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; padding-bottom: 60px; }
 
 .info-bar {
-    background: rgba(0,255,255,0.05);
-    border: 1px dashed rgba(0,255,255,0.3);
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-    font-size: 0.9rem;
-    font-family: 'Orbitron', sans-serif;
+    background: rgba(0,255,255,0.05); border: 1px dashed rgba(0,255,255,0.3); border-radius: 10px;
+    padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.9rem; font-family: 'Orbitron', sans-serif;
 }
 
-.section-title {
-    color: #00ffff;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.1rem;
-    margin-bottom: 15px;
-    border-bottom: 1px solid rgba(0,255,255,0.2);
-    padding-bottom: 8px;
-}
+.section-title { color: #00ffff; font-family: 'Orbitron', sans-serif; font-size: 1.1rem; margin-bottom: 15px; border-bottom: 1px solid rgba(0,255,255,0.2); padding-bottom: 8px; }
 
-.mural {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
-}
+.mural { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
 
 .card {
-    background: rgba(15,15,30,0.9);
-    border: 1px solid rgba(0,255,255,0.15);
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 11px;
-    backdrop-filter: blur(6px);
+    background: rgba(15,15,30,0.9); border: 1px solid rgba(0,255,255,0.15); border-radius: 12px;
+    padding: 16px; display: flex; flex-direction: column; gap: 11px; backdrop-filter: blur(6px); transition: transform 0.2s;
 }
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+.card:hover { border-color: rgba(0,255,255,0.4); box-shadow: 0 0 15px rgba(0,255,255,0.1); }
+.card-header { display: flex; justify-content: space-between; align-items: center; }
 .bandeira { font-size: 1.6rem; }
 .status {
-    padding: 3px 9px;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    font-family: 'Orbitron', sans-serif;
+    padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    font-family: 'Orbitron', sans-serif; cursor: pointer; transition: 0.2s;
 }
+.status:hover { opacity: 0.8; transform: scale(1.05); }
 .status-aguardando { background: #b829ff; color: #fff; }
 .status-aprovado { background: #00e676; color: #000; }
 .status-recusado { background: #ff3366; color: #fff; }
 
 .numero {
-    font-family: monospace;
-    font-size: 1.1rem;
-    letter-spacing: 1px;
-    background: rgba(0,0,0,0.5);
-    padding: 10px;
-    border-radius: 6px;
-    text-align: center;
-    color: #00ffff;
-    border: 1px solid rgba(0,255,255,0.2);
+    font-family: monospace; font-size: 1.1rem; letter-spacing: 1px; background: rgba(0,0,0,0.5);
+    padding: 10px; border-radius: 6px; text-align: center; color: #00ffff; border: 1px solid rgba(0,255,255,0.2);
+    cursor: pointer; transition: 0.2s; position: relative;
 }
+.numero:hover { background: rgba(0,255,255,0.1); border-color: #00ffff; }
+.numero::after { content: "Copiar dados"; position: absolute; right: 10px; top: 12px; font-size: 0.6rem; color: #555; font-family: 'Inter'; text-transform: uppercase; }
 
-.detalhes {
-    font-size: 0.82rem;
-    color: #aaa;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px;
-}
+.detalhes { font-size: 0.82rem; color: #aaa; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.detalhes strong { color: #ccc; }
+.card-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 5px; }
+.icon-btn { cursor: pointer; padding: 5px; border-radius: 4px; transition: 0.2s; }
+.icon-btn:hover { background: rgba(255,255,255,0.1); }
 
-.empty {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 50px 20px;
-    color: #666;
-    font-family: 'Orbitron', sans-serif;
-}
+.empty { grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: #666; font-family: 'Orbitron', sans-serif; }
 
-.modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.85);
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    padding: 20px;
-}
+/* MODAIS */
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 9999; padding: 20px; backdrop-filter: blur(5px); }
 .modal.show { display: flex; }
+.modal-box { background: rgba(10,10,25,0.95); border: 1px solid rgba(0,255,255,0.3); border-radius: 12px; padding: 24px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
+.modal-box h2 { text-align: center; color: #00ffff; font-family: 'Orbitron', sans-serif; margin-bottom: 16px; }
+.modal-box textarea { width: 100%; min-height: 110px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,255,255,0.3); color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-family: monospace; resize: vertical; }
+.modal-input { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,255,255,0.3); color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-family: 'Inter', sans-serif; }
+.modal-input:focus { border-color: #ff00ff; box-shadow: 0 0 10px rgba(255,0,255,0.2); }
+.url-group { display: flex; gap: 10px; margin-bottom: 10px; }
+.url-group input { flex: 1; margin-bottom: 0; }
+.btn-add-url { background: #00ffff; color: #000; border: none; border-radius: 8px; width: 40px; cursor: pointer; font-weight: bold; font-size: 1.2rem; }
 
-.modal-box {
-    background: rgba(10,10,25,0.95);
-    border: 1px solid rgba(0,255,255,0.3);
-    border-radius: 12px;
-    padding: 24px;
-    width: 100%;
-    max-width: 520px;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-.modal-box h2 {
-    text-align: center;
-    color: #00ffff;
-    font-family: 'Orbitron', sans-serif;
-    margin-bottom: 16px;
-}
-.modal-box textarea {
-    width: 100%;
-    min-height: 130px;
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(0,255,255,0.3);
-    color: #fff;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 12px;
-    font-family: monospace;
-    resize: vertical;
-}
-.preview-card {
-    background: rgba(0,0,0,0.4);
-    border: 1px solid rgba(0,255,255,0.15);
-    border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 8px;
-    font-size: 0.85rem;
-}
+/* RANKING */
+.ranking-section { margin-top: 40px; background: rgba(15,15,30,0.6); border: 1px solid rgba(0,255,255,0.2); border-radius: 12px; padding: 20px; }
+.ranking-list { display: flex; flex-direction: column; gap: 12px; }
+.rank-card { display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border-left: 4px solid #00ffff; }
+.rank-card:nth-child(1) { border-left-color: #ffaa00; box-shadow: 0 0 15px rgba(255,170,0,0.1); }
+.rank-card img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
+.rank-info { flex: 1; }
+.rank-name { font-family: 'Orbitron', sans-serif; color: #fff; font-size: 1.1rem; font-weight: bold; }
+.rank-stats { font-size: 0.85rem; color: #aaa; margin-top: 4px; }
+.rank-badge { font-size: 1.5rem; color: #ffaa00; }
+
+.pedido-card { background: rgba(0,0,0,0.5); border: 1px dashed rgba(255,0,255,0.4); padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+.pedido-card img { max-width: 100%; height: auto; border-radius: 4px; margin-top: 10px; border: 1px solid rgba(255,255,255,0.1); }
 
 @media (max-width: 600px) {
     .app-header { flex-direction: column; align-items: flex-start; }
     .actions { width: 100%; }
     .actions button { flex: 1; }
+    .detalhes { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -498,14 +220,8 @@ body {
     <div class="login-box">
         <div class="avatar-section">
             <svg class="text-ring-svg" viewBox="0 0 150 150">
-                <defs>
-                    <path id="textRingPath" class="text-ring-path" d="M 75,75 m -60,0 a 60,60 0 1,1 120,0 a 60,60 0 1,1 -120,0" />
-                </defs>
-                <text class="text-ring-content">
-                    <textPath href="#textRingPath" startOffset="0%">
-                        FAST • HARD • LEGENDARY • FAST • HARD • LEGENDARY • FAST • HARD •
-                    </textPath>
-                </text>
+                <defs><path id="textRingPath" class="text-ring-path" d="M 75,75 m -60,0 a 60,60 0 1,1 120,0 a 60,60 0 1,1 -120,0" /></defs>
+                <text class="text-ring-content"><textPath href="#textRingPath" startOffset="0%">FAST • HARD • LEGENDARY • FAST • HARD • LEGENDARY • FAST • HARD •</textPath></text>
             </svg>
             <div class="neon-ring-blue"></div>
             <div class="neon-ring-magenta"></div>
@@ -516,46 +232,32 @@ body {
 
         <div id="form-login" class="login-form">
             <div class="input-group">
-                <div class="input-neon-frame"></div>
-                <div class="neon-icon">👤</div>
-                <div class="input-cursor">></div>
+                <div class="input-neon-frame"></div><div class="neon-icon">👤</div><div class="input-cursor">></div>
                 <input type="text" id="loginUser" class="login-input" placeholder="User Identifier" autocomplete="off">
             </div>
             <div class="input-group">
-                <div class="input-neon-frame"></div>
-                <div class="neon-icon">🔒</div>
-                <div class="input-cursor">></div>
+                <div class="input-neon-frame"></div><div class="neon-icon">🔒</div><div class="input-cursor">></div>
                 <input type="password" id="loginPass" class="login-input" placeholder="Security Protocol" autocomplete="off">
             </div>
             <button class="click-here-btn" onclick="fazerLogin()">Access Server</button>
-            <div class="switch-form">
-                Não tem conta? <span onclick="mostrarCadastro()">Criar agora</span>
-            </div>
+            <div class="switch-form">Não tem conta? <span onclick="mostrarCadastro()">Criar agora</span></div>
         </div>
 
         <div id="form-cadastro" class="login-form" style="display:none;">
             <div class="input-group">
-                <div class="input-neon-frame"></div>
-                <div class="neon-icon">👤</div>
-                <div class="input-cursor">></div>
+                <div class="input-neon-frame"></div><div class="neon-icon">👤</div><div class="input-cursor">></div>
                 <input type="text" id="cadUser" class="login-input" placeholder="Novo User" autocomplete="off">
             </div>
             <div class="input-group">
-                <div class="input-neon-frame"></div>
-                <div class="neon-icon">🔒</div>
-                <div class="input-cursor">></div>
+                <div class="input-neon-frame"></div><div class="neon-icon">🔒</div><div class="input-cursor">></div>
                 <input type="password" id="cadPass" class="login-input" placeholder="Senha" autocomplete="off">
             </div>
             <div class="input-group">
-                <div class="input-neon-frame"></div>
-                <div class="neon-icon">🔒</div>
-                <div class="input-cursor">></div>
+                <div class="input-neon-frame"></div><div class="neon-icon">🔒</div><div class="input-cursor">></div>
                 <input type="password" id="cadPass2" class="login-input" placeholder="Confirmar Senha" autocomplete="off">
             </div>
             <button class="click-here-btn" onclick="fazerCadastro()">Criar Conta</button>
-            <div class="switch-form">
-                Já tem conta? <span onclick="mostrarLogin()">Voltar</span>
-            </div>
+            <div class="switch-form">Já tem conta? <span onclick="mostrarLogin()">Voltar</span></div>
         </div>
     </div>
 </div>
@@ -563,13 +265,13 @@ body {
 <!-- APP -->
 <div id="app">
     <div class="app-header">
-        <div class="user-info">
+        <div class="user-info" onclick="abrirPerfil()">
             <img id="avatar" src="https://i.imgur.com/8Km9tLL.png" alt="Avatar">
             <div>
-                <div class="name" id="nome-user">User</div>
+                <div class="name" id="nome-user">User <i class="fas fa-edit" style="font-size:0.7rem; color:#aaa"></i></div>
                 <div class="meta">
                     <span class="lvl-badge">LVL <span id="level">1</span></span>
-                    <span>XP: <span id="xp">0</span></span>
+                    <span>XP: <span id="xp">0</span>/100</span>
                 </div>
             </div>
         </div>
@@ -591,51 +293,107 @@ body {
         <div class="mural" id="mural">
             <div class="empty">Carregando...</div>
         </div>
+
+        <div class="ranking-section">
+            <div class="section-title" style="border-bottom-color: #ffaa00; color: #ffaa00;"><i class="fas fa-trophy"></i> Top Hunters</div>
+            <div class="ranking-list" id="ranking-container">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- MODAL IMPORT -->
+<!-- MODAIS -->
+
+<!-- Importar -->
 <div class="modal" id="modalImport">
     <div class="modal-box">
         <h2><i class="fas fa-file-import"></i> Importar Cartões</h2>
-        <textarea id="textoImport" placeholder="Cole o texto dos cartões aqui... (Pode colar no formato: numero|mes|ano|cvv)"></textarea>
-        <input type="file" id="fileImport" accept=".txt,.csv,.log" style="width:100%;margin-bottom:12px;color:#aaa;">
-        <button class="click-here-btn" style="margin-bottom:10px;" onclick="processarImport()">Processar</button>
+        <textarea id="textoImport" placeholder="Cole o texto dos cartões aqui... (numero|mes|ano|cvv)"></textarea>
+        <input type="text" id="retornoPadrao" class="modal-input" placeholder="Retorno padrão para a lista (ex: N7, Aprovado, etc)">
+        <button class="click-here-btn" style="margin-bottom:10px;" id="btnProcessarImport" onclick="processarImport()">Processar (Com Busca BIN)</button>
 
         <div id="previewBox" style="display:none;">
             <h4 style="color:#00ffff;margin-bottom:10px;">Encontrados: <span id="qtdPreview">0</span></h4>
             <div id="previewLista" style="max-height:180px;overflow-y:auto;margin-bottom:12px;"></div>
             <button class="click-here-btn" onclick="enviarImport()">Enviar para o JSONBin</button>
         </div>
-
-        <button class="click-here-btn" style="margin-top:10px;border-color:#555;background:#111;" onclick="fecharImportador()">Fechar</button>
+        <button class="click-here-btn" style="margin-top:10px;border-color:#555;background:#111;" onclick="fecharImportador()">Cancelar</button>
     </div>
 </div>
 
+<!-- Adicionar Pedido -->
+<div class="modal" id="modalPedido">
+    <div class="modal-box">
+        <h2><i class="fas fa-shopping-cart"></i> Lançar Aprovação (+20 XP)</h2>
+        <input type="hidden" id="pedidoCardId">
+        
+        <div style="display:flex; gap:10px;">
+            <select id="pedidoMoeda" class="modal-input" style="width: 100px;">
+                <option value="R$">BRL (R$)</option>
+                <option value="$">USD ($)</option>
+                <option value="€">EUR (€)</option>
+                <option value="£">GBP (£)</option>
+            </select>
+            <input type="number" id="pedidoValor" class="modal-input" placeholder="Valor (ex: 150.00)" step="0.01">
+        </div>
+        
+        <input type="text" id="pedidoLoja" class="modal-input" placeholder="Nome ou Link da Loja">
+        
+        <div id="urlsContainer">
+            <div class="url-group">
+                <input type="text" class="modal-input img-url-input" placeholder="URL da Imagem de Comprovante">
+                <button class="btn-add-url" onclick="addUrlInput()">+</button>
+            </div>
+        </div>
+
+        <button class="click-here-btn" onclick="salvarPedido()">Lançar e Ganhar XP</button>
+        <button class="click-here-btn" style="margin-top:10px;border-color:#555;background:#111;" onclick="fecharModal('modalPedido')">Cancelar</button>
+    </div>
+</div>
+
+<!-- Visualizar Pedidos -->
+<div class="modal" id="modalVisPedido">
+    <div class="modal-box">
+        <h2><i class="fas fa-eye"></i> Histórico de Aprovações</h2>
+        <div id="visPedidosLista" style="max-height: 60vh; overflow-y: auto; padding-right:10px;"></div>
+        <button class="click-here-btn" style="margin-top:10px;border-color:#555;background:#111;" onclick="fecharModal('modalVisPedido')">Fechar</button>
+    </div>
+</div>
+
+<!-- Editar Perfil -->
+<div class="modal" id="modalPerfil">
+    <div class="modal-box">
+        <h2><i class="fas fa-user-edit"></i> Configurar Perfil</h2>
+        <p style="color:#aaa; font-size:0.8rem; margin-bottom:15px; text-align:center;">Mudar o usuário atualizará automaticamente todos os seus cartões antigos para o novo nome.</p>
+        
+        <label style="color:#00ffff; font-size:0.8rem; padding-left:5px;">Novo Usuário:</label>
+        <input type="text" id="editUserNome" class="modal-input">
+        
+        <label style="color:#00ffff; font-size:0.8rem; padding-left:5px;">Nova Senha:</label>
+        <input type="password" id="editUserSenha" class="modal-input" placeholder="Digite para alterar...">
+        
+        <button class="click-here-btn" onclick="salvarPerfil()">Salvar Alterações</button>
+        <button class="click-here-btn" style="margin-top:10px;border-color:#555;background:#111;" onclick="fecharModal('modalPerfil')">Cancelar</button>
+    </div>
+</div>
+
+
 <script>
-// MATRIX RAIN
+// MATRIX RAIN BACKGROUND
 const canvas = document.getElementById('matrixCanvas');
 const ctx = canvas.getContext('2d');
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
+function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 resizeCanvas();
 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
 const fontSize = 16;
 let columns = canvas.width / fontSize;
 let drops = [];
-function initDrops() {
-    columns = canvas.width / fontSize;
-    drops = [];
-    for (let x = 0; x < columns; x++) drops[x] = 1;
-}
+function initDrops() { columns = canvas.width / fontSize; drops = []; for (let x = 0; x < columns; x++) drops[x] = 1; }
 initDrops();
 function draw() {
-    ctx.fillStyle = 'rgba(5,5,15,0.08)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#00ffff';
-    ctx.font = fontSize + 'px Orbitron, monospace';
+    ctx.fillStyle = 'rgba(5,5,15,0.08)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#00ffff'; ctx.font = fontSize + 'px Orbitron, monospace';
     for (let i = 0; i < drops.length; i++) {
         const text = chars.charAt(Math.floor(Math.random() * chars.length));
         ctx.fillText(text, i * fontSize, drops[i] * fontSize);
@@ -646,7 +404,7 @@ function draw() {
 setInterval(draw, 33);
 window.addEventListener('resize', () => { resizeCanvas(); initDrops(); });
 
-// CONFIG JSONBIN
+// JSONBIN SETUP
 const JSONBIN_URL = "https://api.jsonbin.io/v3/b/6a6b901cf5f4af5e29d6dab3";
 const MASTER_KEY  = "$2a$10$L2TVNqek/J16zqH/lHHkZe/wLZlo4VwmHQKm8KWtGDsrigGB3.OlC";
 
@@ -654,49 +412,31 @@ let usuario = null;
 let dados = { items: [], users: [], historico: [] };
 let encontrados = [];
 
-// HELPERS
+// DATA HELPERS
 async function getData() {
     try {
-        const res = await fetch(JSONBIN_URL + "/latest", {
-            headers: { "X-Master-Key": MASTER_KEY }
-        });
+        const res = await fetch(JSONBIN_URL + "/latest", { headers: { "X-Master-Key": MASTER_KEY } });
         if (!res.ok) throw new Error("Erro");
         return (await res.json()).record;
-    } catch (e) {
-        console.error(e);
-        return null;
-    }
+    } catch (e) { console.error(e); return null; }
 }
 
 async function saveData(obj) {
     await fetch(JSONBIN_URL, {
         method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            "X-Master-Key": MASTER_KEY
-        },
+        headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
         body: JSON.stringify(obj)
     });
 }
 
 function normalizar(raw) {
     if (Array.isArray(raw)) return { items: raw, users: [], historico: [] };
-    return {
-        items: raw?.items || [],
-        users: raw?.users || [],
-        historico: raw?.historico || []
-    };
+    return { items: raw?.items || [], users: raw?.users || [], historico: raw?.historico || [] };
 }
 
-// LOGIN / CADASTRO
-function mostrarCadastro() {
-    document.getElementById("form-login").style.display = "none";
-    document.getElementById("form-cadastro").style.display = "block";
-}
-function mostrarLogin() {
-    document.getElementById("form-cadastro").style.display = "none";
-    document.getElementById("form-login").style.display = "block";
-}
+// LOGIN SYSTEM
+function mostrarCadastro() { document.getElementById("form-login").style.display = "none"; document.getElementById("form-cadastro").style.display = "block"; }
+function mostrarLogin() { document.getElementById("form-cadastro").style.display = "none"; document.getElementById("form-login").style.display = "block"; }
 
 async function fazerCadastro() {
     const user = document.getElementById("cadUser").value.trim();
@@ -705,25 +445,16 @@ async function fazerCadastro() {
 
     if (!user || !pass) return alert("Preencha usuário e senha");
     if (pass !== pass2) return alert("As senhas não coincidem");
-    if (pass.length < 3) return alert("Senha muito curta");
 
     let raw = await getData();
     let data = normalizar(raw);
 
-    if (data.users.find(u => u.nome.toLowerCase() === user.toLowerCase())) {
-        return alert("Esse usuário já existe");
-    }
+    if (data.users.find(u => u.nome.toLowerCase() === user.toLowerCase())) return alert("Esse usuário já existe");
 
     const novo = {
-        id: "user_" + Date.now().toString(36),
-        nome: user,
-        senha: pass,
-        avatar: "https://i.imgur.com/8Km9tLL.png",
-        xp: 0,
-        level: 1,
-        dataCadastro: new Date().toISOString()
+        id: "user_" + Date.now().toString(36), nome: user, senha: pass,
+        avatar: "https://i.imgur.com/8Km9tLL.png", xp: 0, level: 1, dataCadastro: new Date().toISOString()
     };
-
     data.users.push(novo);
     await saveData(data);
     alert("Conta criada com sucesso!");
@@ -733,16 +464,11 @@ async function fazerCadastro() {
 async function fazerLogin() {
     const user = document.getElementById("loginUser").value.trim();
     const pass = document.getElementById("loginPass").value;
-
     if (!user || !pass) return alert("Preencha usuário e senha");
 
     let raw = await getData();
     let data = normalizar(raw);
-    if (Array.isArray(raw)) await saveData(data);
-
-    const encontrado = data.users.find(u =>
-        u.nome.toLowerCase() === user.toLowerCase() && u.senha === pass
-    );
+    const encontrado = data.users.find(u => u.nome.toLowerCase() === user.toLowerCase() && u.senha === pass);
 
     if (!encontrado) return alert("Usuário ou senha incorretos");
     loginUsuario(encontrado);
@@ -751,336 +477,446 @@ async function fazerLogin() {
 function loginUsuario(user) {
     usuario = user;
     localStorage.setItem("dg_user", JSON.stringify(user));
-
     document.getElementById("tela-login").style.display = "none";
     document.getElementById("app").style.display = "block";
-
-    document.getElementById("nome-user").textContent = user.nome;
-    document.getElementById("avatar").src = user.avatar || "https://i.imgur.com/8Km9tLL.png";
-    document.getElementById("xp").textContent = user.xp || 0;
-    document.getElementById("level").textContent = Math.floor((user.xp || 0) / 100) + 1;
-
+    atualizarHeaderUser();
     carregarTudo();
 }
 
+function atualizarHeaderUser() {
+    document.getElementById("nome-user").innerHTML = `${usuario.nome} <i class="fas fa-edit" style="font-size:0.7rem; color:#aaa"></i>`;
+    document.getElementById("xp").textContent = usuario.xp || 0;
+    document.getElementById("level").textContent = usuario.level || 1;
+}
+
 function logout() {
-    localStorage.removeItem("dg_user");
-    usuario = null;
+    localStorage.removeItem("dg_user"); usuario = null;
     document.getElementById("app").style.display = "none";
     document.getElementById("tela-login").style.display = "flex";
-    document.getElementById("loginUser").value = "";
-    document.getElementById("loginPass").value = "";
     mostrarLogin();
 }
 
-// CARREGAR LISTAS
+// MAIN RENDER
 async function carregarTudo() {
     const mural = document.getElementById("mural");
-    mural.innerHTML = `<div class="empty">Carregando...</div>`;
+    mural.innerHTML = `<div class="empty">Carregando dados da rede...</div>`;
 
     let raw = await getData();
-    if (!raw) {
-        mural.innerHTML = `<div class="empty" style="color:#ff3366;">Erro ao conectar</div>`;
-        return;
-    }
+    if (!raw) return mural.innerHTML = `<div class="empty" style="color:#ff3366;">Falha de conexão com o Banco de Dados.</div>`;
 
-    let data = normalizar(raw);
-    data.items = (data.items || []).map(item => {
-        if (item.ownerId === undefined) {
-            item.ownerId = null;
-            item.ownerNome = null;
-            item.dataSorteio = null;
-        }
-        return item;
-    });
+    dados = normalizar(raw);
+    
+    // Atualiza info atual do usuario logado (caso ele tenha ganho xp em outra aba)
+    const dbUser = dados.users.find(u => u.id === usuario.id);
+    if(dbUser) { usuario = dbUser; atualizarHeaderUser(); localStorage.setItem("dg_user", JSON.stringify(usuario)); }
 
-    dados = data;
-    
-    // Histórico fixo: Se o cartão tiver ownerId igual ao do usuário atual, ele será listado aqui.
-    // Assim que é sorteado, o ID do usuário fica colado no cartão para sempre.
-    const meus = data.items.filter(c => c.ownerId === usuario.id);
-    
-    // O pool é formado SOMENTE por cartões que não têm dono (estão nulos)
-    const disponiveis = data.items.filter(c => !c.ownerId);
+    const meus = dados.items.filter(c => c.ownerId === usuario.id);
+    const disponiveis = dados.items.filter(c => !c.ownerId);
 
     document.getElementById("qtd-meus").textContent = meus.length;
     document.getElementById("qtd-disp").textContent = disponiveis.length;
     
     renderizarCards(meus);
+    renderizarRanking();
 }
 
-// RENDERIZAR MEUS CARTÕES
 function renderizarCards(lista) {
     const mural = document.getElementById("mural");
     mural.innerHTML = "";
 
     if (!lista || lista.length === 0) {
-        mural.innerHTML = `<div class="empty">Nenhum cartão ainda.<br><br>Clique em <strong style="color:#ffaa00">PUXAR</strong> para sortear.</div>`;
+        mural.innerHTML = `<div class="empty">Nenhum cartão no seu histórico.<br><br>Clique em <strong style="color:#ffaa00">PUXAR</strong> para sortear do Pool.</div>`;
         return;
     }
 
     lista.forEach(item => {
-        if (!item.numero_cartao) return;
+        let mes = (item.mes_validade || item.mes || "00").toString().padStart(2, '0');
+        let ano = (item.ano_validade || item.ano || "0000").toString();
+        if(ano.length === 2) ano = "20" + ano;
+        const cvv = item.cvv || "000";
 
-        // VALIDADE - tratamento reforçado
-        let mes = item.mes_validade || item.mes || item.exp_month || item.validade_mes || "--";
-        let ano = item.ano_validade || item.ano || item.exp_year || item.validade_ano || "----";
-
-        if ((!item.mes_validade && !item.ano_validade) && item.validade) {
-            const partes = String(item.validade).replace(/\s/g, "").split(/[\/\-]/);
-            if (partes.length === 2) {
-                mes = partes[0].padStart(2, "0");
-                ano = partes[1].length === 2 ? "20" + partes[1] : partes[1];
-            }
-        }
-
-        mes = String(mes).padStart(2, "0");
-        if (String(ano).length === 2) ano = "20" + ano;
-
-        const cvv = item.cvv || item.cvc || "---";
-        const banco = item.banco || item.bank || "—";
-        const classe = item.classe || item.tipo || "—";
-        const pais = item.pais || item.country || "—";
-        const retorno = item.retorno || item.return || item.status_retorno || "—";
-        const statusTexto = item.status || "aguardando";
-
-        const icon = item.bandeira === "VISA" ? "fab fa-cc-visa" :
-                     item.bandeira === "MASTERCARD" ? "fab fa-cc-mastercard" : "fas fa-credit-card";
-
-        const statusClass = statusTexto === "aguardando" ? "status-aguardando" :
-                            statusTexto === "aprovado" ? "status-aprovado" : "status-recusado";
-
-        const cor = item.bandeira === "VISA" ? "#1a1f71" : "#eb001b";
+        const temPedidos = item.pedidos && item.pedidos.length > 0;
+        let statusTexto = temPedidos ? "aprovado" : (item.status || "aguardando");
+        
+        const statusClass = statusTexto === "aguardando" ? "status-aguardando" : statusTexto === "aprovado" ? "status-aprovado" : "status-recusado";
+        const icon = item.bandeira === "VISA" ? "fab fa-cc-visa" : item.bandeira === "MASTERCARD" ? "fab fa-cc-mastercard" : "fas fa-credit-card";
+        const cor = item.bandeira === "VISA" ? "#1a1f71" : item.bandeira === "MASTERCARD" ? "#eb001b" : "#aaa";
 
         const div = document.createElement("div");
         div.className = "card";
         
-        // CORRIGIDO O PROBLEMA DA EXIBIÇÃO: Sintaxe correta das Template Strings => ${variavel} 
         div.innerHTML = `
             <div class="card-header">
                 <i class="${icon} bandeira" style="color: ${cor}"></i>
-                <span class="status ${statusClass}">${statusTexto}</span>
+                <span class="status ${statusClass}" onclick="abrirModalPedido('${item.id}')" title="Adicionar Aprovação">${statusTexto}</span>
             </div>
-            <div class="numero">${formatar(item.numero_cartao)}</div>
+            <div class="numero" onclick="copiarCard('${item.numero_cartao}', '${mes}', '${ano}', '${cvv}')" title="Clique para copiar formato pipe">
+                ${formatarCartao(item.numero_cartao)}
+            </div>
             <div class="detalhes">
-                <div><strong>Validade:</strong> ${mes}/${ano}</div>
+                <div><strong>Val:</strong> ${mes}/${ano}</div>
                 <div><strong>CVV:</strong> ${cvv}</div>
-                <div><strong>Banco:</strong> ${banco}</div>
-                <div><strong>Classe:</strong> ${classe}</div>
-                <div style="grid-column:1/-1"><strong>País:</strong> ${pais}</div>
-                <div style="grid-column:1/-1;color:#ffaa00"><strong>Retorno:</strong> ${retorno}</div>
+                <div><strong>Banco:</strong> ${item.banco || "—"}</div>
+                <div><strong>Classe:</strong> ${item.classe || "—"}</div>
+                <div style="grid-column:1/-1"><strong>País:</strong> ${item.pais || "—"}</div>
+                <div style="grid-column:1/-1;color:#ffaa00"><strong>Retorno:</strong> ${item.retorno || "—"}</div>
+            </div>
+            <div class="card-actions">
+                ${temPedidos ? `<i class="fas fa-eye icon-btn" style="color:#00e676" onclick="verPedidos('${item.id}')" title="Ver Pedidos"></i>` : ''}
+                <i class="fas fa-trash-alt icon-btn" style="color:#ff3366" onclick="deletarCartao('${item.id}')" title="Deletar do Banco"></i>
             </div>
         `;
         mural.appendChild(div);
     });
 }
 
-function formatar(num) {
-    if (!num) return "•••• •••• •••• ••••";
-    return String(num).replace(/(\d{4})(?=\d)/g, "$1 ");
+// ACOES DO CARTAO
+function formatarCartao(num) { return String(num || "").replace(/(\d{4})(?=\d)/g, "$1 "); }
+
+function copiarCard(num, mes, ano, cvv) {
+    const texto = `${num}|${mes}|${ano}|${cvv}`;
+    const textarea = document.createElement('textarea');
+    textarea.value = texto;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    
+    // Feedback visual
+    const notification = document.createElement('div');
+    notification.innerText = "Copiado para área de transferência!";
+    Object.assign(notification.style, {
+        position: 'fixed', bottom: '20px', right: '20px', background: '#00ffff', color: '#000',
+        padding: '10px 20px', borderRadius: '8px', zIndex: '9999', fontWeight: 'bold', fontFamily: 'Orbitron'
+    });
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 2000);
 }
 
-// PUXAR (SORTEIO)
+async function deletarCartao(id) {
+    if(!confirm("Tem certeza que deseja apagar esse cartão do banco de dados?")) return;
+    dados.items = dados.items.filter(c => c.id !== id);
+    await saveData(dados);
+    carregarTudo();
+}
+
 async function sortearCartao() {
-    if (!usuario) return;
-    let raw = await getData();
-    let data = normalizar(raw);
+    const disponiveis = dados.items.filter(c => !c.ownerId);
+    if (disponiveis.length === 0) return alert("Não há mais cartões no pool público!");
 
-    // Garante propriedades
-    data.items = (data.items || []).map(item => {
-        if (item.ownerId === undefined) {
-            item.ownerId = null;
-            item.ownerNome = null;
-            item.dataSorteio = null;
-        }
-        return item;
-    });
-
-    // Pega apenas quem NÃO tem dono (pool público)
-    const disponiveis = data.items.filter(c => !c.ownerId);
-    if (disponiveis.length === 0) return alert("Não há mais cartões no pool!");
-
-    // Sorteia 1
     const sorteado = disponiveis[Math.floor(Math.random() * disponiveis.length)];
+    const idx = dados.items.findIndex(c => c.id === sorteado.id);
     
-    // Atualiza com o ID do usuário (isso o torna invisível pros outros e sempre visível pra ele)
-    const idx = data.items.findIndex(c => c.id === sorteado.id);
-    data.items[idx].ownerId = usuario.id;
-    data.items[idx].ownerNome = usuario.nome;
-    data.items[idx].dataSorteio = new Date().toISOString();
+    dados.items[idx].ownerId = usuario.id;
+    dados.items[idx].ownerNome = usuario.nome;
+    dados.items[idx].dataSorteio = new Date().toISOString();
 
-    // Cria registro de auditoria no histórico geral
-    data.historico = data.historico || [];
-    data.historico.push({
-        userId: usuario.id,
-        userNome: usuario.nome,
-        acao: "sorteou",
-        cartaoId: sorteado.id,
-        data: new Date().toISOString()
-    });
-
-    await saveData(data);
-
-    const mesAlert = sorteado.mes_validade || sorteado.mes || "--";
-    const anoAlert = sorteado.ano_validade || sorteado.ano || "----";
-    alert("Cartão sorteado!\n\n" + formatar(sorteado.numero_cartao) + "\nValidade: " + mesAlert + "/" + anoAlert);
-    
-    carregarTudo(); // Atualiza a tela puxando tudo novamente
+    await saveData(dados);
+    alert(`Cartão Sorteado!\n\n${formatarCartao(sorteado.numero_cartao)}\nVerifique no seu mural.`);
+    carregarTudo();
 }
 
-// IMPORTADOR
+// SISTEMA DE PEDIDOS E XP
+function fecharModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function abrirModalPedido(id) {
+    document.getElementById("pedidoCardId").value = id;
+    document.getElementById("pedidoValor").value = "";
+    document.getElementById("pedidoLoja").value = "";
+    document.getElementById("urlsContainer").innerHTML = `
+        <div class="url-group">
+            <input type="text" class="modal-input img-url-input" placeholder="URL da Imagem de Comprovante">
+            <button class="btn-add-url" onclick="addUrlInput()">+</button>
+        </div>`;
+    document.getElementById("modalPedido").classList.add("show");
+}
+
+function addUrlInput() {
+    const div = document.createElement("div");
+    div.className = "url-group";
+    div.innerHTML = `<input type="text" class="modal-input img-url-input" placeholder="URL da Imagem Adicional">`;
+    document.getElementById("urlsContainer").appendChild(div);
+}
+
+async function salvarPedido() {
+    const id = document.getElementById("pedidoCardId").value;
+    const valor = document.getElementById("pedidoValor").value;
+    const moeda = document.getElementById("pedidoMoeda").value;
+    const loja = document.getElementById("pedidoLoja").value;
+    
+    const urlInputs = document.querySelectorAll('.img-url-input');
+    let urls = [];
+    urlInputs.forEach(inp => { if(inp.value.trim() !== "") urls.push(inp.value.trim()); });
+
+    if(!valor || !loja) return alert("Preencha o valor e a loja.");
+
+    const idx = dados.items.findIndex(c => c.id === id);
+    if(idx === -1) return;
+
+    if(!dados.items[idx].pedidos) dados.items[idx].pedidos = [];
+    
+    dados.items[idx].pedidos.push({
+        data: new Date().toISOString(),
+        valor: parseFloat(valor),
+        moeda: moeda,
+        loja: loja,
+        imagens: urls
+    });
+
+    dados.items[idx].status = "aprovado";
+
+    // Adiciona XP
+    adicionarXP(20);
+
+    await saveData(dados);
+    fecharModal('modalPedido');
+    alert("Pedido lançado! +20 XP adicionado.");
+    carregarTudo();
+}
+
+function adicionarXP(pontos) {
+    usuario.xp = (usuario.xp || 0) + pontos;
+    while(usuario.xp >= 100) {
+        usuario.level = (usuario.level || 1) + 1;
+        usuario.xp -= 100;
+        alert(`⚡ LEVEL UP! ⚡\nVocê alcançou o Nível ${usuario.level}!`);
+    }
+    
+    // Atualiza obj global
+    const uIdx = dados.users.findIndex(u => u.id === usuario.id);
+    if(uIdx > -1) {
+        dados.users[uIdx].xp = usuario.xp;
+        dados.users[uIdx].level = usuario.level;
+    }
+    
+    atualizarHeaderUser();
+    localStorage.setItem("dg_user", JSON.stringify(usuario));
+}
+
+function verPedidos(id) {
+    const card = dados.items.find(c => c.id === id);
+    if(!card || !card.pedidos || card.pedidos.length === 0) return;
+
+    const lista = document.getElementById("visPedidosLista");
+    lista.innerHTML = card.pedidos.map(p => `
+        <div class="pedido-card">
+            <strong style="color:#00ffff">${p.loja}</strong><br>
+            <span style="color:#fff">${p.moeda} ${p.valor.toFixed(2)}</span><br>
+            <small style="color:#aaa">${new Date(p.data).toLocaleString('pt-BR')}</small>
+            ${p.imagens.map(url => `<img src="${url}" onerror="this.style.display='none'">`).join('')}
+        </div>
+    `).join('');
+
+    document.getElementById("modalVisPedido").classList.add("show");
+}
+
+// PERFIL USER
+function abrirPerfil() {
+    document.getElementById("editUserNome").value = usuario.nome;
+    document.getElementById("editUserSenha").value = "";
+    document.getElementById("modalPerfil").classList.add("show");
+}
+
+async function salvarPerfil() {
+    const novoNome = document.getElementById("editUserNome").value.trim();
+    const novaSenha = document.getElementById("editUserSenha").value;
+
+    if(!novoNome) return alert("O nome não pode ser vazio.");
+
+    const uIdx = dados.users.findIndex(u => u.id === usuario.id);
+    if(uIdx === -1) return;
+
+    dados.users[uIdx].nome = novoNome;
+    if(novaSenha) dados.users[uIdx].senha = novaSenha;
+
+    // Atualiza nome nos cartões
+    dados.items.forEach(c => {
+        if(c.ownerId === usuario.id) {
+            c.ownerNome = novoNome;
+        }
+    });
+
+    usuario.nome = novoNome;
+    if(novaSenha) usuario.senha = novaSenha;
+
+    await saveData(dados);
+    
+    atualizarHeaderUser();
+    localStorage.setItem("dg_user", JSON.stringify(usuario));
+    fecharModal('modalPerfil');
+    alert("Perfil atualizado e cartões sincronizados!");
+    carregarTudo();
+}
+
+// IMPORTADOR E CONSULTA BIN
 function abrirImportador() {
     document.getElementById("textoImport").value = "";
-    document.getElementById("fileImport").value = "";
+    document.getElementById("retornoPadrao").value = "";
     document.getElementById("previewBox").style.display = "none";
+    document.getElementById("btnProcessarImport").disabled = false;
+    document.getElementById("btnProcessarImport").innerText = "Processar (Com Busca BIN)";
     encontrados = [];
     document.getElementById("modalImport").classList.add("show");
 }
-function fecharImportador() {
-    document.getElementById("modalImport").classList.remove("show");
+function fecharImportador() { fecharModal('modalImport'); }
+
+async function buscarDadosBinJuspay(bin) {
+    try {
+        const res = await fetch(`https://api.juspay.in/cardbins/${bin}`);
+        if(!res.ok) return null;
+        return await res.json();
+    } catch(e) { return null; }
 }
 
-document.getElementById("fileImport").addEventListener("change", function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-        document.getElementById("textoImport").value = ev.target.result;
-    };
-    reader.readAsText(file);
-});
-
-function processarImport() {
+async function processarImport() {
     const texto = document.getElementById("textoImport").value.trim();
-    if (!texto) return alert("Cole algum texto");
+    const retornoPadrao = document.getElementById("retornoPadrao").value.trim() || "Importado";
+    if (!texto) return alert("Cole o texto da lista.");
 
-    encontrados = extrairCartoes(texto);
+    const btn = document.getElementById("btnProcessarImport");
+    btn.disabled = true;
+    btn.innerText = "Extraindo e Buscando BINs... Aguarde";
+
+    const extraidos = extrairCartoesLocais(texto);
+    
+    // Consulta API para enriquecer dados
+    for(let i=0; i < extraidos.length; i++) {
+        let c = extraidos[i];
+        let binInfo = await buscarDadosBinJuspay(c.numero_cartao.substring(0, 6));
+        
+        if(binInfo) {
+            c.banco = binInfo.bank || "UNKNOWN";
+            c.pais = binInfo.country || "UNKNOWN";
+            c.classe = binInfo.card_sub_type || binInfo.type || "UNKNOWN";
+            c.bandeira = (binInfo.brand || c.bandeira).toUpperCase();
+        }
+        c.retorno = retornoPadrao;
+    }
+
+    encontrados = extraidos;
     document.getElementById("qtdPreview").textContent = encontrados.length;
 
     const lista = document.getElementById("previewLista");
     if (encontrados.length === 0) {
-        lista.innerHTML = `<p style="color:#ff3366;text-align:center;">Nenhum cartão encontrado</p>`;
+        lista.innerHTML = `<p style="color:#ff3366;text-align:center;">Nenhum cartão válido encontrado</p>`;
     } else {
-        // CORRIGIDO O ERRO DE DIGITAÇÃO AQUI TAMBÉM NAS TEMPLATES
-        lista.innerHTML = encontrados.map(function(c, i) {
-            return `<div class="preview-card"><strong>#${i+1}</strong> ${formatar(c.numero_cartao)} | ${c.mes_validade}/${c.ano_validade} | CVV: ${c.cvv}</div>`;
-        }).join("");
+        lista.innerHTML = encontrados.map((c, i) => `
+            <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(0,255,255,0.15);padding:10px;margin-bottom:8px;font-size:0.8rem;border-radius:4px;">
+                <strong>#${i+1}</strong> ${formatarCartao(c.numero_cartao)} | ${c.banco} | ${c.pais}
+            </div>
+        `).join("");
     }
     document.getElementById("previewBox").style.display = "block";
+    btn.innerText = "Concluído";
 }
 
-// MELHORIA: Extrator inteligente para formatos como cc|mes|ano|cvv
-function extrairCartoes(texto) {
+function extrairCartoesLocais(texto) {
     const resultados = [];
     const linhas = texto.split(/\r?\n/);
+    const vistos = new Set();
 
-    for (let i = 0; i < linhas.length; i++) {
-        let linha = linhas[i].trim();
+    for (let linha of linhas) {
+        linha = linha.trim();
         if (!linha) continue;
 
-        // Expressão Regular para pegar formatos perfeitamente definidos (cartao | mes | ano | cvv)
-        // Suporta os separadores: espaço, barra normal, pipe (|), ou dois pontos.
         const regexPipe = /(\d{15,16})[\s\|\:\/]+(\d{2})[\s\|\:\/]+(\d{2,4})[\s\|\:\/]+(\d{3,4})/;
         let match = linha.match(regexPipe);
 
-        let numero, mes, ano, cvv;
-
         if (match) {
-            numero = match[1];
-            mes = match[2];
-            ano = match[3];
-            cvv = match[4];
-        } else {
-            // Fallback: Tentativa de extração genérica solta no texto inteiro caso falhe
-            const reCartao = /\b(\d{15,16})\b/;
-            const linhaLimpa = linha.replace(/[\s\-]/g, "");
-            const matchCard = linhaLimpa.match(reCartao);
-            
-            if (!matchCard) continue;
-            numero = matchCard[1];
+            let num = match[1];
+            if(vistos.has(num)) continue;
+            vistos.add(num);
 
-            const contexto = [linha, linhas[i+1]||"", linhas[i+2]||""].join(" ");
-            const reVal = /\b(0[1-9]|1[0-2])[\/\-\s\|]+(2[0-9]{3}|[0-9]{2})\b/;
-            const val = contexto.match(reVal);
-
-            mes = "01";
-            ano = "2030";
-            if (val) {
-                mes = val[1];
-                ano = val[2];
-            }
-
-            const cvvs = contexto.match(/\b\d{3,4}\b/g) || [];
-            cvv = "000";
-            for (const c of cvvs) {
-                if (c !== numero.slice(-3) && c !== numero.slice(-4) && c !== ano && c !== mes) {
-                    cvv = c;
-                    break;
-                }
-            }
+            resultados.push({
+                id: "card_" + Date.now().toString(36) + Math.random().toString(36).substr(2,5),
+                numero_cartao: num,
+                mes_validade: match[2].padStart(2, "0"),
+                ano_validade: match[3].length === 2 ? "20"+match[3] : match[3],
+                cvv: match[4],
+                banco: "Buscando...", pais: "Buscando...", classe: "Buscando...",
+                bandeira: num.startsWith("4") ? "VISA" : num.startsWith("5") ? "MASTERCARD" : num.startsWith("3") ? "AMEX" : "UNKNOWN",
+                status: "aguardando", ownerId: null, ownerNome: null, dataSorteio: null, pedidos: []
+            });
         }
-
-        if (numero.length < 15 || numero.length > 16) continue;
-
-        mes = mes.padStart(2, "0");
-        // Tratamento para evitar anos muito curtos ou bizarrices da digitação (ex: 22222)
-        if (ano.length === 2) ano = "20" + ano;
-        if (ano.length > 4) ano = ano.slice(0, 4); 
-
-        resultados.push({
-            id: String(Date.now()).slice(-6) + Math.floor(Math.random()*90+10),
-            numero_cartao: numero,
-            mes_validade: mes,
-            ano_validade: ano,
-            cvv: cvv,
-            retorno: "Importado",
-            banco: "UNKNOWN",
-            pais: "UNITED STATES",
-            classe: "CREDIT",
-            bandeira: numero.startsWith("4") ? "VISA" : (numero.startsWith("5") || numero.startsWith("2")) ? "MASTERCARD" : numero.startsWith("3") ? "AMEX" : "UNKNOWN",
-            status: "aguardando",
-            ownerId: null, // Ao ser importado vem nulo para ir para o pool público
-            ownerNome: null,
-            dataSorteio: null
-        });
     }
-
-    const vistos = new Set();
-    return resultados.filter(function(c) {
-        if (vistos.has(c.numero_cartao)) return false;
-        vistos.add(c.numero_cartao);
-        return true;
-    });
+    return resultados;
 }
 
 async function enviarImport() {
     if (encontrados.length === 0) return alert("Nada para enviar");
+    const btn = document.querySelector("#previewBox button");
+    btn.innerText = "Salvando no Banco...";
 
     let raw = await getData();
     let data = normalizar(raw);
 
-    const existentes = new Set((data.items || []).map(function(i){ return i.numero_cartao; }));
-    const novos = encontrados.filter(function(c){ return !existentes.has(c.numero_cartao); });
+    const existentes = new Set(data.items.map(i => i.numero_cartao));
+    const novos = encontrados.filter(c => !existentes.has(c.numero_cartao));
 
-    if (novos.length === 0) return alert("Todos os cartões dessa lista já existem no sistema.");
+    if (novos.length === 0) {
+        fecharImportador();
+        return alert("Todos os cartões já existem no sistema.");
+    }
 
-    data.items = (data.items || []).concat(novos);
+    data.items = data.items.concat(novos);
     await saveData(data);
 
-    alert(novos.length + " cartão(ões) adicionados ao Pool Público!");
+    alert(`${novos.length} cartão(ões) adicionados ao Pool Público!`);
     fecharImportador();
     carregarTudo();
 }
 
-// INICIALIZADOR
+// RANKING SYSTEM
+function renderizarRanking() {
+    const container = document.getElementById("ranking-container");
+    container.innerHTML = "";
+
+    if(!dados || !dados.users || dados.users.length === 0) return;
+
+    // Calcular stats
+    let userStats = dados.users.map(u => {
+        const cartoes = dados.items.filter(c => c.ownerId === u.id);
+        const qtdCartoes = cartoes.length;
+        let qtdPedidos = 0;
+        cartoes.forEach(c => { if(c.pedidos) qtdPedidos += c.pedidos.length; });
+        
+        let rate = qtdCartoes > 0 ? ((qtdPedidos / qtdCartoes) * 100).toFixed(1) : 0;
+        
+        return {
+            nome: u.nome, avatar: u.avatar, lvl: u.level || 1,
+            cartoes: qtdCartoes, pedidos: qtdPedidos, rate: rate
+        };
+    });
+
+    // Ordenar (Mais pedidos -> Mais cartões puxados)
+    userStats.sort((a, b) => b.pedidos - a.pedidos || b.cartoes - a.cartoes);
+    
+    // Pegar top 2
+    const top2 = userStats.slice(0, 2);
+
+    top2.forEach((us, index) => {
+        let badgeIcon = index === 0 ? "👑" : "🥈";
+        container.innerHTML += `
+            <div class="rank-card">
+                <div class="rank-badge">${badgeIcon}</div>
+                <img src="${us.avatar || 'https://i.imgur.com/8Km9tLL.png'}">
+                <div class="rank-info">
+                    <div class="rank-name">${us.nome} <span style="font-size:0.7rem; color:#00ffff; font-weight:normal">Lvl ${us.lvl}</span></div>
+                    <div class="rank-stats">
+                        🎯 Aprovações: <strong style="color:#00e676">${us.pedidos}</strong> | 💳 Cartões Puxados: <strong>${us.cartoes}</strong> | 📊 Rate: <strong>${us.rate}%</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// INIT
 window.onload = function() {
     const saved = localStorage.getItem("dg_user");
     if (saved) {
-        try {
-            loginUsuario(JSON.parse(saved));
-        } catch(e) {
-            localStorage.removeItem("dg_user");
-        }
+        try { loginUsuario(JSON.parse(saved)); } 
+        catch(e) { localStorage.removeItem("dg_user"); }
     }
 };
 </script>
