@@ -598,7 +598,7 @@ body {
 <div class="modal" id="modalImport">
     <div class="modal-box">
         <h2><i class="fas fa-file-import"></i> Importar Cartões</h2>
-        <textarea id="textoImport" placeholder="Cole o texto dos cartões aqui..."></textarea>
+        <textarea id="textoImport" placeholder="Cole o texto dos cartões aqui... (Pode colar no formato: numero|mes|ano|cvv)"></textarea>
         <input type="file" id="fileImport" accept=".txt,.csv,.log" style="width:100%;margin-bottom:12px;color:#aaa;">
         <button class="click-here-btn" style="margin-bottom:10px;" onclick="processarImport()">Processar</button>
 
@@ -646,7 +646,7 @@ function draw() {
 setInterval(draw, 33);
 window.addEventListener('resize', () => { resizeCanvas(); initDrops(); });
 
-// CONFIG
+// CONFIG JSONBIN
 const JSONBIN_URL = "https://api.jsonbin.io/v3/b/6a6b901cf5f4af5e29d6dab3";
 const MASTER_KEY  = "$2a$10$L2TVNqek/J16zqH/lHHkZe/wLZlo4VwmHQKm8KWtGDsrigGB3.OlC";
 
@@ -773,7 +773,7 @@ function logout() {
     mostrarLogin();
 }
 
-// CARREGAR
+// CARREGAR LISTAS
 async function carregarTudo() {
     const mural = document.getElementById("mural");
     mural.innerHTML = `<div class="empty">Carregando...</div>`;
@@ -795,14 +795,21 @@ async function carregarTudo() {
     });
 
     dados = data;
+    
+    // Histórico fixo: Se o cartão tiver ownerId igual ao do usuário atual, ele será listado aqui.
+    // Assim que é sorteado, o ID do usuário fica colado no cartão para sempre.
     const meus = data.items.filter(c => c.ownerId === usuario.id);
+    
+    // O pool é formado SOMENTE por cartões que não têm dono (estão nulos)
     const disponiveis = data.items.filter(c => !c.ownerId);
 
     document.getElementById("qtd-meus").textContent = meus.length;
     document.getElementById("qtd-disp").textContent = disponiveis.length;
+    
     renderizarCards(meus);
 }
 
+// RENDERIZAR MEUS CARTÕES
 function renderizarCards(lista) {
     const mural = document.getElementById("mural");
     mural.innerHTML = "";
@@ -815,7 +822,7 @@ function renderizarCards(lista) {
     lista.forEach(item => {
         if (!item.numero_cartao) return;
 
-        // VALIDADE CORRIGIDA
+        // VALIDADE - tratamento reforçado
         let mes = item.mes_validade || item.mes || item.exp_month || item.validade_mes || "--";
         let ano = item.ano_validade || item.ano || item.exp_year || item.validade_ano || "----";
 
@@ -847,14 +854,16 @@ function renderizarCards(lista) {
 
         const div = document.createElement("div");
         div.className = "card";
+        
+        // CORRIGIDO O PROBLEMA DA EXIBIÇÃO: Sintaxe correta das Template Strings => ${variavel} 
         div.innerHTML = `
             <div class="card-header">
-                <i class="\( {icon} bandeira" style="color: \){cor}"></i>
-                <span class="status \( {statusClass}"> \){statusTexto}</span>
+                <i class="${icon} bandeira" style="color: ${cor}"></i>
+                <span class="status ${statusClass}">${statusTexto}</span>
             </div>
             <div class="numero">${formatar(item.numero_cartao)}</div>
             <div class="detalhes">
-                <div><strong>Validade:</strong> \( {mes}/ \){ano}</div>
+                <div><strong>Validade:</strong> ${mes}/${ano}</div>
                 <div><strong>CVV:</strong> ${cvv}</div>
                 <div><strong>Banco:</strong> ${banco}</div>
                 <div><strong>Classe:</strong> ${classe}</div>
@@ -871,12 +880,13 @@ function formatar(num) {
     return String(num).replace(/(\d{4})(?=\d)/g, "$1 ");
 }
 
-// PUXAR
+// PUXAR (SORTEIO)
 async function sortearCartao() {
     if (!usuario) return;
     let raw = await getData();
     let data = normalizar(raw);
 
+    // Garante propriedades
     data.items = (data.items || []).map(item => {
         if (item.ownerId === undefined) {
             item.ownerId = null;
@@ -886,16 +896,20 @@ async function sortearCartao() {
         return item;
     });
 
+    // Pega apenas quem NÃO tem dono (pool público)
     const disponiveis = data.items.filter(c => !c.ownerId);
     if (disponiveis.length === 0) return alert("Não há mais cartões no pool!");
 
+    // Sorteia 1
     const sorteado = disponiveis[Math.floor(Math.random() * disponiveis.length)];
+    
+    // Atualiza com o ID do usuário (isso o torna invisível pros outros e sempre visível pra ele)
     const idx = data.items.findIndex(c => c.id === sorteado.id);
-
     data.items[idx].ownerId = usuario.id;
     data.items[idx].ownerNome = usuario.nome;
     data.items[idx].dataSorteio = new Date().toISOString();
 
+    // Cria registro de auditoria no histórico geral
     data.historico = data.historico || [];
     data.historico.push({
         userId: usuario.id,
@@ -910,10 +924,11 @@ async function sortearCartao() {
     const mesAlert = sorteado.mes_validade || sorteado.mes || "--";
     const anoAlert = sorteado.ano_validade || sorteado.ano || "----";
     alert("Cartão sorteado!\n\n" + formatar(sorteado.numero_cartao) + "\nValidade: " + mesAlert + "/" + anoAlert);
-    carregarTudo();
+    
+    carregarTudo(); // Atualiza a tela puxando tudo novamente
 }
 
-// IMPORT
+// IMPORTADOR
 function abrirImportador() {
     document.getElementById("textoImport").value = "";
     document.getElementById("fileImport").value = "";
@@ -946,43 +961,71 @@ function processarImport() {
     if (encontrados.length === 0) {
         lista.innerHTML = `<p style="color:#ff3366;text-align:center;">Nenhum cartão encontrado</p>`;
     } else {
+        // CORRIGIDO O ERRO DE DIGITAÇÃO AQUI TAMBÉM NAS TEMPLATES
         lista.innerHTML = encontrados.map(function(c, i) {
-            return `<div class="preview-card"><strong>#${i+1}</strong> ${formatar(c.numero_cartao)} | \( {c.mes_validade}/ \){c.ano_validade} | CVV: ${c.cvv}</div>`;
+            return `<div class="preview-card"><strong>#${i+1}</strong> ${formatar(c.numero_cartao)} | ${c.mes_validade}/${c.ano_validade} | CVV: ${c.cvv}</div>`;
         }).join("");
     }
     document.getElementById("previewBox").style.display = "block";
 }
 
+// MELHORIA: Extrator inteligente para formatos como cc|mes|ano|cvv
 function extrairCartoes(texto) {
     const resultados = [];
     const linhas = texto.split(/\r?\n/);
-    const reCartao = /\b(\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4})\b/g;
-    const reVal = /\b(0[1-9]|1[0-2])[\/\-\s]?(2[0-9]{3}|[0-9]{2})\b/;
 
     for (let i = 0; i < linhas.length; i++) {
-        const linha = linhas[i];
-        const match = linha.match(reCartao);
-        if (!match) continue;
+        let linha = linhas[i].trim();
+        if (!linha) continue;
 
-        const numero = match[0].replace(/[\s\-]/g, "");
-        if (numero.length < 15 || numero.length > 16) continue;
+        // Expressão Regular para pegar formatos perfeitamente definidos (cartao | mes | ano | cvv)
+        // Suporta os separadores: espaço, barra normal, pipe (|), ou dois pontos.
+        const regexPipe = /(\d{15,16})[\s\|\:\/]+(\d{2})[\s\|\:\/]+(\d{2,4})[\s\|\:\/]+(\d{3,4})/;
+        let match = linha.match(regexPipe);
 
-        let mes = "01", ano = "2030", cvv = "000";
-        const contexto = [linha, linhas[i+1]||"", linhas[i+2]||""].join(" ");
-        const val = contexto.match(reVal);
-        if (val) {
-            const p = val[0].replace(/[\s\-]/g, "/").split("/");
-            mes = p[0].padStart(2, "0");
-            ano = p[1].length === 2 ? "20" + p[1] : p[1];
-        }
+        let numero, mes, ano, cvv;
 
-        const cvvs = contexto.match(/\b\d{3,4}\b/g) || [];
-        for (const c of cvvs) {
-            if (c !== numero.slice(-3) && c !== numero.slice(-4)) {
-                cvv = c;
-                break;
+        if (match) {
+            numero = match[1];
+            mes = match[2];
+            ano = match[3];
+            cvv = match[4];
+        } else {
+            // Fallback: Tentativa de extração genérica solta no texto inteiro caso falhe
+            const reCartao = /\b(\d{15,16})\b/;
+            const linhaLimpa = linha.replace(/[\s\-]/g, "");
+            const matchCard = linhaLimpa.match(reCartao);
+            
+            if (!matchCard) continue;
+            numero = matchCard[1];
+
+            const contexto = [linha, linhas[i+1]||"", linhas[i+2]||""].join(" ");
+            const reVal = /\b(0[1-9]|1[0-2])[\/\-\s\|]+(2[0-9]{3}|[0-9]{2})\b/;
+            const val = contexto.match(reVal);
+
+            mes = "01";
+            ano = "2030";
+            if (val) {
+                mes = val[1];
+                ano = val[2];
+            }
+
+            const cvvs = contexto.match(/\b\d{3,4}\b/g) || [];
+            cvv = "000";
+            for (const c of cvvs) {
+                if (c !== numero.slice(-3) && c !== numero.slice(-4) && c !== ano && c !== mes) {
+                    cvv = c;
+                    break;
+                }
             }
         }
+
+        if (numero.length < 15 || numero.length > 16) continue;
+
+        mes = mes.padStart(2, "0");
+        // Tratamento para evitar anos muito curtos ou bizarrices da digitação (ex: 22222)
+        if (ano.length === 2) ano = "20" + ano;
+        if (ano.length > 4) ano = ano.slice(0, 4); 
 
         resultados.push({
             id: String(Date.now()).slice(-6) + Math.floor(Math.random()*90+10),
@@ -990,13 +1033,13 @@ function extrairCartoes(texto) {
             mes_validade: mes,
             ano_validade: ano,
             cvv: cvv,
-            retorno: "Imported",
+            retorno: "Importado",
             banco: "UNKNOWN",
             pais: "UNITED STATES",
             classe: "CREDIT",
-            bandeira: numero.startsWith("4") ? "VISA" : (numero.startsWith("5") || numero.startsWith("2")) ? "MASTERCARD" : "UNKNOWN",
+            bandeira: numero.startsWith("4") ? "VISA" : (numero.startsWith("5") || numero.startsWith("2")) ? "MASTERCARD" : numero.startsWith("3") ? "AMEX" : "UNKNOWN",
             status: "aguardando",
-            ownerId: null,
+            ownerId: null, // Ao ser importado vem nulo para ir para o pool público
             ownerNome: null,
             dataSorteio: null
         });
@@ -1019,17 +1062,17 @@ async function enviarImport() {
     const existentes = new Set((data.items || []).map(function(i){ return i.numero_cartao; }));
     const novos = encontrados.filter(function(c){ return !existentes.has(c.numero_cartao); });
 
-    if (novos.length === 0) return alert("Todos já existem");
+    if (novos.length === 0) return alert("Todos os cartões dessa lista já existem no sistema.");
 
     data.items = (data.items || []).concat(novos);
     await saveData(data);
 
-    alert(novos.length + " cartão(ões) adicionados!");
+    alert(novos.length + " cartão(ões) adicionados ao Pool Público!");
     fecharImportador();
     carregarTudo();
 }
 
-// INIT
+// INICIALIZADOR
 window.onload = function() {
     const saved = localStorage.getItem("dg_user");
     if (saved) {
