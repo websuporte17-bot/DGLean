@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebDroid Emulator PRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f111a;
+            --phone-bg: #000;
+            --accent: #6cd4c6;
+            --accent-dark: #b893f4;
+            --text: #fff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            background-image: radial-gradient(circle at 50% 0%, #1f2233 0%, #0f111a 100%);
+        }
+
+        #setup-screen {
+            background: rgba(20, 24, 36, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        #setup-screen h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .form-group { text-align: left; margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 12px; color: #8b95a8; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;}
+        .form-group select {
+            width: 100%; padding: 14px; border-radius: 12px;
+            background: #0f111a; border: 1px solid #2a303a;
+            color: #fff; font-size: 14px; outline: none;
+        }
+        #btn-start {
+            width: 100%; padding: 16px; border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+            border: none; color: #000; font-weight: 800; font-size: 16px;
+            cursor: pointer; transition: transform 0.2s;
+        }
+        #btn-start:hover { transform: scale(1.02); }
+        #disclaimer {
+            font-size: 11px; color: #666; margin-top: 15px; line-height: 1.4;
+        }
+
+        #phone-wrapper {
+            display: none;
+            width: 375px;
+            height: 812px;
+            background: #111;
+            border-radius: 50px;
+            padding: 12px;
+            box-shadow: 0 0 0 4px #222, 0 0 0 5px #333, 0 30px 60px rgba(0,0,0,0.8);
+            position: relative;
+        }
+        .notch {
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            width: 120px; height: 30px; background: #111;
+            border-radius: 0 0 16px 16px; z-index: 100;
+        }
+        #screen {
+            width: 100%; height: 100%;
+            background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop') center/cover;
+            border-radius: 38px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #status-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 24px; color: #fff; font-size: 13px; font-weight: 600;
+            z-index: 90; background: rgba(0,0,0,0.2);
+        }
+        .status-icons { display: flex; gap: 6px; align-items: center;}
+        .status-icons span { font-size: 16px; }
+
+        #home-screen {
+            flex: 1; display: flex; align-items: flex-end; padding: 20px;
+        }
+        .dock {
+            width: 100%; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
+            border-radius: 24px; padding: 15px; display: flex; justify-content: space-around;
+        }
+        .app-icon {
+            width: 50px; height: 50px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; cursor: pointer; transition: transform 0.2s;
+            background: #fff; color: #4285F4;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .app-icon:hover { transform: scale(1.1); }
+        .app-icon.chrome { background: conic-gradient(from 90deg, #ea4335 0 90deg, #fbbc04 90deg 180deg, #34a853 180deg 270deg, #4285f4 270deg 360deg); color: #fff; border: 4px solid #fff; }
+        .app-icon.info { background: #202124; color: #6cd4c6; }
+
+        #browser-app {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff; display: none; flex-direction: column; z-index: 80;
+        }
+        #browser-top {
+            background: #f1f3f4; padding: 40px 10px 10px 10px;
+            display: flex; align-items: center; gap: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .browser-btn { background: none; border: none; font-size: 24px; color: #5f6368; cursor: pointer; }
+        #url-bar {
+            flex: 1; display: flex; align-items: center;
+            background: #fff; border-radius: 20px; padding: 8px 15px;
+            border: 1px solid #dfe1e5;
+        }
+        #url-input {
+            border: none; outline: none; width: 100%; font-size: 14px; color: #202124;
+        }
+        #browser-frame {
+            flex: 1; border: none; width: 100%; background: #fff;
+        }
+
+        /* APP DE INFO DO FINGERPRINT (roda na mesma origem, mostra o que foi injetado de verdade) */
+        #info-app {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0f111a; display: none; flex-direction: column; z-index: 80;
+            padding: 50px 20px 20px 20px; overflow-y: auto; font-size: 12px;
+        }
+        #info-app h2 { color: var(--accent); font-size: 16px; margin-bottom: 15px; }
+        #info-app .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; }
+        #info-app .row span:first-child { color: #8b95a8; }
+        #info-app .row span:last-child { text-align: right; max-width: 60%; word-break: break-all; }
+        #info-app .warn { margin-top: 20px; font-size: 10px; color: #666; line-height: 1.5; }
+
+        #nav-bar {
+            height: 40px; background: #000; display: flex; justify-content: space-around;
+            align-items: center; color: #fff; padding: 0 40px; z-index: 90;
+        }
+        .nav-btn { font-size: 20px; cursor: pointer; opacity: 0.7; }
+        .nav-btn:hover { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen">
+        <span class="material-icons-round" style="font-size: 48px; color: var(--accent);">memory</span>
+        <h1>WebDroid Emulator</h1>
+
+        <div class="form-group">
+            <label>Selecione a Identidade (Fingerprint)</label>
+            <select id="device-profile">
+                <option value="s20">Samsung Galaxy S20 (Android 11)</option>
+                <option value="poco">Poco X3 Pro (Android 11)</option>
+                <option value="j7">Motorola Moto G9 (Android 10)</option>
+            </select>
+        </div>
+
+        <button id="btn-start">LIGAR EMULADOR</button>
+        <p id="disclaimer">
+            Simulação client-side para fins de estudo (fingerprinting de navegador).
+            Os overrides valem apenas para scripts rodando nesta mesma aba/origem —
+            não alteram o IP real, nem o MAC address (inacessível via JS em qualquer navegador),
+            nem os headers HTTP enviados a sites de terceiros carregados em iframe.
+        </p>
+    </div>
+
+    <div id="phone-wrapper">
+        <div class="notch"></div>
+
+        <div id="screen">
+            <div id="status-bar">
+                <span id="clock">12:00</span>
+                <div class="status-icons">
+                    <span class="material-icons-round" style="font-size:14px">wifi</span>
+                    <span class="material-icons-round" style="font-size:14px">network_cell</span>
+                    <span class="material-icons-round" style="font-size:14px">battery_full</span>
+                </div>
+            </div>
+
+            <div id="home-screen">
+                <div class="dock">
+                    <div class="app-icon chrome" id="open-browser">
+                        <span class="material-icons-round">public</span>
+                    </div>
+                    <div class="app-icon info" id="open-info">
+                        <span class="material-icons-round">fingerprint</span>
+                    </div>
+                    <div class="app-icon"><span class="material-icons-round">chat</span></div>
+                </div>
+            </div>
+
+            <div id="browser-app">
+                <div id="browser-top">
+                    <button class="browser-btn" id="browser-home"><span class="material-icons-round">home</span></button>
+                    <div id="url-bar">
+                        <span class="material-icons-round" style="font-size: 16px; color:#9aa0a6; margin-right:5px;">lock</span>
+                        <input type="text" id="url-input" placeholder="Pesquise ou digite uma URL..." value="google.com">
+                    </div>
+                    <button class="browser-btn" id="browser-go"><span class="material-icons-round">arrow_forward</span></button>
+                </div>
+                <iframe id="browser-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+            </div>
+
+            <div id="info-app">
+                <h2>Fingerprint ativo nesta origem</h2>
+                <div id="info-rows"></div>
+                <div class="warn">
+                    Estes valores só existem para scripts JS rodando na página principal e na página
+                    "Google" simulada (mesma origem). Sites reais carregados no app Navegador rodam em
+                    outra origem e não recebem esses overrides — isso é uma restrição de segurança do
+                    próprio navegador (same-origin policy), não uma falha do emulador.
+                </div>
+            </div>
+        </div>
+
+        <div id="nav-bar">
+            <span class="material-icons-round nav-btn" id="nav-back">arrow_back_ios</span>
+            <span class="material-icons-round nav-btn" id="nav-home">radio_button_unchecked</span>
+            <span class="material-icons-round nav-btn">crop_square</span>
+        </div>
+    </div>
+
+    <script>
+        // --- BANCO DE DADOS DAS IDENTIDADES ---
+        const profiles = {
+            s20: {
+                ua: "Mozilla/5.0 (Linux; Android 11; SM-G980F Build/RP1A.200720.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36",
+                platform: "Linux armv81", vendor: "Google Inc.", ram: 8, cores: 8,
+                width: 360, height: 800, dpr: 3,
+                timezone: "America/Sao_Paulo", language: "pt-BR",
+                glVendor: "ARM", glRenderer: "Mali-G77 MC9"
+            },
+            poco: {
+                ua: "Mozilla/5.0 (Linux; Android 11; M2102J20SG Build/RKQ1.200826.002) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36",
+                platform: "Linux armv81", vendor: "Google Inc.", ram: 6, cores: 8,
+                width: 393, height: 851, dpr: 2.75,
+                timezone: "America/Sao_Paulo", language: "pt-BR",
+                glVendor: "Qualcomm", glRenderer: "Adreno (TM) 650"
+            },
+            j7: {
+                ua: "Mozilla/5.0 (Linux; Android 10; XT2083-1 Build/QZQ30.70) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Mobile Safari/537.36",
+                platform: "Linux armv7l", vendor: "Google Inc.", ram: 4, cores: 4,
+                width: 360, height: 780, dpr: 2,
+                timezone: "America/Sao_Paulo", language: "pt-BR",
+                glVendor: "Qualcomm", glRenderer: "Adreno (TM) 610"
+            }
+        };
+
+        let currentProfile = profiles.s20;
+
+        const fakeGoogleHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { font-family: sans-serif; background: #fff; color: #202124; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 90vh; margin: 0; }
+                    .logo { font-size: 40px; font-weight: bold; margin-bottom: 30px; letter-spacing: -2px; }
+                    .logo span:nth-child(1) {color: #4285F4;} .logo span:nth-child(2) {color: #EA4335;}
+                    .logo span:nth-child(3) {color: #FBBC05;} .logo span:nth-child(4) {color: #4285F4;}
+                    .logo span:nth-child(5) {color: #34A853;} .logo span:nth-child(6) {color: #EA4335;}
+                    .search-box { width: 85%; max-width: 400px; padding: 12px 20px; border-radius: 24px; border: 1px solid #dfe1e5; font-size: 16px; outline: none; box-shadow: 0 1px 6px rgba(32,33,36,0.1); }
+                    .search-box:focus { box-shadow: 0 1px 6px rgba(32,33,36,0.3); border-color: rgba(223,225,229,0); }
+                    .btn-group { margin-top: 20px; display: flex; gap: 10px; }
+                    button { background: #f8f9fa; border: 1px solid #f8f9fa; border-radius: 4px; color: #3c4043; padding: 10px 16px; font-size: 14px; cursor: pointer; }
+                </style>
+            </head>
+            <body>
+                <div class="logo"><span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span></div>
+                <input type="text" id="q" class="search-box" placeholder="Pesquisar...">
+                <div class="btn-group">
+                    <button onclick="search()">Pesquisa Google</button>
+                    <button>Estou com sorte</button>
+                </div>
+                <script>
+                    function search() {
+                        const val = document.getElementById('q').value;
+                        if(val) window.parent.postMessage({type: 'navigate', url: val}, '*');
+                    }
+                    document.getElementById('q').addEventListener('keypress', function (e) {
+                        if (e.key === 'Enter') search();
+                    });
+                <\/script>
+            </body>
+            </html>
+        `;
+        const blob = new Blob([fakeGoogleHTML], {type: 'text/html'});
+        const fakeGoogleUrl = URL.createObjectURL(blob);
+
+        const setupScreen = document.getElementById('setup-screen');
+        const phoneWrapper = document.getElementById('phone-wrapper');
+        const browserApp = document.getElementById('browser-app');
+        const infoApp = document.getElementById('info-app');
+        const browserFrame = document.getElementById('browser-frame');
+        const urlInput = document.getElementById('url-input');
+
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        }, 1000);
+
+        // --- INJEÇÃO DE FINGERPRINT (tudo client-side, mesma origem) ---
+        function injectIdentity(profile) {
+            const define = (obj, prop, value) => {
+                try {
+                    Object.defineProperty(obj, prop, { get: () => value, configurable: true });
+                } catch (e) {
+                    console.warn('Não foi possível sobrescrever', prop, e);
+                }
+            };
+
+            // Navigator
+            define(navigator, 'userAgent', profile.ua);
+            define(navigator, 'appVersion', profile.ua);
+            define(navigator, 'platform', profile.platform);
+            define(navigator, 'vendor', profile.vendor);
+            define(navigator, 'deviceMemory', profile.ram);
+            define(navigator, 'hardwareConcurrency', profile.cores);
+            define(navigator, 'language', profile.language);
+            define(navigator, 'languages', [profile.language, 'pt', 'en-US']);
+
+            // Tela / resolução
+            define(window.screen, 'width', profile.width);
+            define(window.screen, 'height', profile.height);
+            define(window.screen, 'availWidth', profile.width);
+            define(window.screen, 'availHeight', profile.height);
+            define(window, 'devicePixelRatio', profile.dpr);
+
+            // Timezone (Intl)
+            const OriginalDTF = Intl.DateTimeFormat;
+            const spoofedTZ = profile.timezone;
+            Intl.DateTimeFormat = function (...args) {
+                if (args.length === 0) args = [undefined, {}];
+                if (!args[1]) args[1] = {};
+                if (!args[1].timeZone) args[1].timeZone = spoofedTZ;
+                return new OriginalDTF(...args);
+            };
+            Intl.DateTimeFormat.prototype = OriginalDTF.prototype;
+            define(Date.prototype, 'getTimezoneOffset', function () { return 180; }); // -03:00 aproximado
+
+            // Canvas fingerprint (ruído leve e determinístico por perfil)
+            const seed = profile.ua.length;
+            const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+            HTMLCanvasElement.prototype.toDataURL = function (...args) {
+                const ctx = this.getContext('2d');
+                if (ctx) {
+                    const imgData = ctx.getImageData(0, 0, this.width, this.height);
+                    for (let i = 0; i < imgData.data.length; i += 4) {
+                        imgData.data[i] = imgData.data[i] ^ (seed % 3);
+                    }
+                    ctx.putImageData(imgData, 0, 0);
+                }
+                return origToDataURL.apply(this, args);
+            };
+
+            const origGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+            CanvasRenderingContext2D.prototype.getImageData = function (...args) {
+                const result = origGetImageData.apply(this, args);
+                for (let i = 0; i < result.data.length; i += 4) {
+                    result.data[i] = result.data[i] ^ (seed % 3);
+                }
+                return result;
+            };
+
+            // WebGL vendor/renderer
+            [WebGLRenderingContext, window.WebGL2RenderingContext].forEach((GL) => {
+                if (!GL) return;
+                const origGetParameter = GL.prototype.getParameter;
+                GL.prototype.getParameter = function (param) {
+                    const UNMASKED_VENDOR_WEBGL = 0x9245;
+                    const UNMASKED_RENDERER_WEBGL = 0x9246;
+                    if (param === UNMASKED_VENDOR_WEBGL) return profile.glVendor;
+                    if (param === UNMASKED_RENDERER_WEBGL) return profile.glRenderer;
+                    return origGetParameter.apply(this, arguments);
+                };
+            });
+
+            console.log("✅ Fingerprint injetado:", profile);
+            renderInfoApp(profile);
+        }
+
+        function renderInfoApp(profile) {
+            const rows = [
+                ['User-Agent', navigator.userAgent],
+                ['Platform', navigator.platform],
+                ['Vendor', navigator.vendor],
+                ['Device Memory', navigator.deviceMemory + ' GB'],
+                ['CPU Cores', navigator.hardwareConcurrency],
+                ['Idioma', navigator.language],
+                ['Resolução', screen.width + 'x' + screen.height + ' @' + window.devicePixelRatio + 'x'],
+                ['Timezone (aprox.)', profile.timezone],
+                ['WebGL Vendor', profile.glVendor],
+                ['WebGL Renderer', profile.glRenderer],
+            ];
+            document.getElementById('info-rows').innerHTML = rows.map(([k, v]) =>
+                `<div class="row"><span>${k}</span><span>${v}</span></div>`
+            ).join('');
+        }
+
+        document.getElementById('btn-start').addEventListener('click', () => {
+            const selected = document.getElementById('device-profile').value;
+            currentProfile = profiles[selected];
+            injectIdentity(currentProfile);
+            setupScreen.style.display = 'none';
+            phoneWrapper.style.display = 'block';
+        });
+
+        document.getElementById('open-browser').addEventListener('click', () => {
+            infoApp.style.display = 'none';
+            browserApp.style.display = 'flex';
+            if (!browserFrame.src || browserFrame.src === window.location.href) {
+                goHome();
+            }
+        });
+
+        document.getElementById('open-info').addEventListener('click', () => {
+            browserApp.style.display = 'none';
+            infoApp.style.display = 'flex';
+            renderInfoApp(currentProfile);
+        });
+
+        document.getElementById('nav-home').addEventListener('click', () => {
+            browserApp.style.display = 'none';
+            infoApp.style.display = 'none';
+        });
+        document.getElementById('nav-back').addEventListener('click', () => {
+            browserApp.style.display = 'none';
+            infoApp.style.display = 'none';
+        });
+
+        function goHome() {
+            urlInput.value = 'google.com';
+            browserFrame.src = fakeGoogleUrl;
+        }
+
+        function navigate(query) {
+            let finalUrl = query;
+            if (query.includes('.') && !query.includes(' ')) {
+                if (!query.startsWith('http')) finalUrl = 'https://' + query;
+            } else {
+                finalUrl = 'https://duckduckgo.com/?q=' + encodeURIComponent(query) + '&ia=web';
+            }
+            urlInput.value = finalUrl;
+            browserFrame.src = finalUrl;
+        }
+
+        document.getElementById('browser-home').addEventListener('click', goHome);
+        document.getElementById('browser-go').addEventListener('click', () => navigate(urlInput.value));
+        urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') navigate(urlInput.value);
+        });
+
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'navigate') {
+                navigate(event.data.url);
+            }
+        });
+    </script>
+</body>
+</html>
